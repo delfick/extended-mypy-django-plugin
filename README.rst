@@ -33,7 +33,7 @@ that mean what concrete models are available can't be explicitly specified.
 
 This project exists so that it can work with either the old version of
 ``django-stubs`` that is in use or the latest ``django-stubs``. Support for the
-old version is purely a transitional clutch.
+old version is purely a transitional crutch.
 
 Status
 ------
