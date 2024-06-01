@@ -189,10 +189,14 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
         Then we turn that into::
 
             T_Child = TypeVar("T_Child", Child1, Child2, Child3)
+
+        For ``Concrete.cast_as_concrete`` we narrow the target variable to be the concrete equivalent
+        of the argument.
         """
 
         class KnownConcreteMethods(enum.Enum):
             type_var = "type_var"
+            cast_as_concrete = "cast_as_concrete"
 
         method_name: KnownConcreteMethods
 
@@ -213,6 +217,8 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
 
             if self.method_name is self.KnownConcreteMethods.type_var:
                 return sem_analyzing.transform_type_var_classmethod(ctx)
+            elif self.method_name is self.KnownConcreteMethods.cast_as_concrete:
+                return sem_analyzing.transform_cast_as_concrete(ctx)
             else:
                 assert_never(self.method_name)
 

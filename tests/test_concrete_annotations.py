@@ -111,10 +111,14 @@ class TestConcreteAnnotations:
                 class Leader(models.Model):
                     @classmethod
                     def new(cls) -> Concrete[Self]:
-                        return None # type: ignore[return-value]
+                        cls = Concrete.cast_as_concrete(cls)
+                        # ^ REVEAL cls ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        return cls.objects.create()
 
                     def qs(self) -> DefaultQuerySet[Self]:
-                        return None # type: ignore[return-value]
+                        self = Concrete.cast_as_concrete(self)
+                        # ^ REVEAL self ^ Union[example.models.Follower1, example.models.Follower2]
+                        return self.__class__.objects.filter(pk=self.pk)
 
                     class Meta:
                         abstract = True
@@ -139,10 +143,11 @@ class TestConcreteAnnotations:
 
             scenario.make_file_with_reveals(
                 expected,
-                6,
+                9,
                 "main.py",
                 """
                 from example.models import Leader, Follower1, Follower2, make_queryset
+                from extended_mypy_django_plugin import Concrete
 
                 model: type[Leader] = Follower1
                 # ^ REVEAL model ^ type[example.models.Leader]
@@ -161,13 +166,20 @@ class TestConcreteAnnotations:
 
                 qs3 = Follower2.new().qs()
                 # ^ REVEAL qs3 ^ django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+
+                other: Leader = Follower1.new()
+                # ^ REVEAL other ^ example.models.Leader
+
+                narrowed = Concrete.cast_as_concrete(other)
+                # ^ REVEAL narrowed ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL other ^ example.models.Leader
                 """,
             )
 
             # Fixed in a future commit
             (
                 expected.on("example/models.py").add_error(
-                    18, "misc", "No concrete children found for example.models.Leader"
+                    22, "misc", "No concrete children found for example.models.Leader"
                 )
             )
 

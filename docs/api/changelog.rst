@@ -14,6 +14,7 @@ Changelog
     * When an annotation would transform into a Union of one item, now it becomes that one item
     * Removed ``ConcreteQuerySet`` and made ``DefaultQuerySet`` take on that functionality
     * Concrete annotations now work with the Self type
+    * Implemented Concrete.cast_as_concrete
 
 .. _release-0.5.3:
 

@@ -71,6 +71,77 @@ model, create a ``TypeVar`` object using ``Concrete.type_var``:
     def create_row(cls: type[T_Concrete]) -> T_Concrete:
         return cls.objects.create()
 
+Concrete.cast_as_concrete
+-------------------------
+
+To type narrow an object as a concrete descendent of that object, the ``Concrete.cast_as_concrete``
+may be used:
+
+.. code-block:: python
+
+    from extended_mypy_django_plugin import Concrete
+
+
+    def takes_model(model: AbstractModel) -> None:
+        narrowed = Concrete.cast_as_concrete(model)
+        reveal_type(narrowed) # Concrete1 | Concrete2 | Concrete3
+
+    def takes_model_cls(model: type[AbstractModel]) -> None:
+        narrowed = Concrete.cast_as_concrete(model)
+        reveal_type(narrowed) # type[Concrete1] | type[Concrete2] | type[Concrete3]
+
+Note that at runtime this will raise an exception if the passed in object is either not a django
+model class/instance or is an abstract one.
+
+This may also be used on methods of an Django Model in conjunction with ``typing.Self`` or
+``typing_extensions.Self``:
+
+.. code-block:: python
+
+    from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+    from django.db import models
+    from typing import Self
+
+
+    class AbstractModel(models.Model):
+        class Meta:
+            abstract = True
+
+        @classmethod
+        def new(cls) -> Concrete[Self]:
+            cls = Concrete.cast_as_concrete(cls)
+            reveal_type(cls) # type[Concrete1] | type[Concrete2] | type[Concrete3]
+            return cls.objects.create()
+
+        def qs(self) -> DefaultQuerySet[Self]:
+            self = Concrete.cast_as_concrete(self)
+            reveal_type(self) # Concrete1 | Concrete2 | Concrete3
+            return self.__class__.objects.filter(pk=self.pk)
+
+    class Concrete1(AbstractModel):
+        pass
+
+    class Concrete2(AbstractModel):
+        pass
+
+    class Concrete3(AbstractModel):
+        pass
+
+    model: type[AbstractModel] = Concrete1
+    instance = model.new()
+    reveal_type(instance) # Concrete1 | Concrete2 | Concrete3
+
+    qs = instance.qs()
+    reveal_type(qs) # QuerySet[Concrete1] | QuerySet[Concrete2] | QuerySet[Concrete3]
+
+    specific = Concrete1.new()
+    reveal_type(specific) # Concrete1
+
+    specific_qs = instance.qs()
+    reveal_type(specific_qs) # QuerySet[Concrete1]
+
+This is essentially turns into a cast at static time with an extra type narrowing done inside model methods
+when passing in the first argument of the function (something that is not possible without the mypy plugin).
 
 DefaultQuerySet
 ---------------
