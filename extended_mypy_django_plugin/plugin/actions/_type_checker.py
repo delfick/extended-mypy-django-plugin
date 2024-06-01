@@ -6,8 +6,11 @@ from mypy.checker import TypeChecker
 from mypy.nodes import (
     CallExpr,
     Context,
+    Decorator,
     MemberExpr,
     MypyFile,
+    OverloadedFuncDef,
+    SymbolNode,
     SymbolTable,
     SymbolTableNode,
     TypeInfo,
@@ -47,6 +50,28 @@ class ResolveManagerMethodFromInstance(Protocol):
     def __call__(
         self, instance: Instance, method_name: str, ctx: AttributeContext
     ) -> MypyType: ...
+
+
+class GetSymbolNode(Protocol):
+    def __call__(self, fullname: str) -> SymbolNode | SymbolTableNode | None: ...
+
+
+def _ret_from_node(node: SymbolNode | SymbolTableNode) -> ProperType | None:
+    call = getattr(node, "type", None)
+
+    while not isinstance(call, CallableType):
+        if isinstance(call, Decorator):
+            call = call.func
+        elif isinstance(call, OverloadedFuncDef):
+            call = call.items[-1]
+        else:
+            return None
+
+    ret_type = call.ret_type
+    if call.type_guard:
+        ret_type = call.type_guard
+
+    return get_proper_type(ret_type)
 
 
 @dataclasses.dataclass
@@ -89,11 +114,13 @@ class DefiningScope:
         if isinstance(item, UnboundType):
             node = self.resolve(item.name)
             if node and isinstance(node.node, TypeVarExpr):
-                result.append((is_type, node.node.name))
+                if node.node.fullname not in ("typing_extensions.Self", "typing.Self"):
+                    result.append((is_type, node.node.name))
 
         if isinstance(item, TypeVarType):
             if item not in _chain:
-                result.append((is_type, item))
+                if item.fullname not in ("typing_extensions.Self", "typing.Self"):
+                    result.append((is_type, item))
 
         elif isinstance(item, UnionType):
             for arg in item.items:
@@ -218,13 +245,13 @@ class BasicTypeInfo:
             yield self._clone_with_item(self.item)
 
     def map_type_vars(
-        self, context: Context, callee_arg_names: list[str | None], arg_types: list[list[MypyType]]
+        self, ctx: MethodContext | FunctionContext
     ) -> Mapping[TypeVarType | str, Instance | TypeType]:
         result: dict[TypeVarType | str, Instance | TypeType] = {}
 
         formal_by_name = {arg.name: arg.typ for arg in self.func.formal_arguments()}
 
-        for arg_name, arg_type in zip(callee_arg_names, arg_types):
+        for arg_name, arg_type in zip(ctx.callee_arg_names, ctx.arg_types):
             underlying = get_proper_type(formal_by_name[arg_name])
             if isinstance(underlying, TypeType):
                 underlying = underlying.item
@@ -237,6 +264,22 @@ class BasicTypeInfo:
                 if isinstance(found_type, Instance):
                     result[underlying] = found_type
                     result[underlying.name] = found_type
+
+        if isinstance(ctx, MethodContext):
+            ctx_type = ctx.type
+            if isinstance(ctx_type, TypeType):
+                ctx_type = ctx_type.item
+
+            if isinstance(ctx.type, CallableType):
+                if isinstance(ctx.type.ret_type, Instance | TypeType):
+                    ctx_type = ctx.type.ret_type
+
+            if isinstance(ctx_type, TypeType):
+                ctx_type = ctx_type.item
+
+            if isinstance(ctx_type, Instance):
+                for self_name in ("typing_extension.Self", "typing.Self", "Self"):
+                    result[self_name] = ctx_type
 
         for is_type, type_var in self.type_vars:
             if type_var not in result:
@@ -395,7 +438,7 @@ class TypeChecking:
         if not info.contains_concrete_annotation:
             return None
 
-        type_vars_map = info.map_type_vars(ctx.context, ctx.callee_arg_names, ctx.arg_types)
+        type_vars_map = info.map_type_vars(ctx)
 
         resolver = _annotation_resolver.AnnotationResolver(
             self.store,
@@ -480,9 +523,15 @@ class SharedAnnotationHookLogic:
     used with a type var in a type guard.
     """
 
-    def __init__(self, store: _store.Store, fullname: str) -> None:
+    def __init__(
+        self,
+        store: _store.Store,
+        fullname: str,
+        get_symbolnode_for_fullname: GetSymbolNode,
+    ) -> None:
         self.store = store
         self.fullname = fullname
+        self.get_symbolnode_for_fullname = get_symbolnode_for_fullname
 
     def choose(self) -> bool:
         """
@@ -494,19 +543,14 @@ class SharedAnnotationHookLogic:
         if self.fullname.startswith("builtins."):
             return False
 
-        sym = self.store.plugin_lookup_fully_qualified(self.fullname)
-        if not sym or not sym.node:
+        sym_node = self.get_symbolnode_for_fullname(self.fullname)
+        if not sym_node:
             return False
 
-        call = getattr(sym.node, "type", None)
-        if not isinstance(call, CallableType):
+        ret_type = _ret_from_node(sym_node)
+        if ret_type is None:
             return False
 
-        ret_type = call.ret_type
-        if call.type_guard:
-            ret_type = call.type_guard
-
-        ret_type = get_proper_type(ret_type)
         if isinstance(ret_type, TypeType):
             ret_type = ret_type.item
 
@@ -543,9 +587,12 @@ class SharedSignatureHookLogic:
     the type guard.
     """
 
-    def __init__(self, store: _store.Store, fullname: str) -> None:
+    def __init__(
+        self, store: _store.Store, fullname: str, get_symbolnode_for_fullname: GetSymbolNode
+    ) -> None:
         self.store = store
         self.fullname = fullname
+        self.get_symbolnode_for_fullname = get_symbolnode_for_fullname
 
     def choose(self) -> bool:
         """
@@ -554,19 +601,13 @@ class SharedSignatureHookLogic:
         if self.fullname.startswith("builtins."):
             return False
 
-        sym = self.store.plugin_lookup_fully_qualified(self.fullname)
-        if not sym or not sym.node:
+        sym_node = self.get_symbolnode_for_fullname(self.fullname)
+        if sym_node is None:
             return False
 
-        call = getattr(sym.node, "type", None)
-        if not isinstance(call, CallableType):
+        ret_type = _ret_from_node(sym_node)
+        if ret_type is None:
             return False
-
-        ret_type = call.ret_type
-        if call.type_guard:
-            ret_type = call.type_guard
-
-        ret_type = get_proper_type(ret_type)
 
         if isinstance(ret_type, TypeType):
             ret_type = ret_type.item

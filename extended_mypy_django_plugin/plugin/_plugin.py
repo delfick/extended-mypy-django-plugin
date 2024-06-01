@@ -1,11 +1,12 @@
 import enum
+import functools
 import sys
 from collections.abc import Callable
 from typing import Generic
 
 from mypy.checker import TypeChecker
 from mypy.modulefinder import mypy_path
-from mypy.nodes import MypyFile, TypeInfo
+from mypy.nodes import MypyFile, SymbolNode, SymbolTableNode, TypeInfo
 from mypy.options import Options
 from mypy.plugin import (
     AnalyzeTypeContext,
@@ -112,6 +113,40 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
             return sym.node
         else:
             return None
+
+    def _get_symbolnode_for_fullname(
+        self, fullname: str, is_function: bool
+    ) -> SymbolNode | SymbolTableNode | None:
+        sym = self.store.plugin_lookup_fully_qualified(fullname)
+        if sym and sym.node:
+            return sym.node
+
+        if is_function:
+            return None
+
+        if fullname.count(".") < 2:
+            return None
+
+        if self._modules is None:
+            return None
+
+        # We're on a class and couldn't find the sym, it's likely on a base class
+        module, class_name, method_name = fullname.rsplit(".", 2)
+
+        mod = self._modules.get(module)
+        if mod is None:
+            return None
+
+        class_node = mod.names.get(class_name)
+        if not class_node or not isinstance(class_node.node, TypeInfo):
+            return None
+
+        for parent in class_node.node.bases:
+            if isinstance(parent.type, TypeInfo):
+                if isinstance(found := parent.type.names.get(method_name), SymbolTableNode):
+                    return found
+
+        return None
 
     def determine_plugin_version(self, previous_version: int | None = None) -> int:
         """
@@ -229,7 +264,12 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = actions.SharedAnnotationHookLogic(
-                self.store, fullname=self.fullname
+                self.store,
+                fullname=self.fullname,
+                get_symbolnode_for_fullname=functools.partial(
+                    self.plugin._get_symbolnode_for_fullname,
+                    is_function=self.__class__.__name__ == "get_function_hook",
+                ),
             )
 
         def choose(self) -> bool:
@@ -263,7 +303,12 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = actions.SharedSignatureHookLogic(
-                self.store, fullname=self.fullname
+                self.store,
+                fullname=self.fullname,
+                get_symbolnode_for_fullname=functools.partial(
+                    self.plugin._get_symbolnode_for_fullname,
+                    is_function=self.__class__.__name__ == "get_function_hook",
+                ),
             )
 
         def choose(self) -> bool:

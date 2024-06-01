@@ -105,14 +105,15 @@ class TestConcreteAnnotations:
                 from __future__ import annotations
 
                 from django.db import models
+                from typing_extensions import Self
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
                 class Leader(models.Model):
                     @classmethod
-                    def new(cls) -> Concrete[Leader]:
+                    def new(cls) -> Concrete[Self]:
                         return None # type: ignore[return-value]
 
-                    def qs(self) -> DefaultQuerySet[Leader]:
+                    def qs(self) -> DefaultQuerySet[Self]:
                         return None # type: ignore[return-value]
 
                     class Meta:
@@ -132,36 +133,41 @@ class TestConcreteAnnotations:
                     ...
 
                 def make_queryset(cls: T_Leader) -> DefaultQuerySet[T_Leader]:
-                    return None # type: ignore[return-value]
+                    return cls.qs()
                 """,
             )
 
             scenario.make_file_with_reveals(
                 expected,
-                4,
+                6,
                 "main.py",
                 """
-                from example.models import Leader, Follower1, make_queryset
-                from typing import cast
+                from example.models import Leader, Follower1, Follower2, make_queryset
 
-                leader = Leader.new()
+                model: type[Leader] = Follower1
+                # ^ REVEAL model ^ type[example.models.Leader]
+
+                leader = model.new()
                 # ^ REVEAL leader ^ Union[example.models.Follower1, example.models.Follower2]
 
                 qs = leader.qs()
                 # ^ REVEAL qs ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
 
-                follower1 = Follower1.objects.create()
+                follower1 = Follower1.new()
                 # ^ REVEAL follower1 ^ example.models.Follower1
 
-                qs2 = make_queryset(cast(Follower1, None))
+                qs2 = make_queryset(follower1)
                 # ^ REVEAL qs2 ^ example.models.Follower1QuerySet
+
+                qs3 = Follower2.new().qs()
+                # ^ REVEAL qs3 ^ django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
                 """,
             )
 
             # Fixed in a future commit
             (
                 expected.on("example/models.py").add_error(
-                    17, "misc", "No concrete children found for example.models.Leader"
+                    18, "misc", "No concrete children found for example.models.Leader"
                 )
             )
 
