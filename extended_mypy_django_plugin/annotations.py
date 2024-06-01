@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, overload
 
 from django.db import models
 
@@ -23,7 +23,61 @@ class Concrete(Generic[T_Parent]):
 
     .. automethod:: find_children
     .. automethod:: type_var
+    .. automethod:: cast_as_concrete
     """
+
+    @classmethod
+    @overload
+    def cast_as_concrete(cls, obj: type[T_Parent]) -> type[Concrete[T_Parent]]: ...
+
+    @classmethod
+    @overload
+    def cast_as_concrete(cls, obj: T_Parent) -> Concrete[T_Parent]: ...
+
+    @classmethod
+    def cast_as_concrete(
+        cls, obj: type[T_Parent] | T_Parent
+    ) -> type[Concrete[T_Parent]] | Concrete[T_Parent]:
+        """
+        This can be used to change the type of an abstract django model to be only
+        a concrete decedent.
+
+        At runtime this will raise an exception if the object is an abstract model or class.
+
+        At static type checking time this will change the type of the variable being assigned to::
+
+            from typing import Self, cast
+            from extended_mypy_django_plugin import Concrete
+
+            class MyAbstractModel(Model):
+                class Meta:
+                    abstract = True
+
+                @classmethod
+                def new(cls) -> Concrete[Self]:
+                    cls = Concrete.cast_as_concrete(cls)
+                    ...
+
+                def get_self(self) -> Concrete[Self]:
+                    self = Concrete.cast_as_concrete(self)
+                    ...
+
+        This can also be used outside of a model method::
+
+            model: type[MyAbstractModel] = Concrete1
+            narrowed = Concrete.cast_as_concrete(model)
+            reveal_type(narrowed) # Concrete1 | Concrete2 | Concrete3 | ...
+        """
+        if isinstance(obj, type):
+            if not issubclass(obj, models.Model) or (
+                (Meta := getattr(obj, "Meta", None)) and getattr(Meta, "abstract", False)
+            ):
+                raise RuntimeError("Expected a concrete subclass")
+
+        elif not isinstance(obj, models.Model) or obj._meta.abstract:
+            raise RuntimeError("Expected a concrete instance")
+
+        return obj
 
     @classmethod
     def find_children(cls, parent: type[models.Model]) -> Sequence[type[models.Model]]:
