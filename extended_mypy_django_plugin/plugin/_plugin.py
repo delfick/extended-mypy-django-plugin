@@ -269,7 +269,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
 
         def extra_init(self) -> None:
             super().extra_init()
-            self.shared_logic = actions.SharedAnnotationHookLogic(
+            self.shared_logic = actions.SharedModifyReturnTypeLogic(
                 self.store,
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(
@@ -308,7 +308,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
     ):
         def extra_init(self) -> None:
             super().extra_init()
-            self.shared_logic = actions.SharedSignatureHookLogic(
+            self.shared_logic = actions.SharedCheckTypeGuardsLogic(
                 self.store,
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(
@@ -323,7 +323,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
         def run(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike:
             result = self.shared_logic.run(ctx)
             if result is not None:
-                return ctx.default_signature.copy_modified(ret_type=result)
+                return result
 
             if self.super_hook is not None:
                 return self.super_hook(ctx)

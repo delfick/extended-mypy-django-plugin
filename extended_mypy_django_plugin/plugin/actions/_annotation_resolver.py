@@ -57,7 +57,7 @@ class AnnotationResolver:
             yield typ
 
     def _analyze_first_type_arg(
-        self, type_arg: Instance | TypeType | UnionType
+        self, type_arg: ProperType
     ) -> tuple[bool, Sequence[Instance] | None]:
         is_type: bool = False
 
@@ -124,9 +124,7 @@ class AnnotationResolver:
             return UnionType(tuple(items))
 
     def resolve(
-        self,
-        annotation: _known_annotations.KnownAnnotations,
-        type_arg: Instance | TypeType | UnionType,
+        self, annotation: _known_annotations.KnownAnnotations, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
         if annotation is _known_annotations.KnownAnnotations.CONCRETE:
             return self.find_concrete_models(type_arg)
@@ -137,24 +135,30 @@ class AnnotationResolver:
 
     def find_type_arg(
         self, unbound_type: UnboundType, analyze_type: TypeAnalyze
-    ) -> Instance | TypeType | UnionType | None:
+    ) -> tuple[ProperType | None, bool]:
         args = unbound_type.args
         if len(args := unbound_type.args) != 1:
             self._fail("Concrete annotations must contain exactly one argument")
-            return None
+            return None, False
 
         type_arg = get_proper_type(analyze_type(args[0]))
-        if isinstance(type_arg, TypeVarType | UnboundType):
-            return None
+        needs_rewrap = self._has_typevars(type_arg)
+        return type_arg, needs_rewrap
 
-        if not isinstance(type_arg, Instance | TypeType | UnionType):
-            self._fail(f"Unexpected input to a concrete annotation: {type_arg}")
-            return None
+    def _has_typevars(self, type_arg: ProperType) -> bool:
+        if isinstance(type_arg, TypeType):
+            type_arg = type_arg.item
 
-        return type_arg
+        if isinstance(type_arg, TypeVarType):
+            return True
+
+        if not isinstance(type_arg, UnionType):
+            return False
+
+        return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
 
     def find_concrete_models(
-        self, type_arg: Instance | TypeType | UnionType
+        self, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
         is_type, concrete = self._analyze_first_type_arg(type_arg)
         if concrete is None:
@@ -163,7 +167,7 @@ class AnnotationResolver:
         return self._make_union(is_type, concrete)
 
     def find_default_queryset(
-        self, type_arg: Instance | TypeType | UnionType
+        self, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
         is_type, concrete = self._analyze_first_type_arg(type_arg)
         if concrete is None:
