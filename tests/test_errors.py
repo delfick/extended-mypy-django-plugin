@@ -62,13 +62,13 @@ class TestErrors:
 
             out = """
             main:15: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:16: note: Revealed type is "type[Concrete?[T_Parent?]]"
+            main:16: note: Revealed type is "type[extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]]"
             main:24: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:25: note: Revealed type is "Concrete?[T_Parent?]"
+            main:25: note: Revealed type is "extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]"
             main:40: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:41: note: Revealed type is "type[Concrete?[T_Parent?]]"
+            main:41: note: Revealed type is "type[extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]]"
             main:44: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:45: note: Revealed type is "Concrete?[T_Parent?]"
+            main:45: note: Revealed type is "extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]"
             """
 
             if importlib.metadata.version("mypy") == "1.4.0":

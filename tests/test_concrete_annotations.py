@@ -2,6 +2,46 @@ from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
 
 class TestConcreteAnnotations:
+    def test_cast_as_concrete(self, scenario: Scenario) -> None:
+        @scenario.run_and_check_mypy_after(installed_apps=["leader", "simple"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.make_file_with_reveals(
+                expected,
+                10,
+                "main.py",
+                """
+                from simple.models import Follow1, Follow2
+                from leader.models import Leader
+                from extended_mypy_django_plugin import Concrete
+
+                model: type[Leader] = Follow1
+                # ^ REVEAL model ^ type[leader.models.Leader]
+
+                model = Concrete.cast_as_concrete(model)
+                # ^ REVEAL model ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+
+                model2: type[Leader] = Follow1
+                # ^ REVEAL model2 ^ type[leader.models.Leader]
+
+                model3 = Concrete.cast_as_concrete(model2)
+                # ^ REVEAL model3 ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                # ^ REVEAL model2 ^ type[leader.models.Leader]
+
+                instance: Leader = Follow1.objects.create()
+                # ^ REVEAL instance ^ leader.models.Leader
+
+                instance = Concrete.cast_as_concrete(instance)
+                # ^ REVEAL instance ^ Union[simple.models.Follow1, simple.models.Follow2]
+
+                instance2: Leader = Follow1.objects.create()
+                # ^ REVEAL instance2 ^ leader.models.Leader
+
+                instance3 = Concrete.cast_as_concrete(instance2)
+                # ^ REVEAL instance3 ^ Union[simple.models.Follow1, simple.models.Follow2]
+                # ^ REVEAL instance2 ^ leader.models.Leader
+                """,
+            )
+
     def test_simple_annotation(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
@@ -82,6 +122,77 @@ class TestConcreteAnnotations:
                 """,
             )
 
+    def test_can_use_type_var_before_class_is_defined(self, scenario: Scenario) -> None:
+        @scenario.run_and_check_mypy_after(installed_apps=["example"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.make_file("example/__init__.py", "")
+
+            scenario.make_file(
+                "example/apps.py",
+                """
+                from django.apps import AppConfig
+
+                class Config(AppConfig):
+                    name = "example"
+                """,
+            )
+
+            scenario.make_file(
+                "example/models.py",
+                """
+                from __future__ import annotations
+
+                from django.db import models
+                from typing_extensions import Self
+                from extended_mypy_django_plugin import Concrete
+
+                T_Leader = Concrete.type_var("T_Leader", "Leader")
+
+                class Leader(models.Model):
+                    @classmethod
+                    def new(cls) -> Concrete[Self]:
+                        cls = Concrete.cast_as_concrete(cls)
+                        # ^ REVEAL cls ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        return cls.objects.create()
+
+                    class Meta:
+                        abstract = True
+
+
+                class Follower1(Leader):
+                    ...
+
+                class Follower2(Leader):
+                    ...
+
+                def make_instance(cls: type[T_Leader]) -> T_Leader:
+                    return cls.new()
+                """,
+            )
+
+            scenario.make_file_with_reveals(
+                expected,
+                2,
+                "main.py",
+                """
+                from example.models import Leader, Follower1, Follower2, make_instance
+                from extended_mypy_django_plugin import Concrete
+
+                instance1 = make_instance(Follower1)
+                # ^ REVEAL instance1 ^ example.models.Follower1
+
+                instance2 = make_instance(Follower2)
+                # ^ REVEAL instance2 ^ example.models.Follower2
+                """,
+                # TODO: Make this possible
+                # would require generating overload variants on make_instance
+                # model: type[Concrete[Leader]] = Follower1
+                # # ^ REVEAL model ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                # instance3 = make_instance(model)
+                # # ^ REVEAL instance3 ^ Union[example.models.Follower1, example.models.Follower2]
+                # """,
+            )
+
     def test_using_concrete_annotation_on_class_used_in_annotation(
         self, scenario: Scenario
     ) -> None:
@@ -105,7 +216,9 @@ class TestConcreteAnnotations:
                 from __future__ import annotations
 
                 from django.db import models
+                from collections.abc import Callable
                 from typing_extensions import Self
+                from typing import Protocol
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
                 class Leader(models.Model):
@@ -123,8 +236,6 @@ class TestConcreteAnnotations:
                     class Meta:
                         abstract = True
 
-                T_Leader = Concrete.type_var("T_Leader", Leader)
-
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
 
@@ -135,18 +246,15 @@ class TestConcreteAnnotations:
 
                 class Follower2(Leader):
                     ...
-
-                def make_queryset(cls: T_Leader) -> DefaultQuerySet[T_Leader]:
-                    return cls.qs()
                 """,
             )
 
             scenario.make_file_with_reveals(
                 expected,
-                9,
+                8,
                 "main.py",
                 """
-                from example.models import Leader, Follower1, Follower2, make_queryset
+                from example.models import Leader, Follower1, Follower2
                 from extended_mypy_django_plugin import Concrete
 
                 model: type[Leader] = Follower1
@@ -161,9 +269,6 @@ class TestConcreteAnnotations:
                 follower1 = Follower1.new()
                 # ^ REVEAL follower1 ^ example.models.Follower1
 
-                qs2 = make_queryset(follower1)
-                # ^ REVEAL qs2 ^ example.models.Follower1QuerySet
-
                 qs3 = Follower2.new().qs()
                 # ^ REVEAL qs3 ^ django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
@@ -176,11 +281,93 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            # Fixed in a future commit
-            (
-                expected.on("example/models.py").add_error(
-                    22, "misc", "No concrete children found for example.models.Leader"
-                )
+    def test_resolving_concrete_type_vars(self, scenario: Scenario) -> None:
+        @scenario.run_and_check_mypy_after(installed_apps=["example"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.make_file("example/__init__.py", "")
+
+            scenario.make_file(
+                "example/apps.py",
+                """
+                from django.apps import AppConfig
+
+                class Config(AppConfig):
+                    name = "example"
+                """,
+            )
+
+            scenario.make_file(
+                "example/models.py",
+                """
+                from __future__ import annotations
+
+                from django.db import models
+                from collections.abc import Callable
+                from typing_extensions import Self
+                from typing import Protocol
+                from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+
+                class Leader(models.Model):
+                    class Meta:
+                        abstract = True
+
+                T_Leader = Concrete.type_var("T_Leader", Leader)
+
+                class Follower1QuerySet(models.QuerySet["Follower1"]):
+                    ...
+
+                Follower1Manager = models.Manager.from_queryset(Follower1QuerySet)
+
+                class Follower1(Leader):
+                    objects = Follower1Manager()
+
+                class Follower2(Leader):
+                    ...
+
+                def make_queryset(instance: T_Leader, /) -> DefaultQuerySet[T_Leader]:
+                    return instance.__class__.objects.filter(pk=instance.pk)
+
+                class MakeQueryset(Protocol):
+                    def __call__(self, instance: T_Leader, /) -> DefaultQuerySet[T_Leader]:
+                        ...
+
+                functions: list[MakeQueryset] = [make_queryset]
+
+                functions2: list[Callable[[T_Leader], DefaultQuerySet[T_Leader]]] = [make_queryset] # type: ignore[list-item]
+                """,
+            )
+
+            scenario.make_file_with_reveals(
+                expected,
+                6,
+                "main.py",
+                """
+                from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
+                from extended_mypy_django_plugin import Concrete
+
+                follower1 = Follower1.objects.create()
+                # ^ REVEAL follower1 ^ example.models.Follower1
+
+                func = functions[0]
+                # ^ REVEAL func ^ example.models.MakeQueryset
+
+                func2 = functions2[0]
+                # ^ REVEAL func ^ example.models.MakeQueryset
+                
+                qs1 = func(follower1)
+                # ^ REVEAL qs1 ^ example.models.Follower1QuerySet
+
+                qs2 = func2(follower1)
+                # ^ REVEAL qs2 ^ example.models.Follower1QuerySet
+
+                qs5 = make_queryset(follower1)
+                # ^ REVEAL qs5 ^ example.models.Follower1QuerySet
+                """,
+            )
+
+            # TODO: Fixed in future commit
+            expected.on("example/models.py").add_error(
+                13, "misc", "No concrete children found for example.models.Leader"
             )
 
     def test_sees_apps_removed_when_they_still_exist_but_no_longer_installed(

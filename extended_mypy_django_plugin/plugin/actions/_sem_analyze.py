@@ -1,6 +1,8 @@
 from mypy.nodes import (
     GDEF,
+    AssignmentStmt,
     CastExpr,
+    NameExpr,
     StrExpr,
     SymbolTableNode,
     TypeInfo,
@@ -17,6 +19,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarType,
+    UnboundType,
     UnionType,
     get_proper_type,
 )
@@ -59,15 +62,35 @@ class TypeAnalyzer:
             named_type_or_none=self.sem_api.named_type_or_none,
         )
 
-        type_arg = resolver.find_type_arg(ctx.type, self.api.analyze_type)
+        type_arg, rewrap = resolver.find_type_arg(ctx.type, self.api.analyze_type)
         if type_arg is None:
             return ctx.type
 
-        result = resolver.resolve(annotation, type_arg)
-        if result is None:
+        if rewrap:
+            info = self._lookup_info(annotation.value)
+            if info is None:
+                self.api.fail(f"Couldn't find information for {annotation.value}", ctx.context)
+                return ctx.type
+
+            if isinstance(type_arg, TypeType) and isinstance(type_arg.item, TypeVarType):
+                if type_arg.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                    return ctx.type
+            elif isinstance(type_arg, TypeVarType):
+                if type_arg.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                    return ctx.type
+
+            return UnboundType(
+                "__ConcreteWithTypeVar__",
+                [Instance(info, [type_arg])],
+                line=ctx.context.line,
+                column=ctx.context.column,
+            )
+
+        resolved = resolver.resolve(annotation, type_arg)
+        if resolved is None:
             return ctx.type
         else:
-            return result
+            return resolved
 
 
 class SemAnalyzing:
@@ -175,37 +198,48 @@ class SemAnalyzing:
         return None
 
     def transform_type_var_classmethod(self, ctx: DynamicClassDefContext) -> None:
-        if not isinstance(ctx.call.args[0], StrExpr):
+        if len(ctx.call.args) != 2:
+            self.api.fail("Concrete.type_var takes exactly two arguments", ctx.call)
+            return None
+
+        name = self.api.extract_typevarlike_name(
+            AssignmentStmt([NameExpr(ctx.name)], ctx.call.callee), ctx.call
+        )
+        if name is None:
+            return None
+
+        second_arg = ctx.call.args[1]
+        model_name: str
+
+        if isinstance(second_arg, StrExpr):
+            if second_arg.value.isidentifier():
+                model_name = f"{self.api.cur_mod_id}.{second_arg.value}"
+            else:
+                self.api.fail(
+                    "Concrete.type_var needs to take the instance or name of a model class in this file",
+                    ctx.call,
+                )
+                return None
+        elif isinstance(second_arg, NameExpr):
+            model_name = f"{self.api.cur_mod_id}.{second_arg.name}"
+        else:
             self.api.fail(
-                "First argument to Concrete.type_var must be a string of the name of the variable",
+                "Second argument to type_var must be either a simple name or a string of the name",
                 ctx.call,
             )
-            return
 
-        name = ctx.call.args[0].value
-        if name != ctx.name:
-            self.api.fail(
-                f"First argument {name} was not the name of the variable {ctx.name}",
-                ctx.call,
-            )
-            return
-
-        module = self.api.modules[self.api.cur_mod_id]
-        if isinstance(module.names.get(name), TypeVarType):
-            return
-
-        parent: SymbolTableNode | None = None
-        try:
-            parent = self.api.lookup_type_node(ctx.call.args[1])
-        except AssertionError:
-            parent = None
+        parent = self.api.lookup_fully_qualified_or_none(model_name)
 
         if parent is None:
-            self.api.fail(
-                "Second argument to Concrete.type_var must be the abstract model class to find concrete instances of",
-                ctx.call,
-            )
-            return
+            if self.api.final_iteration:
+                self.api.fail(
+                    f"Failed to locate the model provided to to make {ctx.name} ({model_name})",
+                    ctx.call,
+                )
+                return None
+            else:
+                self.api.defer()
+                return None
 
         if not isinstance(parent.node, TypeInfo):
             self.api.fail(
@@ -228,5 +262,6 @@ class SemAnalyzing:
             default=AnyType(TypeOfAny.from_omitted_generics),
         )
 
+        module = self.api.modules[self.api.cur_mod_id]
         module.names[name] = SymbolTableNode(GDEF, type_var_expr, plugin_generated=True)
         return None

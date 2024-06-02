@@ -105,7 +105,7 @@ class Concrete(Generic[T_Parent]):
         return found
 
     @classmethod
-    def type_var(cls, name: str, parent: type[models.Model]) -> TypeVar:
+    def type_var(cls, name: str, parent: type[models.Model] | str) -> TypeVar:
         """
         This returns an empty ``TypeVar`` at runtime, but the ``mypy`` plugin will
         recognise that this ``TypeVar`` represents a choice of all the concrete

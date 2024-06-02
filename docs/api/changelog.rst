@@ -15,6 +15,8 @@ Changelog
     * Removed ``ConcreteQuerySet`` and made ``DefaultQuerySet`` take on that functionality
     * Concrete annotations now work with the Self type
     * Implemented Concrete.cast_as_concrete
+    * Concrete.type_var can now take a forward reference to the model being represented
+    * Implemented more scenarios where Concrete.type_var may be used
 
 .. _release-0.5.3:
 
