@@ -1,3 +1,4 @@
+import enum
 import importlib.metadata
 import re
 import textwrap
@@ -9,13 +10,21 @@ from pytest_mypy_plugins.utils import (
     FileOutputMatcher,
     extract_output_matchers_from_out,
 )
-from typing_extensions import Self
+from typing_extensions import Self, assert_never
 
 regexes = {
-    "reveal_tag": re.compile(
-        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*REVEAL\s+(?P<var_name>[^ ]+)\s*\^\s*(?P<rest>.*)"
+    "potential_instruction": re.compile(r"^\s*#\s*\^"),
+    "instruction": re.compile(
+        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*(?P<instruction>REVEAL|ERROR|NOTE)(?P<options>\([^\)]*)?(?P<tag>\[[^\]]*\])?\s*\^\s*(?P<rest>.*)"
     ),
+    "assignment": re.compile(r"^(?P<var_name>[a-zA-Z0-9_]+)\s*(:[^=]+)?(=|$)"),
 }
+
+
+class _Instruction(enum.Enum):
+    REVEAL = "REVEAL"
+    ERROR = "ERROR"
+    NOTE = "NOTE"
 
 
 class _Build:
@@ -176,19 +185,60 @@ class OutputBuilder:
         result: list[str] = []
         expected = self.on(path)
 
-        for i, line in enumerate(content.split("\n")):
-            m = regexes["reveal_tag"].match(line)
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            m = regexes["instruction"].match(line)
             if m is None:
-                if line.strip().startswith("#") and ("REVEAL" in line or "^" in line):
-                    raise AssertionError(f"Found a potential reveal tag that was invalid:: {line}")
+                if regexes["potential_instruction"].match(line):
+                    raise AssertionError(
+                        f"Looks like line is trying to be an expectation but it didn't pass the regex for one: {line}"
+                    )
                 result.append(line)
                 continue
 
             gd = m.groupdict()
-            result.append(f"{gd['prefix_whitespace']}reveal_type({gd['var_name']})")
-            expected.add_revealed_type(i + 1, gd["rest"])
+            result.append("")
+            expected._parse_instruction(
+                i,
+                result,
+                line,
+                prefix_whitespace=gd["prefix_whitespace"],
+                instruction=_Instruction(gd["instruction"]),
+                options=gd.get("options", ""),
+                tag=gd.get("tag", ""),
+                rest=gd["rest"],
+            )
 
         return "\n".join(result)
+
+    def _parse_instruction(
+        self,
+        i: int,
+        result: list[str],
+        line: str,
+        *,
+        prefix_whitespace: str,
+        instruction: _Instruction,
+        options: str,
+        tag: str,
+        rest: str,
+    ) -> None:
+        if instruction is _Instruction.REVEAL:
+            previous_line = result[i - 1]
+            m = regexes["assignment"].match(previous_line.strip())
+            if m:
+                result[i] = f"{prefix_whitespace}reveal_type({m.groupdict()['var_name']})"
+                i += 1
+            else:
+                result[i - 1] = f"{prefix_whitespace}reveal_type({previous_line.strip()})"
+
+            self.add_revealed_type(i, rest)
+        elif instruction is _Instruction.ERROR:
+            raise NotImplementedError()
+        elif instruction is _Instruction.NOTE:
+            raise NotImplementedError()
+        else:
+            assert_never(instruction)
 
     def __iter__(self) -> Iterator[OutputMatcher]:
         if self._build.daemon_should_restart and self._build.for_daemon:
