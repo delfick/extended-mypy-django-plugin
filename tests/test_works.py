@@ -16,70 +16,72 @@ def test_works(scenario: Scenario) -> None:
      main:59: note: Revealed type is "Union[myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]"
      """
 
-    main = """
-    from extended_mypy_django_plugin import Concrete, DefaultQuerySet
-
-    from myapp.models import Parent, Child1, Child2
-
-    T_Child = Concrete.type_var("T_Child", Parent)
-
-
-    def make_child(child: type[T_Child]) -> T_Child:
-        return child.objects.create()
-
-
-    def make_any_queryset(child: type[Concrete[Parent]]) -> DefaultQuerySet[Parent]:
-        return child.objects.all()
-
-
-    def make_child1_queryset() -> DefaultQuerySet[Child1]:
-        return Child1.objects.all()
-
-
-    def make_child2_queryset() -> DefaultQuerySet[Child2]:
-        return Child2.objects.all()
-
-
-    def make_multiple_queryset(child: type[Child1 | Child2]) -> DefaultQuerySet[Child2 | Child1]:
-        return child.objects.all()
-
-
-    def make_child_typevar_queryset(child: type[T_Child]) -> DefaultQuerySet[T_Child]:
-        return child.objects.all()
-
-
-    def ones(model: type[Concrete[Parent]]) -> list[str]:
-        reveal_type(model.objects)
-        return list(model.objects.values_list("one", flat=True))
-
-
-    made = make_child(Child1)
-    reveal_type(made)
-
-    any_qs = make_any_queryset(Child1)
-    reveal_type(any_qs)
-
-    qs1 = make_child1_queryset()
-    reveal_type(qs1)
-
-    qs2 = make_child2_queryset()
-    reveal_type(qs2)
-    reveal_type(qs2.all())
-    reveal_type(Child2.objects)
-    reveal_type(Child2.objects.all())
-
-    tvqs1 = make_child_typevar_queryset(Child1)
-    reveal_type(tvqs1)
-
-    tvqs2 = make_child_typevar_queryset(Child2)
-    reveal_type(tvqs2)
-
-    tvqsmult = make_multiple_queryset(Child1)
-    reveal_type(tvqsmult)
-    """
-
     @scenario.run_and_check_mypy_after
     def _(expected: OutputBuilder) -> None:
-        scenario.file(expected, "main.py", main)
+        scenario.file(
+            expected,
+            "main.py",
+            """
+            from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+
+            from myapp.models import Parent, Child1, Child2
+
+            T_Child = Concrete.type_var("T_Child", Parent)
+
+
+            def make_child(child: type[T_Child]) -> T_Child:
+                return child.objects.create()
+
+
+            def make_any_queryset(child: type[Concrete[Parent]]) -> DefaultQuerySet[Parent]:
+                return child.objects.all()
+
+
+            def make_child1_queryset() -> DefaultQuerySet[Child1]:
+                return Child1.objects.all()
+
+
+            def make_child2_queryset() -> DefaultQuerySet[Child2]:
+                return Child2.objects.all()
+
+
+            def make_multiple_queryset(child: type[Child1 | Child2]) -> DefaultQuerySet[Child2 | Child1]:
+                return child.objects.all()
+
+
+            def make_child_typevar_queryset(child: type[T_Child]) -> DefaultQuerySet[T_Child]:
+                return child.objects.all()
+
+
+            def ones(model: type[Concrete[Parent]]) -> list[str]:
+                reveal_type(model.objects)
+                return list(model.objects.values_list("one", flat=True))
+
+
+            made = make_child(Child1)
+            reveal_type(made)
+
+            any_qs = make_any_queryset(Child1)
+            reveal_type(any_qs)
+
+            qs1 = make_child1_queryset()
+            reveal_type(qs1)
+
+            qs2 = make_child2_queryset()
+            reveal_type(qs2)
+            reveal_type(qs2.all())
+            reveal_type(Child2.objects)
+            reveal_type(Child2.objects.all())
+
+            tvqs1 = make_child_typevar_queryset(Child1)
+            reveal_type(tvqs1)
+
+            tvqs2 = make_child_typevar_queryset(Child2)
+            reveal_type(tvqs2)
+
+            tvqsmult = make_multiple_queryset(Child1)
+            reveal_type(tvqsmult)
+            """,
+        )
 
         expected.from_out(out)
