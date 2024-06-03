@@ -1,8 +1,10 @@
+import collections
 import enum
 import importlib.metadata
 import re
 import textwrap
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
+from itertools import chain
 
 from pytest_mypy_plugins import OutputMatcher
 from pytest_mypy_plugins.utils import (
@@ -30,8 +32,12 @@ class _Instruction(enum.Enum):
 class _Build:
     def __init__(self, for_daemon: bool) -> None:
         self.for_daemon = for_daemon
-        self.result: list[OutputMatcher] = []
+        self._by_file: dict[str, list[OutputMatcher]] = collections.defaultdict(list)
         self.daemon_should_restart: bool = False
+
+    @property
+    def result(self) -> Sequence[OutputMatcher]:
+        return list(chain.from_iterable(self._by_file.values()))
 
     def add(
         self,
@@ -43,11 +49,17 @@ class _Build:
         regex: bool = False,
     ) -> None:
         fname = path.removesuffix(".py")
-        self.result.append(
+        self._by_file[path].append(
             FileOutputMatcher(
                 fname, lnum, severity, message, regex=regex, col=None if col is None else str(col)
             )
         )
+
+    def clear_path(self, path: str) -> None:
+        self._by_file[path].clear()
+
+    def clear(self) -> None:
+        self._by_file.clear()
 
 
 class OutputBuilder:
@@ -73,7 +85,10 @@ class OutputBuilder:
             return message
 
     def clear(self) -> Self:
-        self._build.result.clear()
+        if self.target_file:
+            self._build.clear_path(self.target_file)
+        else:
+            self._build.clear()
         return self
 
     def daemon_should_restart(self) -> Self:
@@ -93,11 +108,10 @@ class OutputBuilder:
                 "django.db.models.query.QuerySet", "django.db.models.query._QuerySet"
             )
 
-        self._build.result.extend(
-            extract_output_matchers_from_out(
-                out, {}, regex=regex, for_daemon=self._build.for_daemon
-            )
-        )
+        for matcher in extract_output_matchers_from_out(
+            out, {}, regex=regex, for_daemon=self._build.for_daemon
+        ):
+            self._build._by_file[f"{matcher.fname}.py"].append(matcher)
         return self
 
     def add_revealed_type(self, lnum: int, revealed_type: str) -> Self:
@@ -115,11 +129,9 @@ class OutputBuilder:
         assert self.target_file is not None
 
         found: list[FileOutputMatcher] = []
-        for matcher in self._build.result:
+        for matcher in self._build._by_file[self.target_file]:
             if (
-                isinstance(matcher, FileOutputMatcher)
-                and matcher.fname == self.target_file.removesuffix(".py")
-                and matcher.lnum == lnum
+                matcher.lnum == lnum
                 and matcher.severity == "note"
                 and matcher.message.startswith("Revealed type is")
             ):
@@ -132,21 +144,11 @@ class OutputBuilder:
     def remove_errors(self, lnum: int) -> Self:
         assert self.target_file is not None
 
-        i: int = -1
-        while i < len(self._build.result):
-            if i >= len(self._build.result):
-                break
-
-            nxt = self._build.result[i]
-            if (
-                isinstance(nxt, FileOutputMatcher)
-                and nxt.fname == self.target_file.removesuffix(".py")
-                and nxt.lnum == lnum
-                and nxt.severity == "error"
-            ):
-                self._build.result.pop(i)
-            else:
-                i += 1
+        self._build._by_file[self.target_file] = [
+            matcher
+            for matcher in self._build._by_file[self.target_file]
+            if matcher.lnum != lnum and matcher.severity != "error"
+        ]
 
         return self
 
@@ -170,11 +172,9 @@ class OutputBuilder:
         assert self.target_file is not None
 
         found: list[FileOutputMatcher] = []
-        for matcher in self._build.result:
+        for matcher in self._build._by_file[self.target_file]:
             if (
-                isinstance(matcher, FileOutputMatcher)
-                and matcher.fname == self.target_file.removesuffix(".py")
-                and matcher.lnum == lnum
+                matcher.lnum == lnum
                 and matcher.severity == "note"
                 and matcher.message.startswith("Revealed type is")
             ):
