@@ -2,20 +2,6 @@ from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
 
 def test_works(scenario: Scenario) -> None:
-    out = """
-     main:33: note: Revealed type is "Union[django.db.models.manager.Manager[myapp.models.Child1], myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2], django.db.models.manager.Manager[myapp.models.Child3], django.db.models.manager.Manager[myapp2.models.ChildOther]]"
-     main:38: note: Revealed type is "myapp.models.Child1"
-     main:41: note: Revealed type is "Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]"
-     main:44: note: Revealed type is "django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]"
-     main:47: note: Revealed type is "myapp.models.Child2QuerySet"
-     main:48: note: Revealed type is "myapp.models.Child2QuerySet"
-     main:49: note: Revealed type is "myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2]"
-     main:50: note: Revealed type is "myapp.models.Child2QuerySet[myapp.models.Child2]"
-     main:53: note: Revealed type is "django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]"
-     main:56: note: Revealed type is "myapp.models.Child2QuerySet"
-     main:59: note: Revealed type is "Union[myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]"
-     """
-
     @scenario.run_and_check_mypy_after
     def _(expected: OutputBuilder) -> None:
         scenario.file(
@@ -54,34 +40,39 @@ def test_works(scenario: Scenario) -> None:
 
 
             def ones(model: type[Concrete[Parent]]) -> list[str]:
-                reveal_type(model.objects)
+                model.objects
+                # ^ REVEAL ^ Union[django.db.models.manager.Manager[myapp.models.Child1], myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2], django.db.models.manager.Manager[myapp.models.Child3], django.db.models.manager.Manager[myapp2.models.ChildOther]]
                 return list(model.objects.values_list("one", flat=True))
 
 
-            made = make_child(Child1)
-            reveal_type(made)
+            make_child(Child1)
+            # ^ REVEAL ^ myapp.models.Child1
 
-            any_qs = make_any_queryset(Child1)
-            reveal_type(any_qs)
+            make_any_queryset(Child1)
+            # ^ REVEAL ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
 
-            qs1 = make_child1_queryset()
-            reveal_type(qs1)
+            make_child1_queryset()
+            # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
 
             qs2 = make_child2_queryset()
-            reveal_type(qs2)
-            reveal_type(qs2.all())
-            reveal_type(Child2.objects)
-            reveal_type(Child2.objects.all())
+            # ^ REVEAL ^ myapp.models.Child2QuerySet
 
-            tvqs1 = make_child_typevar_queryset(Child1)
-            reveal_type(tvqs1)
+            qs2.all()
+            # ^ REVEAL ^ myapp.models.Child2QuerySet
 
-            tvqs2 = make_child_typevar_queryset(Child2)
-            reveal_type(tvqs2)
+            Child2.objects
+            # ^ REVEAL ^ myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2]
 
-            tvqsmult = make_multiple_queryset(Child1)
-            reveal_type(tvqsmult)
+            Child2.objects.all()
+            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
+
+            make_child_typevar_queryset(Child1)
+            # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
+
+            make_child_typevar_queryset(Child2)
+            # ^ REVEAL ^ myapp.models.Child2QuerySet
+
+            make_multiple_queryset(Child1)
+            # ^ REVEAL ^ Union[myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]
             """,
         )
-
-        expected.from_out(out)
