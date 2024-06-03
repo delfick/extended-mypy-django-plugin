@@ -320,7 +320,9 @@ class TestConcreteAnnotations:
                     class Meta:
                         abstract = True
 
+                # TODO: the error is fixed in future commit
                 T_Leader = Concrete.type_var("T_Leader", Leader)
+                # ^ ERROR(misc) ^ No concrete children found for example.models.Leader
 
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
@@ -370,11 +372,6 @@ class TestConcreteAnnotations:
                 qs5 = make_queryset(follower1)
                 # ^ REVEAL ^ example.models.Follower1QuerySet
                 """,
-            )
-
-            # TODO: Fixed in future commit
-            expected.on("example/models.py").add_error(
-                13, "misc", "No concrete children found for example.models.Leader"
             )
 
     def test_sees_apps_removed_when_they_still_exist_but_no_longer_installed(

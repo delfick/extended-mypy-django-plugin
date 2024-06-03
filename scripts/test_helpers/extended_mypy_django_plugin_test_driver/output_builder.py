@@ -15,7 +15,7 @@ from typing_extensions import Self, assert_never
 regexes = {
     "potential_instruction": re.compile(r"^\s*#\s*\^"),
     "instruction": re.compile(
-        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*(?P<instruction>REVEAL|ERROR|NOTE)(?P<options>\([^\)]*)?(?P<tag>\[[^\]]*\])?\s*\^\s*(?P<rest>.*)"
+        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*(?P<instruction>REVEAL|ERROR|NOTE)(\((?P<options>[^\)]*)\))?(?P<tag>\[[^\]]*\])?\s*\^\s*(?P<rest>.*)"
     ),
     "assignment": re.compile(r"^(?P<var_name>[a-zA-Z0-9_]+)\s*(:[^=]+)?(=|$)"),
 }
@@ -157,6 +157,13 @@ class OutputBuilder:
         self._build.add(self.target_file, lnum, None, "error", f"{message}  [{error_type}]")
         return self
 
+    def add_note(self, lnum: int, message: str) -> Self:
+        message = self._normalise_message(message)
+
+        assert self.target_file is not None
+        self._build.add(self.target_file, lnum, None, "note", message)
+        return self
+
     def remove_from_revealed_type(self, lnum: int, remove: str) -> Self:
         remove = self._normalise_message(remove)
 
@@ -234,9 +241,10 @@ class OutputBuilder:
 
             self.add_revealed_type(i, rest)
         elif instruction is _Instruction.ERROR:
-            raise NotImplementedError()
+            assert options, "Must use `# ^ ERROR(error-type) ^ error here`"
+            self.add_error(i, options, rest)
         elif instruction is _Instruction.NOTE:
-            raise NotImplementedError()
+            self.add_note(i, rest)
         else:
             assert_never(instruction)
 
