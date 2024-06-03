@@ -1,5 +1,3 @@
-import importlib.metadata
-
 from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
 
@@ -28,7 +26,9 @@ class TestErrors:
 
                 cls1: type[Parent] = Child1
                 assert function_with_type_typeguard(cls1)
-                reveal_type(cls1)
+                # ^ ERROR(misc) ^ Can't use a TypeGuard that uses a Concrete Annotation that uses type variables
+                cls1
+                # ^ REVEAL ^ type[extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]]
 
                 def function_with_instance_typeguard(
                     instance: T_Parent
@@ -37,7 +37,9 @@ class TestErrors:
 
                 instance1: Parent = cast(Child1, None)
                 assert function_with_instance_typeguard(instance1)
-                reveal_type(instance1)
+                # ^ ERROR(misc) ^ Can't use a TypeGuard that uses a Concrete Annotation that uses type variables
+                instance1
+                # ^ REVEAL ^ extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]
 
                 class Logic:
                     def method_with_type_typeguard(
@@ -53,30 +55,14 @@ class TestErrors:
                 logic = Logic()
                 cls2: type[Parent] = Child1
                 assert logic.method_with_type_typeguard(cls2)
-                reveal_type(cls2)
+                # ^ ERROR(misc) ^ Can't use a TypeGuard that uses a Concrete Annotation that uses type variables
+                cls2
+                # ^ REVEAL ^ type[extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]]
 
                 instance2: Parent = cast(Child1, None)
                 assert logic.method_with_instance_typeguard(instance2)
-                reveal_type(instance2)
+                # ^ ERROR(misc) ^ Can't use a TypeGuard that uses a Concrete Annotation that uses type variables
+                instance2
+                # ^ REVEAL ^ extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]
                 """,
             )
-
-            out = """
-            main:15: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:16: note: Revealed type is "type[extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]]"
-            main:24: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:25: note: Revealed type is "extended_mypy_django_plugin.annotations.Concrete[myapp.models.Parent]"
-            main:40: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:41: note: Revealed type is "type[extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]]"
-            main:44: error: Can't use a TypeGuard that uses a Concrete Annotation that uses type variables  [misc]
-            main:45: note: Revealed type is "extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]"
-            """
-
-            if importlib.metadata.version("mypy") == "1.4.0":
-                out = "\n".join(
-                    line
-                    for line in out.split("\n")
-                    if "Only concrete class can be given" not in line
-                )
-
-            expected.from_out(out)
