@@ -388,23 +388,11 @@ class TestConcreteAnnotations:
                 from myapp.models import Parent
 
                 models: Concrete[Parent]
-                reveal_type(models)
+                # ^ REVEAL[concrete-parent] ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]
 
                 qs: DefaultQuerySet[Parent]
-                reveal_type(qs)
+                # ^ REVEAL[qs-parent] ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
                 """,
-            )
-
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    6,
-                    "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]",
-                )
-                .add_revealed_type(
-                    9,
-                    "Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]",
-                )
             )
 
         # Now let's remove myapp2 from the installed_apps and see that the daemon restarts and myapp2 is removed from the revealed types
@@ -416,11 +404,11 @@ class TestConcreteAnnotations:
             (
                 expected.on("main.py")
                 .remove_from_revealed_type(
-                    6,
+                    "concrete-parent",
                     ", myapp2.models.ChildOther",
                 )
                 .remove_from_revealed_type(
-                    9,
+                    "qs-parent",
                     ", django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]",
                 )
             )
@@ -478,17 +466,12 @@ class TestConcreteAnnotations:
                 from myapp.models import Parent
 
                 models: Concrete[Parent]
-                reveal_type(models)
+                # ^ REVEAL[concrete-parent] ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3]
 
                 qs: DefaultQuerySet[Parent]
                 qs.values("concrete_from_myapp")
+                # ^ TAG[concrete-qs] ^
                 """,
-            )
-
-            (
-                expected.on("main.py").add_revealed_type(
-                    6, "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3]"
-                )
             )
 
         # and the models become available after being installed
@@ -499,12 +482,12 @@ class TestConcreteAnnotations:
 
             (
                 expected.on("main.py")
-                .change_revealed_type(
-                    6,
+                .add_revealed_type(
+                    "concrete-parent",
                     "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]",
                 )
                 .add_error(
-                    9,
+                    "concrete-qs",
                     "misc",
                     "Cannot resolve keyword 'concrete_from_myapp' into field. Choices are: concrete_from_myapp2, id, one, two",
                 )
@@ -580,23 +563,14 @@ class TestConcreteAnnotations:
                 from leader.models import Leader
 
                 models: Concrete[Leader]
-                reveal_type(models)
+                # ^ REVEAL[concrete-leader] ^ follower1.models.follower1.Follower1
 
                 qs: DefaultQuerySet[Leader]
-                reveal_type(qs)
-                qs.good_ones().values("nup")
-                """,
-            )
+                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(6, "follower1.models.follower1.Follower1")
-                .add_revealed_type(9, "follower1.models.follower1.Follower1QuerySet")
-                .add_error(
-                    10,
-                    "misc",
-                    "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                )
+                qs.good_ones().values("nup")
+                # ^ ERROR(misc)[error1] ^ Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id
+                """,
             )
 
         # And then add another model
@@ -634,27 +608,28 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            expected.clear()
-
             expected.daemon_should_restart()
 
             (
                 expected.on("main.py")
                 .add_revealed_type(
-                    6,
+                    "concrete-leader",
                     "Union[follower1.models.follower1.Follower1, follower1.models.follower2.Follower2]",
                 )
                 .add_revealed_type(
-                    9,
+                    "qs-leader",
                     "Union[follower1.models.follower1.Follower1QuerySet, follower1.models.follower2.Follower2QuerySet]",
                 )
-                .add_error(
-                    10,
-                    "misc",
-                    "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                )
-                .add_error(
-                    10, "misc", "Cannot resolve keyword 'nup' into field. Choices are: good, id"
+                .replace_errors(
+                    "error1",
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                    ),
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: good, id",
+                    ),
                 )
             )
 
@@ -688,17 +663,16 @@ class TestConcreteAnnotations:
             )
 
             (
-                expected.on("main.py")
-                .remove_errors(10)
-                .add_error(
-                    10,
-                    "union-attr",
-                    'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
-                )
-                .add_error(
-                    10,
-                    "misc",
-                    "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                expected.on("main.py").replace_errors(
+                    "error1",
+                    (
+                        "union-attr",
+                        'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                    ),
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                    ),
                 )
             )
 
@@ -714,23 +688,14 @@ class TestConcreteAnnotations:
                 from leader.models import Leader
 
                 models: Concrete[Leader]
-                reveal_type(models)
+                # ^ REVEAL[concrete-leader] ^ follower1.models.follower1.Follower1
 
                 qs: DefaultQuerySet[Leader]
-                reveal_type(qs)
-                qs.good_ones().values("nup")
-                """,
-            )
+                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(6, "follower1.models.follower1.Follower1")
-                .add_revealed_type(9, "follower1.models.follower1.Follower1QuerySet")
-                .add_error(
-                    10,
-                    "misc",
-                    "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                )
+                qs.good_ones().values("nup")
+                # ^ ERROR(misc)[error1] ^ Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id
+                """,
             )
 
         # Let's then add a new app with new models
@@ -745,7 +710,6 @@ class TestConcreteAnnotations:
                 """
                 from django.apps import AppConfig
                 class Config(AppConfig):
-                    default_auto_field = "django.db.models.BigAutoField"
                     name = "follower2"
                 """,
             )
@@ -774,15 +738,24 @@ class TestConcreteAnnotations:
 
             (
                 expected.on("main.py")
-                .change_revealed_type(
-                    6, "Union[follower1.models.follower1.Follower1, follower2.models.Follower2]"
+                .add_revealed_type(
+                    "concrete-leader",
+                    "Union[follower1.models.follower1.Follower1, follower2.models.Follower2]",
                 )
-                .change_revealed_type(
-                    9,
+                .add_revealed_type(
+                    "qs-leader",
                     "Union[follower1.models.follower1.Follower1QuerySet, follower2.models.Follower2QuerySet]",
                 )
-                .add_error(
-                    10, "misc", "Cannot resolve keyword 'nup' into field. Choices are: good, id"
+                .replace_errors(
+                    "error1",
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                    ),
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: good, id",
+                    ),
                 )
             )
 
@@ -816,16 +789,15 @@ class TestConcreteAnnotations:
             )
 
             (
-                expected.on("main.py")
-                .remove_errors(10)
-                .add_error(
-                    10,
-                    "union-attr",
-                    'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
-                )
-                .add_error(
-                    10,
-                    "misc",
-                    "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                expected.on("main.py").replace_errors(
+                    "error1",
+                    (
+                        "union-attr",
+                        'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                    ),
+                    (
+                        "misc",
+                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                    ),
                 )
             )
