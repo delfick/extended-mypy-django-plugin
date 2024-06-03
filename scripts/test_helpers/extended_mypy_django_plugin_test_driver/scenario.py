@@ -1,4 +1,3 @@
-import re
 import textwrap
 from collections.abc import Mapping
 from typing import Protocol, TypedDict, overload
@@ -8,12 +7,6 @@ from pytest_mypy_plugins.scenario import Strategy
 from typing_extensions import NotRequired, Unpack
 
 from .output_builder import OutputBuilder
-
-regexes = {
-    "reveal_tag": re.compile(
-        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*REVEAL\s+(?P<var_name>[^ ]+)\s*\^\s*(?P<rest>.*)"
-    ),
-}
 
 
 class RunArgs(TypedDict):
@@ -46,56 +39,27 @@ class Scenario:
     def __init__(self, config: MypyPluginsConfig, scenario: MypyPluginsScenario) -> None:
         self.config = config
         self.scenario = scenario
+        self.ran_at_least_once: bool = False
         self.expected = OutputBuilder(for_daemon=self.config.strategy is Strategy.DAEMON)
 
-    def make_file(self, path: str, content: str) -> File:
-        file = File(path=path, content=textwrap.dedent(content).lstrip())
-        self.scenario.make_file(file)
-        return file
+    def file(self, expected: OutputBuilder, path: str, content: str | None) -> None:
+        content = expected.parse_content(path, content)
 
-    def make_file_with_reveals(
-        self, expected: OutputBuilder, expect_num_reveals: int, path: str, content: str
-    ) -> File:
-        content = textwrap.dedent(content).lstrip()
-        result: list[str] = []
-        expected = expected.on(path)
+        if self.ran_at_least_once or content is None:
+            assert self.ran_at_least_once
+            followup = FollowupFile(path=path, content=content)
+            self.scenario.handle_followup_file(followup)
+        else:
+            file = File(path=path, content=content)
+            self.scenario.make_file(file)
 
-        made: int = 0
+    def append_to_file(self, expected: OutputBuilder, path: str, content: str) -> None:
+        assert self.ran_at_least_once
 
-        for i, line in enumerate(content.split("\n")):
-            m = regexes["reveal_tag"].match(line)
-            if m is None:
-                if line.strip().startswith("#") and ("REVEAL" in line or "^" in line):
-                    raise AssertionError(f"Found a potential reveal tag that was invalid:: {line}")
-                result.append(line)
-                continue
-
-            gd = m.groupdict()
-            result.append(f"{gd['prefix_whitespace']}reveal_type({gd['var_name']})")
-            expected.add_revealed_type(i + 1, gd["rest"])
-            made += 1
-
-        assert (
-            made == expect_num_reveals
-        ), f"Only expected to find {expect_num_reveals} reveal tags but instead found {made}"
-
-        file = File(path=path, content="\n".join(result))
-        self.scenario.make_file(file)
-        return file
-
-    def append_to_file(self, path: str, content: str) -> FollowupFile:
         location = self.scenario.execution_path / path
         assert location.exists()
         file = FollowupFile(path=path, content=location.read_text() + textwrap.dedent(content))
         self.scenario.handle_followup_file(file)
-        return file
-
-    def update_file(self, path: str, content: str | None) -> FollowupFile:
-        if isinstance(content, str):
-            content = textwrap.dedent(content).lstrip()
-        file = FollowupFile(path=path, content=content)
-        self.scenario.handle_followup_file(file)
-        return file
 
     def run_and_check_mypy(
         self, expected_output: OutputBuilder, **kwargs: Unpack[RunArgs]
@@ -113,12 +77,18 @@ class Scenario:
         if "copied_apps" in kwargs:
             extra_properties["copied_apps"] = kwargs["copied_apps"]
 
-        return self.scenario.run_and_check_mypy(
-            start,
-            expect_fail=kwargs.get("expect_fail", False),
-            expected_output=list(expected_output),
-            additional_properties={**kwargs.get("additional_properties", {}), **extra_properties},
-        )
+        try:
+            return self.scenario.run_and_check_mypy(
+                start,
+                expect_fail=kwargs.get("expect_fail", False),
+                expected_output=list(expected_output),
+                additional_properties={
+                    **kwargs.get("additional_properties", {}),
+                    **extra_properties,
+                },
+            )
+        finally:
+            self.ran_at_least_once = True
 
     @overload
     def run_and_check_mypy_after(

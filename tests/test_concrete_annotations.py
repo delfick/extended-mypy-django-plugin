@@ -5,9 +5,8 @@ class TestConcreteAnnotations:
     def test_cast_as_concrete(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["leader", "simple"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file_with_reveals(
+            scenario.file(
                 expected,
-                10,
                 "main.py",
                 """
                 from simple.models import Follow1, Follow2
@@ -45,9 +44,8 @@ class TestConcreteAnnotations:
     def test_simple_annotation(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file_with_reveals(
+            scenario.file(
                 expected,
-                19,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -125,9 +123,10 @@ class TestConcreteAnnotations:
     def test_can_use_type_var_before_class_is_defined(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["example"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file("example/__init__.py", "")
+            scenario.file(expected, "example/__init__.py", "")
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/apps.py",
                 """
                 from django.apps import AppConfig
@@ -137,7 +136,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/models.py",
                 """
                 from __future__ import annotations
@@ -170,9 +170,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file_with_reveals(
+            scenario.file(
                 expected,
-                2,
                 "main.py",
                 """
                 from example.models import Leader, Follower1, Follower2, make_instance
@@ -198,9 +197,10 @@ class TestConcreteAnnotations:
     ) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["example"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file("example/__init__.py", "")
+            scenario.file(expected, "example/__init__.py", "")
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/apps.py",
                 """
                 from django.apps import AppConfig
@@ -210,7 +210,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/models.py",
                 """
                 from __future__ import annotations
@@ -249,9 +250,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file_with_reveals(
+            scenario.file(
                 expected,
-                8,
                 "main.py",
                 """
                 from example.models import Leader, Follower1, Follower2
@@ -284,9 +284,10 @@ class TestConcreteAnnotations:
     def test_resolving_concrete_type_vars(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["example"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file("example/__init__.py", "")
+            scenario.file(expected, "example/__init__.py", "")
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/apps.py",
                 """
                 from django.apps import AppConfig
@@ -296,7 +297,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "example/models.py",
                 """
                 from __future__ import annotations
@@ -337,9 +339,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.make_file_with_reveals(
+            scenario.file(
                 expected,
-                6,
                 "main.py",
                 """
                 from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
@@ -375,7 +376,8 @@ class TestConcreteAnnotations:
     ) -> None:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -425,7 +427,8 @@ class TestConcreteAnnotations:
             installed_apps=["myapp"], copied_apps=["myapp", "myapp2"]
         )
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -463,7 +466,8 @@ class TestConcreteAnnotations:
     def test_sees_models_when_they_are_added_and_installed(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["myapp"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -512,7 +516,8 @@ class TestConcreteAnnotations:
     def test_sees_new_models(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -532,6 +537,7 @@ class TestConcreteAnnotations:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
             scenario.append_to_file(
+                expected,
                 "myapp2/models.py",
                 """
                 class Another(Parent):
@@ -562,7 +568,8 @@ class TestConcreteAnnotations:
     def test_sees_changes_in_custom_querysets_within_app(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -593,7 +600,8 @@ class TestConcreteAnnotations:
 
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower1/models/__init__.py",
                 """
                 from .follower1 import Follower1
@@ -603,7 +611,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower1/models/follower2.py",
                 """
                 from django.db import models
@@ -656,7 +665,8 @@ class TestConcreteAnnotations:
 
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower1/models/follower2.py",
                 """
                 from django.db import models
@@ -692,7 +702,8 @@ class TestConcreteAnnotations:
     def test_sees_changes_in_custom_querysets_in_new_apps(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1"])
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
@@ -723,9 +734,10 @@ class TestConcreteAnnotations:
 
         @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1", "follower2"])
         def _(expected: OutputBuilder) -> None:
-            scenario.update_file("follower2/__init__.py", "")
+            scenario.file(expected, "follower2/__init__.py", "")
 
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower2/apps.py",
                 """
                 from django.apps import AppConfig
@@ -735,7 +747,8 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower2/models.py",
                 """
                 from django.db import models
@@ -780,7 +793,8 @@ class TestConcreteAnnotations:
 
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.update_file(
+            scenario.file(
+                expected,
                 "follower2/models.py",
                 """
                 from django.db import models

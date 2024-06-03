@@ -9,7 +9,8 @@ class TestErrors:
     ) -> None:
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
-            scenario.make_file(
+            scenario.file(
+                expected,
                 "main.py",
                 """
                 from typing import TypeGuard, TypeVar, cast, TypeVar

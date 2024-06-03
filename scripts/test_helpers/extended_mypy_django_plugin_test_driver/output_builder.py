@@ -1,4 +1,6 @@
 import importlib.metadata
+import re
+import textwrap
 from collections.abc import Iterator
 
 from pytest_mypy_plugins import OutputMatcher
@@ -8,6 +10,12 @@ from pytest_mypy_plugins.utils import (
     extract_output_matchers_from_out,
 )
 from typing_extensions import Self
+
+regexes = {
+    "reveal_tag": re.compile(
+        r"^(?P<prefix_whitespace>\s*)#\s*\^\s*REVEAL\s+(?P<var_name>[^ ]+)\s*\^\s*(?P<rest>.*)"
+    ),
+}
 
 
 class _Build:
@@ -159,6 +167,28 @@ class OutputBuilder:
         assert len(found) == 1
         found[0].message = found[0].message.replace(remove, "")
         return self
+
+    def parse_content(self, path: str, content: str | None) -> str | None:
+        if content is None:
+            return content
+
+        content = textwrap.dedent(content).lstrip()
+        result: list[str] = []
+        expected = self.on(path)
+
+        for i, line in enumerate(content.split("\n")):
+            m = regexes["reveal_tag"].match(line)
+            if m is None:
+                if line.strip().startswith("#") and ("REVEAL" in line or "^" in line):
+                    raise AssertionError(f"Found a potential reveal tag that was invalid:: {line}")
+                result.append(line)
+                continue
+
+            gd = m.groupdict()
+            result.append(f"{gd['prefix_whitespace']}reveal_type({gd['var_name']})")
+            expected.add_revealed_type(i + 1, gd["rest"])
+
+        return "\n".join(result)
 
     def __iter__(self) -> Iterator[OutputMatcher]:
         if self._build.daemon_should_restart and self._build.for_daemon:
