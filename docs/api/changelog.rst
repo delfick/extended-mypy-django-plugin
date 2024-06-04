@@ -17,6 +17,7 @@ Changelog
     * Implemented Concrete.cast_as_concrete
     * Concrete.type_var can now take a forward reference to the model being represented
     * Implemented more scenarios where Concrete.type_var may be used
+    * Handle failure of the script for determining the version without crashing dmypy
 
 .. _release-0.5.3:
 

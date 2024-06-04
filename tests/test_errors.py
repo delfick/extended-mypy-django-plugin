@@ -1,4 +1,11 @@
-from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
+import os
+import pathlib
+import textwrap
+
+import pytest
+import pytest_mypy_plugins.utils
+from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario, assertions
+from pytest_mypy_plugins import OutputChecker
 
 
 class TestErrors:
@@ -66,3 +73,146 @@ class TestErrors:
                 # ^ REVEAL ^ extended_mypy_django_plugin.annotations.Concrete[T_Parent`-1]
                 """,
             )
+
+    def test_gracefully_handles_determine_version_failure_on_startup(
+        self, scenario: Scenario, tmp_path: pathlib.Path
+    ) -> None:
+        if not scenario.for_daemon:
+            pytest.skip("Test only relevant for the daemon")
+
+        determine_script = tmp_path / "determine.py"
+
+        determine_script.write_text(
+            textwrap.dedent("""
+        #!/usr/bin/env python
+
+        from extended_mypy_django_plugin.scripts.determine_django_state import main
+
+
+        if __name__ == "__main__":
+            raise ValueError("Computer says no")
+            main()
+        """)
+        )
+
+        os.chmod(determine_script, 0o755)
+        scenario.scenario.additional_mypy_config += (
+            f"\ndetermine_django_state_script = {determine_script}"
+        )
+
+        with pytest.raises(pytest_mypy_plugins.utils.TypecheckAssertionError) as err:
+
+            @scenario.run_and_check_mypy_after
+            def _(expected: OutputBuilder) -> None:
+                pass
+
+        assert err.value.mypy_output is not None
+
+        assertions.assert_glob_lines(
+            err.value.mypy_output,
+            f"""
+            Error constructing plugin instance of Plugin
+            
+            Daemon crashed!
+            Traceback (most recent call last):
+            RuntimeError:
+            Failed to determine information about the django setup
+            
+              > *python {determine_script} --django-settings-module mysettings --apps-file * --known-models-file * --scratch-path *
+              |
+              | Traceback (most recent call last):
+              |   File "{determine_script}", line 8, in <module>
+              |     raise ValueError("Computer says no")
+              | ValueError: Computer says no
+              |
+            """,
+        )
+
+    def test_gracefully_handles_determine_version_failure_on_subsequent_run(
+        self, scenario: Scenario, tmp_path: pathlib.Path
+    ) -> None:
+        if not scenario.for_daemon:
+            pytest.skip("Test only relevant for the daemon")
+
+        determine_script = tmp_path / "determine.py"
+
+        determine_script.write_text(
+            textwrap.dedent("""
+        #!/usr/bin/env python
+
+        from extended_mypy_django_plugin.scripts.determine_django_state import main
+
+
+        if __name__ == "__main__":
+            main()
+        """)
+        )
+
+        os.chmod(determine_script, 0o755)
+        scenario.scenario.additional_mypy_config += (
+            f"\ndetermine_django_state_script = {determine_script}"
+        )
+
+        @scenario.run_and_check_mypy_after
+        def _(expected: OutputBuilder) -> None:
+            pass
+
+        determine_script.write_text(
+            textwrap.dedent("""
+        #!/usr/bin/env python
+
+        from extended_mypy_django_plugin.scripts.determine_django_state import main
+
+
+        if __name__ == "__main__":
+            raise ValueError("Computer says no")
+            main()
+        """)
+        )
+
+        called: list[int] = []
+
+        class CheckNoCrashShowsFailure(OutputChecker):
+            def check(self, ret_code: int, stdout: str, stderr: str) -> None:
+                called.append(ret_code)
+
+                assert ret_code == 0
+                assertions.assert_glob_lines(
+                    stdout + stderr,
+                    f"""
+                    Failed to determine information about the django setup
+                    
+                    > */python {determine_script} --django-settings-module mysettings --apps-file * --known-models-file * --scratch-path *
+                    |
+                    | Traceback (most recent call last):
+                    |   File "{determine_script}", line 8, in <module>
+                    |     raise ValueError("Computer says no")
+                    | ValueError: Computer says no
+                    |
+                    """,
+                )
+
+        scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoCrashShowsFailure)
+        assert called == [0]
+
+        determine_script.write_text(
+            textwrap.dedent("""
+        #!/usr/bin/env python
+
+        from extended_mypy_django_plugin.scripts.determine_django_state import main
+
+
+        if __name__ == "__main__":
+            main()
+        """)
+        )
+
+        class CheckNoOutput(OutputChecker):
+            def check(self, ret_code: int, stdout: str, stderr: str) -> None:
+                called.append(ret_code)
+
+                assert ret_code == 0
+                assert stdout + stderr == ""
+
+        scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoOutput)
+        assert called == [0, 0]

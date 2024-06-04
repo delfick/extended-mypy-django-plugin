@@ -2,7 +2,13 @@ import textwrap
 from collections.abc import Mapping
 from typing import Protocol, TypedDict, overload
 
-from pytest_mypy_plugins import File, FollowupFile, MypyPluginsConfig, MypyPluginsScenario
+from pytest_mypy_plugins import (
+    File,
+    FollowupFile,
+    MypyPluginsConfig,
+    MypyPluginsScenario,
+    OutputChecker,
+)
 from pytest_mypy_plugins.scenario import Strategy
 from typing_extensions import NotRequired, Unpack
 
@@ -16,6 +22,7 @@ class RunArgs(TypedDict):
     copied_apps: NotRequired[list[str]]
     installed_apps: NotRequired[list[str]]
     debug: NotRequired[bool]
+    OutputCheckerKls: NotRequired[type[OutputChecker]]
 
 
 class Action(Protocol):
@@ -40,7 +47,8 @@ class Scenario:
         self.config = config
         self.scenario = scenario
         self.ran_at_least_once: bool = False
-        self.expected = OutputBuilder(for_daemon=self.config.strategy is Strategy.DAEMON)
+        self.for_daemon = self.config.strategy is Strategy.DAEMON
+        self.expected = OutputBuilder(for_daemon=self.for_daemon)
 
     def file(self, expected: OutputBuilder, path: str, content: str | None) -> None:
         content = expected.parse_content(path, content)
@@ -86,6 +94,7 @@ class Scenario:
                     **kwargs.get("additional_properties", {}),
                     **extra_properties,
                 },
+                OutputCheckerKls=kwargs.get("OutputCheckerKls", OutputChecker),
             )
         finally:
             self.ran_at_least_once = True
