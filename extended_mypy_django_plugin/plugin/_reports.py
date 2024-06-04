@@ -333,8 +333,13 @@ class Reports:
         self, scratch_path: pathlib.Path, previous_version: int | None
     ) -> int:
         result_file_cm = tempfile.NamedTemporaryFile()
+        known_settings_file_cm = tempfile.NamedTemporaryFile()
         known_models_file_cm = tempfile.NamedTemporaryFile()
-        with result_file_cm as result_file, known_models_file_cm as known_models_file:
+        with (
+            result_file_cm as result_file,
+            known_models_file_cm as known_models_file,
+            known_settings_file_cm as known_settings_file,
+        ):
             if self._determine_django_state_script is not None:
                 script = self._determine_django_state_script
             else:
@@ -365,6 +370,8 @@ class Reports:
                     result_file.name,
                     "--known-models-file",
                     known_models_file.name,
+                    "--known-settings-file",
+                    known_settings_file.name,
                     "--scratch-path",
                     str(scratch_path),
                 ]
@@ -404,11 +411,14 @@ class Reports:
                         raise RuntimeError("\n".join(message)) from None
 
             installed_apps_hash = str(zlib.adler32(pathlib.Path(result_file.name).read_bytes()))
+            known_settings_hash = str(
+                zlib.adler32(pathlib.Path(known_settings_file.name).read_bytes())
+            )
             known_models_hash = str(
                 zlib.adler32(pathlib.Path(known_models_file.name).read_bytes())
             )
             return zlib.adler32(
-                f"{installed_apps_hash}.{known_models_hash}.{self.lines_hash()}".encode()
+                f"{installed_apps_hash}.{known_models_hash}.{known_settings_hash}.{self.lines_hash()}".encode()
             )
 
     def report_names_getter(

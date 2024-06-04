@@ -55,6 +55,10 @@ This file will be executed with the following arguments:
     This is a path to a file. The script must write the name of each installed model to it with
     each name on their own line
 
+--extra-info-file
+    This is a path to a file. The script must write any other information that is deemed worthy of
+    restarting dmypy over.
+
 The contents of these files are hashed and used to determine a version. So if they are different since
 the last time dmypy was run, then dmypy will restart itself before analysis.
 

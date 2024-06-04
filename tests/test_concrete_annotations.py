@@ -1,3 +1,4 @@
+import pytest
 from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
 
@@ -373,6 +374,85 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Follower1QuerySet
                 """,
             )
+
+    def test_restarts_dmypy_if_names_of_known_settings_change(self, scenario: Scenario) -> None:
+        if not scenario.for_daemon:
+            pytest.skip("Test only relevant for the daemon")
+
+        @scenario.run_and_check_mypy_after
+        def _(expected: OutputBuilder) -> None:
+            pass
+
+        # New names should restart
+        custom_settings = """
+        ONE: int = 1
+        TWO: str = "2"
+        """
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_restart()
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_not_restart()
+
+        # Same names, different types should  restart
+        custom_settings = """
+        ONE: str = "1"
+        TWO: str = "2"
+        """
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_restart()
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_not_restart()
+
+        # Same names, same types, different values should not restart
+        custom_settings = """
+        ONE: str = "3"
+        TWO: str = "4"
+        """
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_not_restart()
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_not_restart()
+
+        # removed names, same types, different values should not restart
+        custom_settings = """
+        TWO: str = "4"
+        """
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_restart()
+
+        @scenario.run_and_check_mypy_after(
+            additional_properties={"custom_settings": custom_settings}
+        )
+        def _(expected: OutputBuilder) -> None:
+            expected.daemon_should_not_restart()
 
     def test_sees_apps_removed_when_they_still_exist_but_no_longer_installed(
         self, scenario: Scenario

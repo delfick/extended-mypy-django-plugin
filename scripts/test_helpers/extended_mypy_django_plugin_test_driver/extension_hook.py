@@ -2,6 +2,7 @@ import ast
 import os
 import pathlib
 import runpy
+import textwrap
 from collections.abc import Mapping, MutableSequence
 from typing import TYPE_CHECKING
 
@@ -62,7 +63,7 @@ class Hooks(ScenarioHooks):
             if current_settings.exists():
                 return options
 
-        if not current_settings.exists():
+        if not current_settings.exists() or custom_settings is not None:
             with open(current_settings, "w") as fle:
                 fle.write("")
 
@@ -121,7 +122,7 @@ class Hooks(ScenarioHooks):
             fle.write(ast.unparse(ast.fix_missing_locations(settings)))
             if isinstance(custom_settings, str):
                 fle.write("\n")
-                fle.write(custom_settings)
+                fle.write(textwrap.dedent(custom_settings))
 
         if current_settings.read_text() != original_settings_text:
             new_settings = current_settings.read_text()
