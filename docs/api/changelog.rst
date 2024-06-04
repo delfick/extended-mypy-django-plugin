@@ -3,6 +3,11 @@
 Changelog
 ---------
 
+.. _release-0.5.5:
+
+0.5.5 - TBD
+    * Make it possible to restart dmypy if settings names/types change
+
 .. _release-0.5.4:
 
 0.5.4 - 4 June 2024

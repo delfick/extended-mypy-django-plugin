@@ -5,8 +5,13 @@ import os
 import pathlib
 import sys
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from extended_mypy_django_plugin.scripts import record_known_models
+from extended_mypy_django_plugin import scripts
+
+if TYPE_CHECKING:
+    from django.apps.registry import Apps
+    from django.conf import LazySettings
 
 
 def make_parser() -> argparse.ArgumentParser:
@@ -25,6 +30,11 @@ def make_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
     )
     parser.add_argument(
+        "--known-settings-file",
+        help="The file to print the known settings to",
+        type=pathlib.Path,
+    )
+    parser.add_argument(
         "--scratch-path",
         help="The folder that the plugin is allowed to write in",
         type=pathlib.Path,
@@ -33,7 +43,10 @@ def make_parser() -> argparse.ArgumentParser:
 
 
 def main(
-    argv: list[str] | None = None, additional_django_setup: Callable[[], None] | None = None
+    argv: list[str] | None = None,
+    additional_django_setup: Callable[[], None] | None = None,
+    record_known_settings: Callable[[pathlib.Path, "LazySettings"], None] | None = None,
+    record_known_models: Callable[[pathlib.Path, "Apps"], None] | None = None,
 ) -> None:
     parser = make_parser()
     args = parser.parse_args(argv)
@@ -59,7 +72,13 @@ def main(
     assert settings.configured, "Settings are not configured"
 
     args.apps_file.write_text("\n".join(settings.INSTALLED_APPS))
+    if record_known_models is None:
+        record_known_models = scripts.record_known_models
     record_known_models(args.known_models_file, apps)
+
+    if record_known_settings is None:
+        record_known_settings = scripts.record_known_settings
+    record_known_settings(args.known_settings_file, settings)
 
 
 if __name__ == "__main__":
