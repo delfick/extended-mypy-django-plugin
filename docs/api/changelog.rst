@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.5.4:
 
-0.5.4 - TBD
+0.5.4 - 4 June 2024
     * Will now check return types for methods and functions more thorouhgly
     * Will throw errors if a type guard is used with a concrete annotation that uses
       a type var (mypy plugin system is limited in a way that makes this impossible to implement)
