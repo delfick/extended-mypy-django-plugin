@@ -376,7 +376,32 @@ class Reports:
                 if err.returncode == 2:
                     return 1 if previous_version is None else previous_version
                 else:
-                    raise
+                    message = [
+                        "",
+                        "Failed to determine information about the django setup",
+                        "",
+                        f"  > {' '.join(cmd)}",
+                        "  |",
+                    ]
+                    if err.stdout:
+                        for line in err.stdout.splitlines():
+                            if isinstance(line, bytes):
+                                line = line.decode()
+                            message.append(f"  | {line}")
+                        if err.stderr:
+                            message.append("  |")
+                    if err.stderr:
+                        for line in err.stderr.splitlines():
+                            if isinstance(line, bytes):
+                                line = line.decode()
+                            message.append(f"  | {line}")
+                    message.append("  |")
+
+                    if previous_version:
+                        print("\n".join(message), file=sys.stderr)  # noqa: T201
+                        return previous_version
+                    else:
+                        raise RuntimeError("\n".join(message)) from None
 
             installed_apps_hash = str(zlib.adler32(pathlib.Path(result_file.name).read_bytes()))
             known_models_hash = str(
