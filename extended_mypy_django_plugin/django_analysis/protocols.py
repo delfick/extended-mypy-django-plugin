@@ -9,6 +9,10 @@ from django.apps.registry import Apps
 from django.conf import LazySettings
 
 ImportPath = NewType("ImportPath", str)
+FieldsMap = Mapping[str, "Field"]
+ModelModulesMap = Mapping[ImportPath, "Module"]
+DefinedModelsMap = Mapping[ImportPath, "Model"]
+SettingsTypesMap = Mapping[str, str]
 
 
 class Hasher(Protocol):
@@ -23,7 +27,7 @@ class SettingsTypesAnalyzer(Protocol):
     Used determine the Django settings and their types in a Django project
     """
 
-    def __call__(self, loaded_project: LoadedProject, /) -> Mapping[str, str]: ...
+    def __call__(self, loaded_project: LoadedProject, /) -> SettingsTypesMap: ...
 
 
 class KnownModelsAnalayzer(Protocol):
@@ -31,7 +35,25 @@ class KnownModelsAnalayzer(Protocol):
     Used Find and analyze the known models in a Django project
     """
 
-    def __call__(self, loaded_project: LoadedProject, /) -> Mapping[ImportPath, Module]: ...
+    def __call__(self, loaded_project: LoadedProject, /) -> ModelModulesMap: ...
+
+
+class Analyzers(Protocol):
+    """
+    A container for all the different analyzers
+    """
+
+    @property
+    def analyze_settings_types(self) -> SettingsTypesAnalyzer:
+        """
+        Used to analyze the settings types in a django project
+        """
+
+    @property
+    def analyze_known_models(self) -> KnownModelsAnalayzer:
+        """
+        Used to analyze the django orm models in a Django project
+        """
 
 
 class Project(Protocol):
@@ -135,7 +157,7 @@ class AnalyzedProject(Protocol):
         """
 
     @property
-    def known_model_modules(self) -> Mapping[ImportPath, Module]:
+    def known_model_modules(self) -> ModelModulesMap:
         """
         The known modules that contain installed Django Models
         """
@@ -147,7 +169,7 @@ class AnalyzedProject(Protocol):
         """
 
     @property
-    def settings_types(self) -> Mapping[str, str]:
+    def settings_types(self) -> SettingsTypesMap:
         """
         All the django settings and a string representation of their type
         """
@@ -183,7 +205,7 @@ class Module(Protocol, Hashable):
         """
 
     @property
-    def defined_models_by_name(self) -> Mapping[ImportPath, Model]:
+    def defined_models_by_name(self) -> DefinedModelsMap:
         """
         A map of the installed models defined in this module
         """
@@ -249,7 +271,7 @@ class Model(Protocol, Hashable):
         """
 
     @property
-    def all_fields(self) -> Mapping[str, Field]:
+    def all_fields(self) -> FieldsMap:
         """
         The final collection of fields this model knows about
         """
@@ -413,6 +435,7 @@ if TYPE_CHECKING:
     P_Module = Module
     P_Hasher = Hasher
     P_Project = Project
+    P_Analyzers = Analyzers
     P_LoadedProject = LoadedProject
     P_AnalyzedProject = AnalyzedProject
     P_VirtualDependency = VirtualDependency

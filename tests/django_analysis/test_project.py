@@ -70,8 +70,8 @@ class TestProject:
             import dataclasses
             import os
             import pathlib
-            from collections.abc import Mapping, Set
-            from typing import TYPE_CHECKING
+            from collections.abc import Set
+            from typing import TYPE_CHECKING, cast
 
             from django.apps.registry import Apps
             from django.conf import LazySettings
@@ -88,39 +88,38 @@ class TestProject:
                 import_path: protocols.ImportPath = dataclasses.field(
                     default_factory=lambda: protocols.ImportPath("somewhere")
                 )
-                defined_models_by_name: Mapping[protocols.ImportPath, protocols.Model] = (
-                    dataclasses.field(default_factory=dict)
+                defined_models_by_name: protocols.DefinedModelsMap = dataclasses.field(
+                    default_factory=dict
                 )
                 related_modules: Set[protocols.Module] = dataclasses.field(default_factory=set)
                 models_hash: str = ""
 
-            fake_module = FakeModule()
+            fake_module: protocols.Module = FakeModule()
 
-            def settings_type_analyzer(
-                loaded_project: protocols.LoadedProject, /
-            ) -> Mapping[str, str]:
-                assert (
-                    loaded_project.settings.UNIQUE_SETTING_TO_EXTENDED_MYPY_PLUGIN_DJANGOEXAMPLE  # type: ignore[misc]
-                    == "unique"
-                )
-                return {"not": "accurate"}
+            class Analyzers:
+                def analyze_settings_types(
+                    self, loaded_project: protocols.LoadedProject, /
+                ) -> protocols.SettingsTypesMap:
+                    assert (
+                        loaded_project.settings.UNIQUE_SETTING_TO_EXTENDED_MYPY_PLUGIN_DJANGOEXAMPLE  # type: ignore[misc]
+                        == "unique"
+                    )
+                    return {"not": "accurate"}
 
-            def known_models_analyzer(
-                loaded_project: protocols.LoadedProject, /
-            ) -> Mapping[protocols.ImportPath, protocols.Module]:
-                return {fake_module.import_path: fake_module}
+                def analyze_known_models(
+                    self, loaded_project: protocols.LoadedProject, /
+                ) -> protocols.ModelModulesMap:
+                    return {fake_module.import_path: fake_module}
 
             if TYPE_CHECKING:
-                _sta: protocols.SettingsTypesAnalyzer = settings_type_analyzer
-                _kma: protocols.KnownModelsAnalayzer = known_models_analyzer
+                _sta: protocols.Analyzers = cast(Analyzers, None)
 
             root_dir = pathlib.Path(os.environ["PROJECT_ROOT"]) / "example"
             project = Project(
                 root_dir=root_dir,
                 hasher=_hasher,
                 additional_sys_path=[str(root_dir)],
-                settings_types_analyzer=settings_type_analyzer,
-                known_models_analyzer=known_models_analyzer,
+                analyzers=Analyzers(),
                 env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
             )
 
