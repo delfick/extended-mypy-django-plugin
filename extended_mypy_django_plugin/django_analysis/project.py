@@ -99,6 +99,10 @@ class Project:
                 analyzers=self.analyzers,
             )
 
+    def load_project(self) -> protocols.LoadedProject:
+        with self.instantiate_django() as loaded_project:
+            return loaded_project
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class LoadedProject:
