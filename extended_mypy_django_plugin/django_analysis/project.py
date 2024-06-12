@@ -68,8 +68,7 @@ class Project:
     env_vars: Mapping[str, str]
     hasher: protocols.Hasher
 
-    known_models_analyzer: protocols.KnownModelsAnalayzer
-    settings_types_analyzer: protocols.SettingsTypesAnalyzer
+    analyzers: protocols.Analyzers
 
     @contextlib.contextmanager
     def setup_sys_path_and_env_vars(self) -> Iterator[None]:
@@ -97,8 +96,7 @@ class Project:
                 env_vars=self.env_vars,
                 settings=settings,
                 apps=apps,
-                known_models_analyzer=self.known_models_analyzer,
-                settings_types_analyzer=self.settings_types_analyzer,
+                analyzers=self.analyzers,
             )
 
 
@@ -110,16 +108,15 @@ class LoadedProject:
     apps: Apps
     hasher: protocols.Hasher
 
-    known_models_analyzer: protocols.KnownModelsAnalayzer
-    settings_types_analyzer: protocols.SettingsTypesAnalyzer
+    analyzers: protocols.Analyzers
 
     def analyze_project(self) -> protocols.AnalyzedProject:
         return AnalyzedProject(
             hasher=self.hasher,
             loaded_project=self,
             installed_apps=self.settings.INSTALLED_APPS,
-            settings_types=self.settings_types_analyzer(self),
-            known_model_modules=self.known_models_analyzer(self),
+            settings_types=self.analyzers.analyze_settings_types(self),
+            known_model_modules=self.analyzers.analyze_known_models(self),
         )
 
 
@@ -129,8 +126,8 @@ class AnalyzedProject:
     loaded_project: LoadedProject
 
     installed_apps: list[str]
-    settings_types: Mapping[str, str]
-    known_model_modules: Mapping[protocols.ImportPath, protocols.Module]
+    settings_types: protocols.SettingsTypesMap
+    known_model_modules: protocols.ModelModulesMap
 
 
 if TYPE_CHECKING:
