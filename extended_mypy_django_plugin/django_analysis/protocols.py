@@ -11,7 +11,7 @@ from django.conf import LazySettings
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
 ModelModulesMap = Mapping[ImportPath, "Module"]
-DefinedModelsMap = Mapping[ImportPath, "Model"]
+DefinedModelsMap = Mapping[str, "Model"]
 SettingsTypesMap = Mapping[str, str]
 
 
@@ -181,18 +181,6 @@ class Module(Protocol, Hashable):
     """
 
     @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
-        """
-
-    @property
-    def virtual_dependency_import_path(self) -> ImportPath:
-        """
-        The full import path for the relevant virtual dependency
-        """
-
-    @property
     def installed(self) -> bool:
         """
         Whether this module is part of the installed django apps
@@ -210,18 +198,6 @@ class Module(Protocol, Hashable):
         A map of the installed models defined in this module
         """
 
-    @property
-    def related_modules(self) -> Set[Module]:
-        """
-        All the modules that have models that are related to the models in this module
-        """
-
-    @property
-    def models_hash(self) -> str:
-        """
-        A hash of all the models in this file and all the related modules
-        """
-
 
 class Model(Protocol, Hashable):
     """
@@ -232,6 +208,12 @@ class Model(Protocol, Hashable):
     def model_name(self) -> str:
         """
         The name of the class that this model represents
+        """
+
+    @property
+    def module_import_path(self) -> ImportPath:
+        """
+        The import path to the module this model lives in
         """
 
     @property
@@ -247,45 +229,15 @@ class Model(Protocol, Hashable):
         """
 
     @property
-    def ancestors(self) -> Set[ImportPath]:
-        """
-        The import paths to all the models that have a parent relationship to this model
-        """
-
-    @property
-    def descendents(self) -> Set[ImportPath]:
-        """
-        The import paths to all the models that have a child relationship to this model
-        """
-
-    @property
     def default_custom_queryset(self) -> ImportPath | None:
         """
         The import path to the default custom queryset for this model if one is defined
         """
 
     @property
-    def defined_fields(self) -> Set[str]:
+    def defined_fields(self) -> FieldsMap:
         """
-        The names of the fields defined on this model
-        """
-
-    @property
-    def all_fields(self) -> FieldsMap:
-        """
-        The final collection of fields this model knows about
-        """
-
-    @property
-    def virtual_dependency(self) -> VirtualDependency:
-        """
-        The information relevant to this model to creating a virtual dependency
-        """
-
-    @property
-    def model_hash(self) -> str:
-        """
-        A hash of the fields on this model and all the related models
+        The fields defined directly on this model
         """
 
 
@@ -295,9 +247,9 @@ class Field(Protocol):
     """
 
     @property
-    def model(self) -> Model:
+    def model_import_path(self) -> ImportPath:
         """
-        The model this field is defined on
+        The import path to the model this field is defined on
         """
 
     @property
@@ -307,9 +259,9 @@ class Field(Protocol):
         """
 
     @property
-    def related_models(self) -> Set[ImportPath]:
+    def directly_related_models(self) -> Set[ImportPath]:
         """
-        The import paths to all the models related to this model by this field
+        The import paths to the models directly related to this this field
         """
 
 
