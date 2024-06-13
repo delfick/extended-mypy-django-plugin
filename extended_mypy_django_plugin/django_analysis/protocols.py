@@ -3,16 +3,22 @@ from __future__ import annotations
 import contextlib
 import pathlib
 from collections.abc import Hashable, Iterator, Mapping, Sequence, Set
-from typing import TYPE_CHECKING, NewType, Protocol
+from typing import TYPE_CHECKING, Any, NewType, Protocol, Union
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
+from django.db import models
+
+if TYPE_CHECKING:
+    from django.contrib.contenttypes.fields import GenericForeignKey
+    from django.db.models.fields.related import ForeignObjectRel
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
 ModelModulesMap = Mapping[ImportPath, "Module"]
 DefinedModelsMap = Mapping[str, "Model"]
 SettingsTypesMap = Mapping[str, str]
+DjangoField = Union["models.fields.Field[Any, Any]", "ForeignObjectRel", "GenericForeignKey"]
 
 
 class Hasher(Protocol):
@@ -235,9 +241,9 @@ class Model(Protocol, Hashable):
         """
 
     @property
-    def defined_fields(self) -> FieldsMap:
+    def all_fields(self) -> FieldsMap:
         """
-        The fields defined directly on this model
+        The fields associated with this model
         """
 
 
