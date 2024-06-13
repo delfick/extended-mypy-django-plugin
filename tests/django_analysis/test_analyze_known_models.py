@@ -60,7 +60,13 @@ class TestKnownModelsAnalyzer:
                 installed=True,
                 import_path=IP("django.contrib.auth.models"),
                 module=(mod := django.contrib.auth.models),
-                models=[mod.Permission, mod.Group, mod.User],
+                models=[
+                    mod.AbstractUser,
+                    mod.PermissionsMixin,
+                    mod.Permission,
+                    mod.Group,
+                    mod.User,
+                ],
             ),
             Module(
                 installed=True,
@@ -78,7 +84,7 @@ class TestKnownModelsAnalyzer:
                 installed=True,
                 import_path=IP("djangoexample.exampleapp.models"),
                 module=(mod := djangoexample.exampleapp.models),
-                models=[mod.Child1, mod.Child2, mod.Child3, mod.Child4],
+                models=[mod.Parent, mod.Parent2, mod.Child1, mod.Child2, mod.Child3, mod.Child4],
             ),
             Module(
                 installed=True,
@@ -89,8 +95,8 @@ class TestKnownModelsAnalyzer:
             Module(
                 installed=True,
                 import_path=IP("djangoexample.only_abstract.models"),
-                module=djangoexample.only_abstract.models,
-                models=[],
+                module=(mod := djangoexample.only_abstract.models),
+                models=[mod.AnAbstract],
             ),
             # # There is no way for our discovery to know about these without some kind of invasive
             # # traversal of every file in site-packages. We do know about them at mypy time and create

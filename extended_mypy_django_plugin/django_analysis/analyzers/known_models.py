@@ -2,7 +2,7 @@ import dataclasses
 import inspect
 import types
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from django.db import models
@@ -37,7 +37,9 @@ class KnownModelsAnalyzer:
                 raise RuntimeError("Failed to determine the module these models appear in")
 
             entity = self.module_creator(
-                import_path=module_import_path, module=module, models=module_models
+                import_path=module_import_path,
+                module=module,
+                models=[*self._find_abstract_models(module), *module_models],
             )
             result[module_import_path] = entity
 
@@ -53,10 +55,24 @@ class KnownModelsAnalyzer:
                 import_path = protocols.ImportPath(models_module.__name__)
                 if import_path not in result:
                     result[import_path] = self.module_creator(
-                        import_path=import_path, module=models_module, models=[]
+                        import_path=import_path,
+                        module=models_module,
+                        models=list(self._find_abstract_models(models_module)),
                     )
 
         return result
+
+    def _find_abstract_models(self, module: types.ModuleType) -> Iterator[type[models.Model]]:
+        for attr in dir(module):
+            val = getattr(module, attr)
+            if isinstance(val, type) and issubclass(val.__class__, models.base.ModelBase):
+                if val.__module__ != module.__name__:
+                    continue
+
+                if not hasattr(val, "_meta") or not getattr(val._meta, "abstract", False):
+                    continue
+
+                yield val
 
 
 if TYPE_CHECKING:
