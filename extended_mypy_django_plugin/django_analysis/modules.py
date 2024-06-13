@@ -10,9 +10,7 @@ from extended_mypy_django_plugin.django_analysis import protocols
 
 
 class ModelCreator(Protocol):
-    def __call__(
-        self, *, module_import_path: protocols.ImportPath, model: type[models.Model]
-    ) -> protocols.Model: ...
+    def __call__(self, *, model: type[models.Model]) -> protocols.Model: ...
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -30,8 +28,8 @@ class Module:
             installed=module is not None,
             import_path=import_path,
             defined_models_by_name={
-                model.__class__.__name__: model_creator(
-                    module_import_path=import_path, model=model
+                protocols.ImportPath(f"{model.__module__}.{model.__qualname__}"): model_creator(
+                    model=model
                 )
                 for model in models
             },
