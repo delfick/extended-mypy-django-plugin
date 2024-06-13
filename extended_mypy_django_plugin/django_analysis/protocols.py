@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from collections.abc import Hashable, Iterator, Mapping, Sequence, Set
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, NewType, Protocol, Union
 
 from django.apps.registry import Apps
@@ -265,9 +265,9 @@ class Field(Protocol):
         """
 
     @property
-    def directly_related_models(self) -> Set[ImportPath]:
+    def related_model(self) -> ImportPath | None:
         """
-        The import paths to the models directly related to this this field
+        The model that is related to this field if the field represents a relationship
         """
 
 

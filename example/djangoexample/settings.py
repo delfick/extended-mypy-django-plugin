@@ -44,6 +44,8 @@ INSTALLED_APPS: Sequence[str] = [
     "djangoexample.exampleapp2",
     "djangoexample.only_abstract",
     "djangoexample.no_models",
+    "djangoexample.relations1",
+    "djangoexample.relations2",
 ]
 
 MIDDLEWARE: Sequence[str] = [
