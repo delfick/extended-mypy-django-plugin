@@ -149,6 +149,8 @@ class TestProject:
                 "djangoexample.exampleapp2",
                 "djangoexample.only_abstract",
                 "djangoexample.no_models",
+                "djangoexample.relations1",
+                "djangoexample.relations2",
             ]
             assert analyzed_project.settings_types == {"not": "accurate"}
             assert analyzed_project.known_model_modules == {fake_module.import_path: fake_module}

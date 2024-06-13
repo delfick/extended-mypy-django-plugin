@@ -6,7 +6,7 @@ import functools
 import pytest
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import Model, Module, protocols
+from extended_mypy_django_plugin.django_analysis import Field, Model, Module, protocols
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +30,7 @@ class EmptyField:
     field_type: protocols.ImportPath = dataclasses.field(
         default_factory=lambda: protocols.ImportPath("")
     )
-    directly_related_models: set[protocols.ImportPath] = dataclasses.field(default_factory=set)
+    related_model: protocols.ImportPath | None = None
 
 
 class TestModule:
@@ -172,4 +172,165 @@ class TestModel:
                 field_creator=EmptyField.create, model=djangoexample.exampleapp.models.Child1
             )
             == expected
+        )
+
+    def test_it_can_see_reverse_relationships(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        expected = Model(
+            model_name="Concrete1",
+            module_import_path=(
+                module_import_path := protocols.ImportPath("djangoexample.relations1.models")
+            ),
+            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Concrete1")),
+            is_abstract=False,
+            default_custom_queryset=None,
+            all_fields={
+                "id": EmptyField(model_import_path=mip, field=mod.Concrete1._meta.get_field("id")),
+                "c2s": EmptyField(
+                    model_import_path=mip, field=mod.Concrete1._meta.fields_map["c2s"]
+                ),
+                "thing": EmptyField(
+                    model_import_path=mip, field=mod.Concrete1._meta.fields_map["thing"]
+                ),
+            },
+        )
+
+        assert (
+            Model.create(
+                field_creator=EmptyField.create, model=djangoexample.relations1.models.Concrete1
+            )
+            == expected
+        )
+
+    def test_it_can_see_forward_relationships(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        expected = Model(
+            model_name="Concrete2",
+            module_import_path=(
+                module_import_path := protocols.ImportPath("djangoexample.relations1.models")
+            ),
+            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Concrete2")),
+            is_abstract=False,
+            default_custom_queryset=None,
+            all_fields={
+                "id": EmptyField(model_import_path=mip, field=mod.Concrete2._meta.get_field("id")),
+                "concrete1": EmptyField(
+                    model_import_path=mip, field=mod.Concrete2._meta.get_field("concrete1")
+                ),
+                "children": EmptyField(
+                    model_import_path=mip, field=mod.Concrete2._meta.get_field("children")
+                ),
+                "Concrete2_children+": EmptyField(
+                    model_import_path=mip,
+                    field=mod.Concrete2._meta.fields_map["Concrete2_children+"],
+                ),
+            },
+        )
+
+        assert (
+            Model.create(
+                field_creator=EmptyField.create, model=djangoexample.relations1.models.Concrete2
+            )
+            == expected
+        )
+
+
+class TestField:
+    def test_it_can_interpret_a_plain_field(self) -> None:
+        import djangoexample.exampleapp.models
+
+        mod = djangoexample.exampleapp.models
+
+        field = Field.create(
+            model_import_path=(
+                mip := protocols.ImportPath("djangoexample.exampleapp.models.Child2")
+            ),
+            field=mod.Child2._meta.get_field("one"),
+        )
+
+        assert field == Field(
+            model_import_path=mip,
+            field_type=protocols.ImportPath("django.db.models.fields.CharField"),
+            related_model=None,
+        )
+
+    def test_it_can_see_reverse_related_fields(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        field = Field.create(
+            model_import_path=(
+                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete1")
+            ),
+            field=mod.Concrete1._meta.fields_map["thing"],
+        )
+
+        assert field == Field(
+            model_import_path=mip,
+            field_type=protocols.ImportPath("django.db.models.fields.reverse_related.OneToOneRel"),
+            related_model=protocols.ImportPath("djangoexample.relations2.models.Thing"),
+        )
+
+    def test_it_can_see_many_to_many_relations(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        field = Field.create(
+            model_import_path=(
+                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
+            ),
+            field=mod.Concrete2._meta.get_field("children"),
+        )
+
+        assert field == Field(
+            model_import_path=mip,
+            field_type=protocols.ImportPath("django.db.models.fields.related.ManyToManyField"),
+            related_model=protocols.ImportPath("djangoexample.relations1.models.Child1"),
+        )
+
+    def test_it_can_see_many_to_many_relations_hidden_field(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        field = Field.create(
+            model_import_path=(
+                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
+            ),
+            field=mod.Concrete2._meta.fields_map["Concrete2_children+"],
+        )
+
+        assert field == Field(
+            model_import_path=mip,
+            field_type=protocols.ImportPath(
+                "django.db.models.fields.reverse_related.ManyToOneRel"
+            ),
+            # Empty because it refers to a many to many model class that doesn't exist
+            related_model=None,
+        )
+
+    def test_it_can_see_forieng_key(self) -> None:
+        import djangoexample.relations1.models
+
+        mod = djangoexample.relations1.models
+
+        field = Field.create(
+            model_import_path=(
+                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
+            ),
+            field=mod.Concrete2._meta.get_field("concrete1"),
+        )
+
+        assert field == Field(
+            model_import_path=mip,
+            field_type=protocols.ImportPath("django.db.models.fields.related.ForeignKey"),
+            related_model=protocols.ImportPath("djangoexample.relations1.models.Concrete1"),
         )

@@ -47,6 +47,8 @@ class TestKnownModelsAnalyzer:
         import djangoexample.exampleapp.models
         import djangoexample.exampleapp2.models
         import djangoexample.only_abstract.models
+        import djangoexample.relations1.models
+        import djangoexample.relations2.models
 
         IP = protocols.ImportPath
         expected = [
@@ -97,6 +99,18 @@ class TestKnownModelsAnalyzer:
                 import_path=IP("djangoexample.only_abstract.models"),
                 module=(mod := djangoexample.only_abstract.models),
                 models=[mod.AnAbstract],
+            ),
+            Module(
+                installed=True,
+                import_path=IP("djangoexample.relations1.models"),
+                module=(mod := djangoexample.relations1.models),
+                models=[mod.Abstract, mod.Child1, mod.Child2, mod.Concrete1, mod.Concrete2],
+            ),
+            Module(
+                installed=True,
+                import_path=IP("djangoexample.relations2.models"),
+                module=(mod := djangoexample.relations2.models),
+                models=[mod.Thing],
             ),
             # # There is no way for our discovery to know about these without some kind of invasive
             # # traversal of every file in site-packages. We do know about them at mypy time and create
