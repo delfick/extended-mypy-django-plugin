@@ -42,6 +42,8 @@ INSTALLED_APPS: Sequence[str] = [
     "django.contrib.staticfiles",
     "djangoexample.exampleapp",
     "djangoexample.exampleapp2",
+    "djangoexample.only_abstract",
+    "djangoexample.no_models",
 ]
 
 MIDDLEWARE: Sequence[str] = [
