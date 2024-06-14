@@ -1,4 +1,5 @@
 from . import discovery, protocols
+from .discovery.import_path import ImportPath
 from .fields import Field
 from .hasher import adler32_hash
 from .models import Model
@@ -9,6 +10,7 @@ __all__ = [
     "protocols",
     "discovery",
     "Field",
+    "ImportPath",
     "adler32_hash",
     "Model",
     "Module",

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 from django.db import models
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, protocols
 
 
 class FieldCreator(Protocol):
@@ -26,12 +26,8 @@ class Model:
     ) -> Self:
         return cls(
             model_name=model.__qualname__,
-            module_import_path=protocols.ImportPath(model.__module__),
-            import_path=(
-                model_import_path := protocols.ImportPath(
-                    f"{model.__module__}.{model.__qualname__}"
-                )
-            ),
+            module_import_path=ImportPath.cls_module(model),
+            import_path=(model_import_path := ImportPath.from_cls(model)),
             is_abstract=model._meta.abstract,
             default_custom_queryset=(
                 None
@@ -42,7 +38,7 @@ class Model:
                         (qs := getattr(dm, "_queryset_class", models.QuerySet)) is models.QuerySet
                         or not isinstance(qs, type)
                     )
-                    else protocols.ImportPath(f"{qs.__module__}.{qs.__qualname__}")
+                    else ImportPath.from_cls(qs)
                 )
             ),
             all_fields={

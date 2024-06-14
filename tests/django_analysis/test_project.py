@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from extended_mypy_django_plugin.django_analysis import project, protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, project, protocols
 
 project_root = pathlib.Path(__file__).parent.parent.parent
 
@@ -82,11 +82,11 @@ class TestProject:
             class FakeModule:
                 hasher: protocols.Hasher = _hasher
                 virtual_dependency_import_path: protocols.ImportPath = dataclasses.field(
-                    default_factory=lambda: protocols.ImportPath("virtual")
+                    default_factory=lambda: ImportPath("virtual")
                 )
                 installed: bool = True
                 import_path: protocols.ImportPath = dataclasses.field(
-                    default_factory=lambda: protocols.ImportPath("somewhere")
+                    default_factory=lambda: ImportPath("somewhere")
                 )
                 defined_models_by_name: protocols.DefinedModelsMap = dataclasses.field(
                     default_factory=dict
@@ -157,7 +157,7 @@ class TestProject:
             }
 
         test_content = (
-            "from extended_mypy_django_plugin.django_analysis import protocols"
+            "from extended_mypy_django_plugin.django_analysis import protocols, ImportPath"
             + "\n\n"
             + inspect.getsource(_hasher)
             + "\n\n"

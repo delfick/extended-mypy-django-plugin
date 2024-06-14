@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 from django.db import models
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, protocols
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -17,11 +17,9 @@ class Field:
     ) -> Self:
         return cls(
             model_import_path=model_import_path,
-            field_type=protocols.ImportPath(
-                f"{field.__class__.__module__}.{field.__class__.__qualname__}"
-            ),
+            field_type=ImportPath.from_cls(field.__class__),
             related_model=(
-                protocols.ImportPath(f"{related.__module__}.{related.__qualname__}")
+                ImportPath.from_cls(related)
                 if (
                     isinstance((related := field.related_model), type)
                     and issubclass(related, models.Model)
