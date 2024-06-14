@@ -59,6 +59,7 @@ class TestModule:
                         model_import_path=mip, field=mod.Parent._meta.get_field("one")
                     ),
                 },
+                models_in_mro=[],
             ),
             Model(
                 model_name="Child1",
@@ -77,6 +78,9 @@ class TestModule:
                         model_import_path=mip, field=mod.Child1._meta.get_field("two")
                     ),
                 },
+                models_in_mro=[
+                    ImportPath("djangoexample.exampleapp.models.Parent"),
+                ],
             ),
         ]
 
@@ -104,6 +108,7 @@ class TestModel:
             all_fields={
                 "one": EmptyField(model_import_path=mip, field=mod.Parent._meta.get_field("one")),
             },
+            models_in_mro=[],
         )
 
         assert (
@@ -112,6 +117,18 @@ class TestModel:
             )
             == expected
         )
+
+    def test_it_can_find_multiple_parent_models(self) -> None:
+        import djangoexample.exampleapp.models
+
+        made = Model.create(
+            field_creator=EmptyField.create, model=djangoexample.exampleapp.models.Child3
+        )
+
+        assert made.models_in_mro == [
+            ImportPath("djangoexample.exampleapp.models.Parent2"),
+            ImportPath("djangoexample.exampleapp.models.Parent"),
+        ]
 
     def test_it_can_interpret_a_model_with_a_custom_queryset(self) -> None:
         import djangoexample.exampleapp.models
@@ -137,6 +154,7 @@ class TestModel:
                     model_import_path=mip, field=mod.Child2._meta.get_field("three")
                 ),
             },
+            models_in_mro=[ImportPath("djangoexample.exampleapp.models.Parent")],
         )
 
         assert (
@@ -164,6 +182,7 @@ class TestModel:
                 "one": EmptyField(model_import_path=mip, field=mod.Child1._meta.get_field("one")),
                 "two": EmptyField(model_import_path=mip, field=mod.Child1._meta.get_field("two")),
             },
+            models_in_mro=[ImportPath("djangoexample.exampleapp.models.Parent")],
         )
 
         assert (
@@ -195,6 +214,7 @@ class TestModel:
                     model_import_path=mip, field=mod.Concrete1._meta.fields_map["thing"]
                 ),
             },
+            models_in_mro=[],
         )
 
         assert (
@@ -230,6 +250,7 @@ class TestModel:
                     field=mod.Concrete2._meta.fields_map["Concrete2_children+"],
                 ),
             },
+            models_in_mro=[],
         )
 
         assert (

@@ -240,6 +240,17 @@ class Model(Protocol, Hashable):
         The fields associated with this model
         """
 
+    @property
+    def models_in_mro(self) -> Sequence[ImportPath]:
+        """
+        The import paths to the classes in the mro for this model
+
+        As long as they:
+        * aren't this model
+        * not django.db.models.Model
+        * are subclasses of django.db.models.Model
+        """
+
 
 class Field(Protocol):
     """
