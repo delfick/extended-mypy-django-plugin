@@ -8,6 +8,7 @@ from .. import protocols
 class Discovery(Generic[protocols.T_Project]):
     discover_settings_types: protocols.SettingsTypesDiscovery[protocols.T_Project]
     discover_installed_models: protocols.InstalledModelsDiscovery[protocols.T_Project]
+    discover_concrete_models: protocols.ConcreteModelsDiscovery[protocols.T_Project]
 
 
 if TYPE_CHECKING:

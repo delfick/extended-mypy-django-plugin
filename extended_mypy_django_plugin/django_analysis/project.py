@@ -125,6 +125,7 @@ class Loaded(Generic[protocols.T_Project]):
             installed_apps=self.settings.INSTALLED_APPS,
             settings_types=self.discovery.discover_settings_types(self),
             installed_models_modules=installed_models_modules,
+            concrete_models=self.discovery.discover_concrete_models(self, all_models),
         )
 
 
@@ -135,6 +136,7 @@ class Discovered(Generic[protocols.T_Project]):
     all_models: protocols.ModelMap
     installed_apps: list[str]
     settings_types: protocols.SettingsTypesMap
+    concrete_models: protocols.ConcreteModelsMap
     installed_models_modules: protocols.ModelModulesMap
 
 
