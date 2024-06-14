@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, cast
 
 from django.db import models
@@ -45,6 +46,11 @@ class Model:
                 field.name: field_creator(model_import_path=model_import_path, field=field)
                 for field in model._meta.get_fields(include_parents=True, include_hidden=True)
             },
+            models_in_mro=[
+                ImportPath.from_cls(m)
+                for m in model.__mro__
+                if issubclass(m, models.Model) and m not in (models.Model, model)
+            ],
         )
 
     model_name: str
@@ -53,6 +59,7 @@ class Model:
     is_abstract: bool
     default_custom_queryset: protocols.ImportPath | None
     all_fields: protocols.FieldsMap
+    models_in_mro: Sequence[protocols.ImportPath]
 
 
 if TYPE_CHECKING:
