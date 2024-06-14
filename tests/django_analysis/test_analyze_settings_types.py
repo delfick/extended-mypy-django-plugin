@@ -1,11 +1,11 @@
-from extended_mypy_django_plugin.django_analysis import discovery, protocols
+from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
 
 
 class TestSettingsTypesAnalyzer:
     def test_it_looks_at_values_to_determine_types(
-        self, loaded_django_example: protocols.LoadedProject
+        self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:
-        settings_types = discovery.NaiveSettingsTypesDiscovery()(loaded_django_example)
+        settings_types = discovery.NaiveSettingsTypesDiscovery[Project]()(loaded_django_example)
         assert settings_types == {
             "ABSOLUTE_URL_OVERRIDES": "<class 'dict'>",
             "ADMINS": "<class 'list'>",

@@ -6,11 +6,18 @@ import functools
 import pytest
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import Field, ImportPath, Model, Module, protocols
+from extended_mypy_django_plugin.django_analysis import (
+    Field,
+    ImportPath,
+    Model,
+    Module,
+    Project,
+    protocols,
+)
 
 
 @pytest.fixture(autouse=True)
-def _ensure_django_loaded(loaded_django_example: protocols.LoadedProject) -> None:
+def _ensure_django_loaded(loaded_django_example: protocols.Loaded[Project]) -> None:
     """
     Make sure the loaded_django_example fixture is active so that we can import our djangoexample models inside tests
     """

@@ -4,12 +4,12 @@ from collections.abc import Sequence
 
 from django.db import models
 
-from extended_mypy_django_plugin.django_analysis import ImportPath, discovery, protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, Project, discovery, protocols
 
 
 class TestKnownModelsAnalyzer:
     def test_it_finds_modules_that_have_models(
-        self, loaded_django_example: protocols.LoadedProject
+        self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:
         @dataclasses.dataclass
         class Module:
@@ -36,9 +36,9 @@ class TestKnownModelsAnalyzer:
                 default_factory=dict
             )
 
-        known_modules = discovery.DefaultInstalledModulesDiscovery(module_creator=Module.create)(
-            loaded_django_example
-        )
+        known_modules = discovery.DefaultInstalledModulesDiscovery[Project](
+            module_creator=Module.create
+        )(loaded_django_example)
 
         import django.contrib.admin.models
         import django.contrib.auth.models

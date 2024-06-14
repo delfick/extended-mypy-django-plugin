@@ -7,10 +7,11 @@ import pathlib
 import sys
 import types
 from collections.abc import Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Generic, cast
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
+from typing_extensions import Self
 
 from . import protocols
 
@@ -68,7 +69,7 @@ class Project:
     env_vars: Mapping[str, str]
     hasher: protocols.Hasher
 
-    discovery: protocols.Discovery
+    discovery: protocols.Discovery[Self]
 
     @contextlib.contextmanager
     def setup_sys_path_and_env_vars(self) -> Iterator[None]:
@@ -78,7 +79,7 @@ class Project:
             yield
 
     @contextlib.contextmanager
-    def instantiate_django(self) -> Iterator[protocols.LoadedProject]:
+    def instantiate_django(self) -> Iterator[protocols.Loaded[Self]]:
         with self.setup_sys_path_and_env_vars():
             from django.apps import apps
             from django.conf import settings
@@ -90,7 +91,7 @@ class Project:
             assert apps.apps_ready, "Apps are not ready"
             assert settings.configured, "Settings are not configured"
 
-            yield LoadedProject(
+            yield Loaded(
                 root_dir=self.root_dir,
                 hasher=self.hasher,
                 env_vars=self.env_vars,
@@ -99,23 +100,23 @@ class Project:
                 discovery=self.discovery,
             )
 
-    def load_project(self) -> protocols.LoadedProject:
+    def load_project(self) -> protocols.Loaded[Self]:
         with self.instantiate_django() as loaded_project:
             return loaded_project
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class LoadedProject:
+class Loaded(Generic[protocols.T_Project]):
     root_dir: pathlib.Path
     env_vars: Mapping[str, str]
     settings: LazySettings
     apps: Apps
     hasher: protocols.Hasher
 
-    discovery: protocols.Discovery
+    discovery: protocols.Discovery[protocols.T_Project]
 
-    def perform_discovery(self) -> protocols.DiscoveredProject:
-        return DiscoveredProject(
+    def perform_discovery(self) -> protocols.Discovered[protocols.T_Project]:
+        return Discovered(
             hasher=self.hasher,
             loaded_project=self,
             installed_apps=self.settings.INSTALLED_APPS,
@@ -125,9 +126,9 @@ class LoadedProject:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class DiscoveredProject:
+class Discovered(Generic[protocols.T_Project]):
     hasher: protocols.Hasher
-    loaded_project: LoadedProject
+    loaded_project: Loaded[protocols.T_Project]
 
     installed_apps: list[str]
     settings_types: protocols.SettingsTypesMap
@@ -136,5 +137,9 @@ class DiscoveredProject:
 
 if TYPE_CHECKING:
     _P: protocols.Project = cast(Project, None)
-    _LP: protocols.LoadedProject = cast(LoadedProject, None)
-    _AP: protocols.DiscoveredProject = cast(DiscoveredProject, None)
+    _LP: protocols.P_Loaded = cast(Loaded[protocols.P_Project], None)
+    _AP: protocols.P_Discovered = cast(Discovered[protocols.P_Project], None)
+
+    C_Project = Project
+    _CLP: protocols.Loaded[C_Project] = cast(Loaded[C_Project], None)
+    _CAP: protocols.Discovered[C_Project] = cast(Discovered[C_Project], None)
