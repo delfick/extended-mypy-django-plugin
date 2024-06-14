@@ -290,11 +290,7 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     """
 
     def __call__(
-        self,
-        *,
-        destination: pathlib.Path,
-        discovered_project: Discovered[T_Project],
-        module: Module,
+        self, *, discovered_project: Discovered[T_Project], module: Module
     ) -> T_CO_VirtualDependency: ...
 
 
@@ -310,12 +306,6 @@ class VirtualDependencyFolder(Protocol[T_Project, T_CO_VirtualDependency]):
         """
 
     @property
-    def scratch_root(self) -> pathlib.Path:
-        """
-        The path to generate dependencies into to avoid a half written final destination
-        """
-
-    @property
     def virtual_dependency_maker(
         self,
     ) -> VirtualDependencyMaker[T_Project, T_CO_VirtualDependency]:
@@ -323,12 +313,32 @@ class VirtualDependencyFolder(Protocol[T_Project, T_CO_VirtualDependency]):
         Used to generate a virtual dependency for a module
         """
 
-    def generate_and_install(
-        self, virtual_dependency_root: pathlib.Path
-    ) -> VirtualDependencyMap[T_CO_VirtualDependency]:
+    def generate(
+        self, scratch_root: pathlib.Path
+    ) -> GeneratedVirtualDependencies[T_CO_VirtualDependency]:
         """
-        Replace the virtual dependencies with those found in the scratch folder, making sure to delete
-        left over reports that represent deleted modules
+        Generate a temporary folder containing the virtual dependencies on disk
+        """
+
+
+class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency]):
+    @property
+    def virtual_dependencies(self) -> VirtualDependencyMap[T_CO_VirtualDependency]:
+        """
+        The virtual dependency items
+        """
+
+    @property
+    def root_location(self) -> pathlib.Path:
+        """
+        The root folder the dependencies are in
+        """
+
+    def install(self, destination: pathlib.Path) -> None:
+        """
+        Install the virtual dependencies into their destination.
+
+        Implementations should also clear out found reports that represent modules that don't exist anymore
         """
 
 
@@ -417,3 +427,4 @@ if TYPE_CHECKING:
     P_VirtualDependencyNamer = VirtualDependencyNamer
     P_VirtualDependencyFolder = VirtualDependencyFolder[P_Project, P_VirtualDependency]
     P_VirtualDependencySummary = VirtualDependencySummary
+    P_GeneratedVirtualDependencies = GeneratedVirtualDependencies[P_VirtualDependency]
