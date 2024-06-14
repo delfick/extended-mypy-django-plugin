@@ -12,14 +12,6 @@ from extended_mypy_django_plugin.django_analysis import ImportPath, project, pro
 project_root = pathlib.Path(__file__).parent.parent.parent
 
 
-def _hasher(*parts: bytes) -> str:
-    return f"||hashed>>{' '.join(p.decode() for p in parts)}||"
-
-
-if TYPE_CHECKING:
-    _h: protocols.Hasher = _hasher
-
-
 class TestReplacedEnvVarsAndSysPath:
     def test_it_can_handle_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("one", "one_val")
@@ -71,7 +63,7 @@ class TestProject:
             import os
             import pathlib
             from collections.abc import Set
-            from typing import TYPE_CHECKING, cast
+            from typing import cast
 
             from django.apps.registry import Apps
             from django.conf import LazySettings
@@ -80,7 +72,6 @@ class TestProject:
 
             @dataclasses.dataclass(frozen=True, kw_only=True)
             class FakeModule:
-                hasher: protocols.Hasher = _hasher
                 virtual_dependency_import_path: protocols.ImportPath = dataclasses.field(
                     default_factory=lambda: ImportPath("virtual")
                 )
@@ -117,7 +108,6 @@ class TestProject:
             root_dir = pathlib.Path(os.environ["PROJECT_ROOT"]) / "example"
             project = Project(
                 root_dir=root_dir,
-                hasher=_hasher,
                 additional_sys_path=[str(root_dir)],
                 discovery=Discovery(),
                 env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
@@ -127,7 +117,6 @@ class TestProject:
                 discovered_project = loaded_project.perform_discovery()
 
             assert loaded_project.root_dir == root_dir
-            assert loaded_project.hasher is _hasher
             assert loaded_project.env_vars == project.env_vars
             assert isinstance(loaded_project.settings, LazySettings)
             assert (
@@ -158,8 +147,8 @@ class TestProject:
 
         test_content = (
             "from extended_mypy_django_plugin.django_analysis import protocols, ImportPath"
-            + "\n\n"
-            + inspect.getsource(_hasher)
+            + "\n"
+            + "from typing import TYPE_CHECKING"
             + "\n\n"
             + textwrap.dedent(inspect.getsource(test_getting_project))
         )

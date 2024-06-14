@@ -8,7 +8,6 @@ from extended_mypy_django_plugin.django_analysis import (
     Model,
     Module,
     Project,
-    adler32_hash,
     discovery,
     protocols,
 )
@@ -24,7 +23,6 @@ def loaded_django_example() -> protocols.Loaded[Project]:
 
     project = Project(
         root_dir=root_dir / "example",
-        hasher=adler32_hash,
         additional_sys_path=[str(root_dir)],
         discovery=discovery.Discovery(
             discover_installed_models=discovery.DefaultInstalledModulesDiscovery(

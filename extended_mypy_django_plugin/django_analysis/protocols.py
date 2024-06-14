@@ -88,12 +88,6 @@ class Project(Protocol):
         Any additional environment variables needed to setup Django
         """
 
-    @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
-        """
-
     @contextlib.contextmanager
     def setup_sys_path_and_env_vars(self) -> Iterator[None]:
         """
@@ -120,12 +114,6 @@ class Loaded(Protocol[T_Project]):
     def root_dir(self) -> pathlib.Path:
         """
         Where the django project lives
-        """
-
-    @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
         """
 
     @property
@@ -281,12 +269,6 @@ class Field(Protocol):
 
 class VirtualDependencyNamer(Protocol):
     @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
-        """
-
-    @property
     def namespace(self) -> str:
         """
         The import namespace for virtual dependencies
@@ -363,12 +345,6 @@ class VirtualDependency(Protocol):
     """
     Represents the information held by a virtual dependency for a module
     """
-
-    @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
-        """
 
     @property
     def module(self) -> Module:
