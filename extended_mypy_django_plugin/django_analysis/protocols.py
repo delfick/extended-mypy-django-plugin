@@ -15,12 +15,16 @@ if TYPE_CHECKING:
     from django.db.models.fields.related import ForeignObjectRel
 
 T_Project = TypeVar("T_Project", bound="Project")
+T_CO_VirtualDependency = TypeVar(
+    "T_CO_VirtualDependency", bound="VirtualDependency", covariant=True
+)
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
 ModelModulesMap = Mapping[ImportPath, "Module"]
 DefinedModelsMap = Mapping[str, "Model"]
 SettingsTypesMap = Mapping[str, str]
+VirtualDependencyMap = Mapping[ImportPath, T_CO_VirtualDependency]
 DjangoField = Union["models.fields.Field[Any, Any]", "ForeignObjectRel", "GenericForeignKey"]
 
 
@@ -280,9 +284,23 @@ class VirtualDependencyNamer(Protocol):
         """
 
 
-class VirtualDependencyCreator(Protocol[T_Project]):
+class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     """
-    Represents the work to create virtual dependencies for a django project
+    Responsible for generating a virtual dependency
+    """
+
+    def __call__(
+        self,
+        *,
+        destination: pathlib.Path,
+        discovered_project: Discovered[T_Project],
+        module: Module,
+    ) -> T_CO_VirtualDependency: ...
+
+
+class VirtualDependencyFolder(Protocol[T_Project, T_CO_VirtualDependency]):
+    """
+    Object that manages the folder containing the on disk virtual dependencies
     """
 
     @property
@@ -292,19 +310,24 @@ class VirtualDependencyCreator(Protocol[T_Project]):
         """
 
     @property
-    def virtual_dependency_root(self) -> pathlib.Path:
+    def scratch_root(self) -> pathlib.Path:
         """
-        The path to put the virtual dependency folder into
-        """
-
-    def generate_virtual_dependencies(self, tmp_path: pathlib.Path) -> None:
-        """
-        Generate all the virtual dependencies onto disk for a project into the provided path
+        The path to generate dependencies into to avoid a half written final destination
         """
 
-    def replace_reports(self, tmp_path: pathlib.Path) -> None:
+    @property
+    def virtual_dependency_maker(
+        self,
+    ) -> VirtualDependencyMaker[T_Project, T_CO_VirtualDependency]:
         """
-        Replace the virtual dependencies with those found in the tmp_path, making sure to delete
+        Used to generate a virtual dependency for a module
+        """
+
+    def generate_and_install(
+        self, virtual_dependency_root: pathlib.Path
+    ) -> VirtualDependencyMap[T_CO_VirtualDependency]:
+        """
+        Replace the virtual dependencies with those found in the scratch folder, making sure to delete
         left over reports that represent deleted modules
         """
 
@@ -380,9 +403,11 @@ if TYPE_CHECKING:
     P_Loaded = Loaded[P_Project]
     P_Discovery = Discovery[P_Project]
     P_Discovered = Discovered[P_Project]
-    P_VirtualDependency = VirtualDependency
-    P_InstalledModelsDiscovery = InstalledModelsDiscovery[P_Project]
     P_SettingsTypesDiscovery = SettingsTypesDiscovery[P_Project]
+    P_InstalledModelsDiscovery = InstalledModelsDiscovery[P_Project]
+
+    P_VirtualDependency = VirtualDependency
+    P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
+    P_VirtualDependencyFolder = VirtualDependencyFolder[P_Project, P_VirtualDependency]
     P_VirtualDependencySummary = VirtualDependencySummary
-    P_VirtualDependencyCreator = VirtualDependencyCreator[P_Project]
