@@ -388,7 +388,13 @@ class VirtualDependency(Protocol):
         """
 
     @property
-    def concrete_annotations(self) -> Mapping[Model, Sequence[Model]]:
+    def all_related_models(self) -> Sequence[ImportPath]:
+        """
+        All the models that are related to the module represented by this virtual dependency
+        """
+
+    @property
+    def concrete_annotations(self) -> Mapping[ImportPath, Sequence[Model]]:
         """
         The models known by this module and their concrete children
         """
