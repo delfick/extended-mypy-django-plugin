@@ -3,7 +3,7 @@ import inspect
 import types
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Generic, Protocol, cast
 
 from django.db import models
 
@@ -22,10 +22,12 @@ class ModuleCreator(Protocol):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class DefaultInstalledModulesDiscovery:
+class DefaultInstalledModulesDiscovery(Generic[protocols.T_Project]):
     module_creator: ModuleCreator
 
-    def __call__(self, loaded_project: protocols.LoadedProject, /) -> protocols.ModelModulesMap:
+    def __call__(
+        self, loaded_project: protocols.Loaded[protocols.T_Project], /
+    ) -> protocols.ModelModulesMap:
         found: dict[protocols.ImportPath, list[type[models.Model]]] = defaultdict(list)
         for concrete_model_cls in loaded_project.apps.get_models():
             found[ImportPath.cls_module(concrete_model_cls)].append(concrete_model_cls)
@@ -77,4 +79,6 @@ class DefaultInstalledModulesDiscovery:
 
 
 if TYPE_CHECKING:
-    _KMA: protocols.InstalledModelsDiscovery = cast(DefaultInstalledModulesDiscovery, None)
+    _KMA: protocols.P_InstalledModelsDiscovery = cast(
+        DefaultInstalledModulesDiscovery[protocols.P_Project], None
+    )

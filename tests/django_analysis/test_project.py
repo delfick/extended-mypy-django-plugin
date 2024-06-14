@@ -98,7 +98,7 @@ class TestProject:
 
             class Discovery:
                 def discover_settings_types(
-                    self, loaded_project: protocols.LoadedProject, /
+                    self, loaded_project: protocols.Loaded[Project], /
                 ) -> protocols.SettingsTypesMap:
                     assert (
                         loaded_project.settings.UNIQUE_SETTING_TO_EXTENDED_MYPY_PLUGIN_DJANGOEXAMPLE  # type: ignore[misc]
@@ -107,12 +107,12 @@ class TestProject:
                     return {"not": "accurate"}
 
                 def discover_installed_models(
-                    self, loaded_project: protocols.LoadedProject, /
+                    self, loaded_project: protocols.Loaded[Project], /
                 ) -> protocols.ModelModulesMap:
                     return {fake_module.import_path: fake_module}
 
             if TYPE_CHECKING:
-                _sta: protocols.Discovery = cast(Discovery, None)
+                _sta: protocols.Discovery[Project] = cast(Discovery, None)
 
             root_dir = pathlib.Path(os.environ["PROJECT_ROOT"]) / "example"
             project = Project(

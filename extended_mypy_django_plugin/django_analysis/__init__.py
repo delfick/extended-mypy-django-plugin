@@ -4,7 +4,7 @@ from .fields import Field
 from .hasher import adler32_hash
 from .models import Model
 from .modules import Module
-from .project import DiscoveredProject, LoadedProject, Project, replaced_env_vars_and_sys_path
+from .project import Discovered, Loaded, Project, replaced_env_vars_and_sys_path
 
 __all__ = [
     "protocols",
@@ -15,7 +15,7 @@ __all__ = [
     "Model",
     "Module",
     "Project",
-    "LoadedProject",
-    "DiscoveredProject",
+    "Loaded",
+    "Discovered",
     "replaced_env_vars_and_sys_path",
 ]

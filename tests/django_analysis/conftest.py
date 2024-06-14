@@ -17,7 +17,7 @@ root_dir = pathlib.Path(__file__).parent.parent.parent
 
 
 @pytest.fixture(scope="session")
-def loaded_django_example() -> protocols.LoadedProject:
+def loaded_django_example() -> protocols.Loaded[Project]:
     field_creator = Field.create
     model_creator = functools.partial(Model.create, field_creator=field_creator)
     module_creator = functools.partial(Module.create, model_creator=model_creator)

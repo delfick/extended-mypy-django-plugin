@@ -3,15 +3,18 @@ from __future__ import annotations
 import contextlib
 import pathlib
 from collections.abc import Hashable, Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, NewType, Protocol, Union
+from typing import TYPE_CHECKING, Any, NewType, Protocol, TypeVar, Union
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
 from django.db import models
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from django.contrib.contenttypes.fields import GenericForeignKey
     from django.db.models.fields.related import ForeignObjectRel
+
+T_Project = TypeVar("T_Project", bound="Project")
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
@@ -28,35 +31,35 @@ class Hasher(Protocol):
         """
 
 
-class SettingsTypesDiscovery(Protocol):
+class SettingsTypesDiscovery(Protocol[T_Project]):
     """
     Used to discovery the names and types of settings from a loaded project
     """
 
-    def __call__(self, loaded_project: LoadedProject, /) -> SettingsTypesMap: ...
+    def __call__(self, loaded_project: Loaded[T_Project], /) -> SettingsTypesMap: ...
 
 
-class InstalledModelsDiscovery(Protocol):
+class InstalledModelsDiscovery(Protocol[T_Project]):
     """
     Used to discover installed modules containing Django ORM models in a loaded project
     """
 
-    def __call__(self, loaded_project: LoadedProject, /) -> ModelModulesMap: ...
+    def __call__(self, loaded_project: Loaded[T_Project], /) -> ModelModulesMap: ...
 
 
-class Discovery(Protocol):
+class Discovery(Protocol[T_Project]):
     """
     A container for all the different discovery helpers
     """
 
     @property
-    def discover_settings_types(self) -> SettingsTypesDiscovery:
+    def discover_settings_types(self) -> SettingsTypesDiscovery[T_Project]:
         """
         Used to discover settings names and their types
         """
 
     @property
-    def discover_installed_models(self) -> InstalledModelsDiscovery:
+    def discover_installed_models(self) -> InstalledModelsDiscovery[T_Project]:
         """
         Used to discover installed modules containing Django ORM models
         """
@@ -99,7 +102,7 @@ class Project(Protocol):
         """
 
     @contextlib.contextmanager
-    def instantiate_django(self) -> Iterator[LoadedProject]:
+    def instantiate_django(self) -> Iterator[Loaded[Self]]:
         """
         Do necessary work to load Django into memory
 
@@ -108,7 +111,7 @@ class Project(Protocol):
         """
 
 
-class LoadedProject(Protocol):
+class Loaded(Protocol[T_Project]):
     """
     Represents a Django project that has been setup and loaded into memory
     """
@@ -143,15 +146,15 @@ class LoadedProject(Protocol):
         The instantiated Django apps registry
         """
 
-    def perform_discovery(self) -> DiscoveredProject:
+    def perform_discovery(self) -> Discovered[T_Project]:
         """
         Perform discovery of important information from the loaded Django project
         """
 
 
-class DiscoveredProject(Protocol):
+class Discovered(Protocol[T_Project]):
     @property
-    def loaded_project(self) -> LoadedProject:
+    def loaded_project(self) -> Loaded[T_Project]:
         """
         The loaded django project that was analyzed
         """
@@ -295,13 +298,13 @@ class VirtualDependencyNamer(Protocol):
         """
 
 
-class VirtualDependencyCreator(Protocol):
+class VirtualDependencyCreator(Protocol[T_Project]):
     """
     Represents the work to create virtual dependencies for a django project
     """
 
     @property
-    def discovered_project(self) -> DiscoveredProject:
+    def discovered_project(self) -> Discovered[T_Project]:
         """
         The project with discovered information
         """
@@ -398,12 +401,12 @@ if TYPE_CHECKING:
     P_Module = Module
     P_Hasher = Hasher
     P_Project = Project
-    P_Discovery = Discovery
-    P_LoadedProject = LoadedProject
-    P_DiscoveredProject = DiscoveredProject
+    P_Loaded = Loaded[P_Project]
+    P_Discovery = Discovery[P_Project]
+    P_Discovered = Discovered[P_Project]
     P_VirtualDependency = VirtualDependency
-    P_InstalledModelsDiscovery = InstalledModelsDiscovery
-    P_SettingsTypesDiscovery = SettingsTypesDiscovery
+    P_InstalledModelsDiscovery = InstalledModelsDiscovery[P_Project]
+    P_SettingsTypesDiscovery = SettingsTypesDiscovery[P_Project]
     P_VirtualDependencyNamer = VirtualDependencyNamer
     P_VirtualDependencySummary = VirtualDependencySummary
-    P_VirtualDependencyCreator = VirtualDependencyCreator
+    P_VirtualDependencyCreator = VirtualDependencyCreator[P_Project]

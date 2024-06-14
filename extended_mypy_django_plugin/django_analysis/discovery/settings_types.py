@@ -1,17 +1,19 @@
 import dataclasses
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Generic, cast
 
 from .. import protocols
 
 
 @dataclasses.dataclass
-class NaiveSettingsTypesDiscovery:
+class NaiveSettingsTypesDiscovery(Generic[protocols.T_Project]):
     """
     The default implementation is a little naive and is only able to rely on inspecting
     the values on the settings object.
     """
 
-    def __call__(self, loaded_project: protocols.LoadedProject, /) -> protocols.SettingsTypesMap:
+    def __call__(
+        self, loaded_project: protocols.Loaded[protocols.T_Project], /
+    ) -> protocols.SettingsTypesMap:
         result: dict[str, str] = {}
         settings = loaded_project.settings
 
@@ -24,10 +26,12 @@ class NaiveSettingsTypesDiscovery:
         return result
 
     def type_from_setting(
-        self, loaded_project: protocols.LoadedProject, name: str, value: object
+        self, loaded_project: protocols.Loaded[protocols.T_Project], name: str, value: object
     ) -> str:
         return str(type(value))
 
 
 if TYPE_CHECKING:
-    _STA: protocols.SettingsTypesDiscovery = cast(NaiveSettingsTypesDiscovery, None)
+    _STA: protocols.P_SettingsTypesDiscovery = cast(
+        NaiveSettingsTypesDiscovery[protocols.P_Project], None
+    )
