@@ -99,6 +99,8 @@ if TYPE_CHECKING:
     _VDS: protocols.VirtualDependencySummary = cast(VirtualDependencySummary, None)
 
     class _RequiredMakerKwargs(TypedDict):
+        hasher: protocols.Hasher
+        virtual_dependency_namer: protocols.VirtualDependencyNamer
         installed_apps_hash: str
         make_differentiator: Callable[[], str]
 

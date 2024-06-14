@@ -1,5 +1,5 @@
 from .dependency import VirtualDependency, VirtualDependencySummary
-from .folder import VirtualDependencyFolder
+from .folder import GeneratedVirtualDependencies, VirtualDependencyFolder
 from .namer import VirtualDependencyNamer
 
 __all__ = [
@@ -7,4 +7,5 @@ __all__ = [
     "VirtualDependency",
     "VirtualDependencySummary",
     "VirtualDependencyFolder",
+    "GeneratedVirtualDependencies",
 ]

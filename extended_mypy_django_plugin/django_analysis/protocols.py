@@ -313,12 +313,7 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     """
 
     def __call__(
-        self,
-        *,
-        discovered_project: Discovered[T_Project],
-        module: Module,
-        hasher: Hasher,
-        virtual_dependency_namer: VirtualDependencyNamer,
+        self, *, discovered_project: Discovered[T_Project], module: Module
     ) -> T_CO_VirtualDependency: ...
 
 
@@ -341,11 +336,9 @@ class VirtualDependencyFolder(Protocol[T_Project, T_CO_VirtualDependency]):
         Used to generate a virtual dependency for a module
         """
 
-    def generate(
-        self, scratch_root: pathlib.Path
-    ) -> GeneratedVirtualDependencies[T_CO_VirtualDependency]:
+    def generate(self) -> GeneratedVirtualDependencies[T_CO_VirtualDependency]:
         """
-        Generate a temporary folder containing the virtual dependencies on disk
+        Generate the virtual dependencies for this project
         """
 
 
@@ -356,17 +349,14 @@ class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency]):
         The virtual dependency items
         """
 
-    @property
-    def root_location(self) -> pathlib.Path:
-        """
-        The root folder the dependencies are in
-        """
-
-    def install(self, destination: pathlib.Path) -> None:
+    def install(self, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
         """
         Install the virtual dependencies into their destination.
 
-        Implementations should also clear out found reports that represent modules that don't exist anymore
+        Implementations should:
+
+        * Build the reports in the scratch root before installing in the final destination
+        * Clear out reports in the final destination that represent modules that don't exist anymore
         """
 
 
