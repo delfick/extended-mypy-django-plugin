@@ -21,8 +21,8 @@ T_CO_VirtualDependency = TypeVar(
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
+ModelMap = Mapping[ImportPath, "Model"]
 ModelModulesMap = Mapping[ImportPath, "Module"]
-DefinedModelsMap = Mapping[str, "Model"]
 SettingsTypesMap = Mapping[str, str]
 VirtualDependencyMap = Mapping[ImportPath, T_CO_VirtualDependency]
 DjangoField = Union["models.fields.Field[Any, Any]", "ForeignObjectRel", "GenericForeignKey"]
@@ -158,6 +158,12 @@ class Discovered(Protocol[T_Project]):
         """
 
     @property
+    def all_models(self) -> ModelMap:
+        """
+        A map of all the models in the project
+        """
+
+    @property
     def installed_apps(self) -> list[str]:
         """
         The value of the settings.INSTALLED_APPS setting.
@@ -188,7 +194,7 @@ class Module(Protocol, Hashable):
         """
 
     @property
-    def defined_models_by_name(self) -> DefinedModelsMap:
+    def defined_models(self) -> ModelMap:
         """
         A map of the installed models defined in this module
         """

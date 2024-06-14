@@ -27,14 +27,14 @@ class Module:
         return cls(
             installed=module is not None,
             import_path=import_path,
-            defined_models_by_name={
+            defined_models={
                 ImportPath.from_cls(model): model_creator(model=model) for model in models
             },
         )
 
     installed: bool
     import_path: protocols.ImportPath
-    defined_models_by_name: protocols.DefinedModelsMap
+    defined_models: protocols.ModelMap
 
 
 if TYPE_CHECKING:
