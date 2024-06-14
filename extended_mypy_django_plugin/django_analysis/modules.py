@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 from django.db import models
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, protocols
 
 
 class ModelCreator(Protocol):
@@ -28,10 +28,7 @@ class Module:
             installed=module is not None,
             import_path=import_path,
             defined_models_by_name={
-                protocols.ImportPath(f"{model.__module__}.{model.__qualname__}"): model_creator(
-                    model=model
-                )
-                for model in models
+                ImportPath.from_cls(model): model_creator(model=model) for model in models
             },
         )
 

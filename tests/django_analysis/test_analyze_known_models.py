@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from django.db import models
 
-from extended_mypy_django_plugin.django_analysis import discovery, protocols
+from extended_mypy_django_plugin.django_analysis import ImportPath, discovery, protocols
 
 
 class TestKnownModelsAnalyzer:
@@ -50,17 +50,16 @@ class TestKnownModelsAnalyzer:
         import djangoexample.relations1.models
         import djangoexample.relations2.models
 
-        IP = protocols.ImportPath
         expected = [
             Module(
                 installed=True,
-                import_path=IP("django.contrib.admin.models"),
+                import_path=ImportPath("django.contrib.admin.models"),
                 module=(mod := django.contrib.admin.models),
                 models=[mod.LogEntry],
             ),
             Module(
                 installed=True,
-                import_path=IP("django.contrib.auth.models"),
+                import_path=ImportPath("django.contrib.auth.models"),
                 module=(mod := django.contrib.auth.models),
                 models=[
                     mod.AbstractUser,
@@ -72,43 +71,43 @@ class TestKnownModelsAnalyzer:
             ),
             Module(
                 installed=True,
-                import_path=IP("django.contrib.contenttypes.models"),
+                import_path=ImportPath("django.contrib.contenttypes.models"),
                 module=(mod := django.contrib.contenttypes.models),
                 models=[mod.ContentType],
             ),
             Module(
                 installed=True,
-                import_path=IP("django.contrib.sessions.models"),
+                import_path=ImportPath("django.contrib.sessions.models"),
                 module=(mod := django.contrib.sessions.models),
                 models=[mod.Session],
             ),
             Module(
                 installed=True,
-                import_path=IP("djangoexample.exampleapp.models"),
+                import_path=ImportPath("djangoexample.exampleapp.models"),
                 module=(mod := djangoexample.exampleapp.models),
                 models=[mod.Parent, mod.Parent2, mod.Child1, mod.Child2, mod.Child3, mod.Child4],
             ),
             Module(
                 installed=True,
-                import_path=IP("djangoexample.exampleapp2.models"),
+                import_path=ImportPath("djangoexample.exampleapp2.models"),
                 module=(mod := djangoexample.exampleapp2.models),
                 models=[mod.ChildOther, mod.ChildOther2],
             ),
             Module(
                 installed=True,
-                import_path=IP("djangoexample.only_abstract.models"),
+                import_path=ImportPath("djangoexample.only_abstract.models"),
                 module=(mod := djangoexample.only_abstract.models),
                 models=[mod.AnAbstract],
             ),
             Module(
                 installed=True,
-                import_path=IP("djangoexample.relations1.models"),
+                import_path=ImportPath("djangoexample.relations1.models"),
                 module=(mod := djangoexample.relations1.models),
                 models=[mod.Abstract, mod.Child1, mod.Child2, mod.Concrete1, mod.Concrete2],
             ),
             Module(
                 installed=True,
-                import_path=IP("djangoexample.relations2.models"),
+                import_path=ImportPath("djangoexample.relations2.models"),
                 module=(mod := djangoexample.relations2.models),
                 models=[mod.Thing],
             ),
@@ -120,13 +119,13 @@ class TestKnownModelsAnalyzer:
             # # cannot import the models the annotations would be used with so this is fine
             # Module(
             #     installed=False,
-            #     import_path=IP("djangoexample.not_installed_only_abstract.models"),
+            #     import_path=ImportPath("djangoexample.not_installed_only_abstract.models"),
             #     module=None,
             #     models=[],
             # ),
             # Module(
             #     installed=False,
-            #     import_path=IP("djangoexample.not_installed_with_concrete.models"),
+            #     import_path=ImportPath("djangoexample.not_installed_with_concrete.models"),
             #     module=None,
             #     models=[],
             # ),

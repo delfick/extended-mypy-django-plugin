@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 from django.db import models
 
 from .. import protocols
+from .import_path import ImportPath
 
 
 class ModuleCreator(Protocol):
@@ -27,7 +28,7 @@ class DefaultInstalledModulesDiscovery:
     def __call__(self, loaded_project: protocols.LoadedProject, /) -> protocols.ModelModulesMap:
         found: dict[protocols.ImportPath, list[type[models.Model]]] = defaultdict(list)
         for concrete_model_cls in loaded_project.apps.get_models():
-            found[protocols.ImportPath(concrete_model_cls.__module__)].append(concrete_model_cls)
+            found[ImportPath.cls_module(concrete_model_cls)].append(concrete_model_cls)
 
         result: dict[protocols.ImportPath, protocols.Module] = {}
 
@@ -52,7 +53,7 @@ class DefaultInstalledModulesDiscovery:
                 return models_module  # type: ignore[no-any-return]
 
             if models_module := _compat_models_module_is_module_type(app.models_module):
-                import_path = protocols.ImportPath(models_module.__name__)
+                import_path = ImportPath.from_module(models_module)
                 if import_path not in result:
                     result[import_path] = self.module_creator(
                         import_path=import_path,

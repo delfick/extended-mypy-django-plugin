@@ -6,7 +6,7 @@ import functools
 import pytest
 from typing_extensions import Self
 
-from extended_mypy_django_plugin.django_analysis import Field, Model, Module, protocols
+from extended_mypy_django_plugin.django_analysis import Field, ImportPath, Model, Module, protocols
 
 
 @pytest.fixture(autouse=True)
@@ -24,12 +24,13 @@ class EmptyField:
     ) -> Self:
         return cls(model_import_path=model_import_path, field=field)
 
+    def __post_init__(self) -> None:
+        self.field_type = ImportPath.from_cls(self.field.__class__)
+
     model_import_path: protocols.ImportPath
     field: protocols.DjangoField
 
-    field_type: protocols.ImportPath = dataclasses.field(
-        default_factory=lambda: protocols.ImportPath("")
-    )
+    field_type: protocols.ImportPath = dataclasses.field(init=False)
     related_model: protocols.ImportPath | None = None
 
 
@@ -37,7 +38,7 @@ class TestModule:
     def test_interpreting_a_module(self) -> None:
         import djangoexample.exampleapp.models
 
-        module_import_path = protocols.ImportPath("djangoexample.exampleapp.models")
+        module_import_path = ImportPath("djangoexample.exampleapp.models")
 
         module = Module.create(
             model_creator=functools.partial(Model.create, field_creator=EmptyField.create),
@@ -50,7 +51,7 @@ class TestModule:
             Model(
                 model_name="Parent",
                 module_import_path=module_import_path,
-                import_path=(mip := protocols.ImportPath(f"{module_import_path}.Parent")),
+                import_path=(mip := ImportPath(f"{module_import_path}.Parent")),
                 is_abstract=True,
                 default_custom_queryset=None,
                 all_fields={
@@ -62,7 +63,7 @@ class TestModule:
             Model(
                 model_name="Child1",
                 module_import_path=module_import_path,
-                import_path=(mip := protocols.ImportPath(f"{module_import_path}.Child1")),
+                import_path=(mip := ImportPath(f"{module_import_path}.Child1")),
                 is_abstract=False,
                 default_custom_queryset=None,
                 all_fields={
@@ -81,7 +82,7 @@ class TestModule:
 
         assert module == Module(
             installed=True,
-            import_path=protocols.ImportPath("djangoexample.exampleapp.models"),
+            import_path=ImportPath("djangoexample.exampleapp.models"),
             defined_models_by_name={model.import_path: model for model in defined_models},
         )
 
@@ -95,9 +96,9 @@ class TestModel:
         expected = Model(
             model_name="Parent",
             module_import_path=(
-                module_import_path := protocols.ImportPath("djangoexample.exampleapp.models")
+                module_import_path := ImportPath("djangoexample.exampleapp.models")
             ),
-            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Parent")),
+            import_path=(mip := ImportPath(f"{module_import_path}.Parent")),
             is_abstract=True,
             default_custom_queryset=None,
             all_fields={
@@ -120,13 +121,11 @@ class TestModel:
         expected = Model(
             model_name="Child2",
             module_import_path=(
-                module_import_path := protocols.ImportPath("djangoexample.exampleapp.models")
+                module_import_path := ImportPath("djangoexample.exampleapp.models")
             ),
-            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Child2")),
+            import_path=(mip := ImportPath(f"{module_import_path}.Child2")),
             is_abstract=False,
-            default_custom_queryset=protocols.ImportPath(
-                "djangoexample.exampleapp.models.Child2QuerySet"
-            ),
+            default_custom_queryset=ImportPath("djangoexample.exampleapp.models.Child2QuerySet"),
             all_fields={
                 "id": EmptyField(model_import_path=mip, field=mod.Child2._meta.get_field("id")),
                 "one": EmptyField(model_import_path=mip, field=mod.Child2._meta.get_field("one")),
@@ -155,9 +154,9 @@ class TestModel:
         expected = Model(
             model_name="Child1",
             module_import_path=(
-                module_import_path := protocols.ImportPath("djangoexample.exampleapp.models")
+                module_import_path := ImportPath("djangoexample.exampleapp.models")
             ),
-            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Child1")),
+            import_path=(mip := ImportPath(f"{module_import_path}.Child1")),
             is_abstract=False,
             default_custom_queryset=None,
             all_fields={
@@ -182,9 +181,9 @@ class TestModel:
         expected = Model(
             model_name="Concrete1",
             module_import_path=(
-                module_import_path := protocols.ImportPath("djangoexample.relations1.models")
+                module_import_path := ImportPath("djangoexample.relations1.models")
             ),
-            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Concrete1")),
+            import_path=(mip := ImportPath(f"{module_import_path}.Concrete1")),
             is_abstract=False,
             default_custom_queryset=None,
             all_fields={
@@ -213,9 +212,9 @@ class TestModel:
         expected = Model(
             model_name="Concrete2",
             module_import_path=(
-                module_import_path := protocols.ImportPath("djangoexample.relations1.models")
+                module_import_path := ImportPath("djangoexample.relations1.models")
             ),
-            import_path=(mip := protocols.ImportPath(f"{module_import_path}.Concrete2")),
+            import_path=(mip := ImportPath(f"{module_import_path}.Concrete2")),
             is_abstract=False,
             default_custom_queryset=None,
             all_fields={
@@ -248,15 +247,13 @@ class TestField:
         mod = djangoexample.exampleapp.models
 
         field = Field.create(
-            model_import_path=(
-                mip := protocols.ImportPath("djangoexample.exampleapp.models.Child2")
-            ),
+            model_import_path=(mip := ImportPath("djangoexample.exampleapp.models.Child2")),
             field=mod.Child2._meta.get_field("one"),
         )
 
         assert field == Field(
             model_import_path=mip,
-            field_type=protocols.ImportPath("django.db.models.fields.CharField"),
+            field_type=ImportPath("django.db.models.fields.CharField"),
             related_model=None,
         )
 
@@ -266,16 +263,14 @@ class TestField:
         mod = djangoexample.relations1.models
 
         field = Field.create(
-            model_import_path=(
-                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete1")
-            ),
+            model_import_path=(mip := ImportPath("djangoexample.relations1.models.Concrete1")),
             field=mod.Concrete1._meta.fields_map["thing"],
         )
 
         assert field == Field(
             model_import_path=mip,
-            field_type=protocols.ImportPath("django.db.models.fields.reverse_related.OneToOneRel"),
-            related_model=protocols.ImportPath("djangoexample.relations2.models.Thing"),
+            field_type=ImportPath("django.db.models.fields.reverse_related.OneToOneRel"),
+            related_model=ImportPath("djangoexample.relations2.models.Thing"),
         )
 
     def test_it_can_see_many_to_many_relations(self) -> None:
@@ -284,16 +279,14 @@ class TestField:
         mod = djangoexample.relations1.models
 
         field = Field.create(
-            model_import_path=(
-                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
-            ),
+            model_import_path=(mip := ImportPath("djangoexample.relations1.models.Concrete2")),
             field=mod.Concrete2._meta.get_field("children"),
         )
 
         assert field == Field(
             model_import_path=mip,
-            field_type=protocols.ImportPath("django.db.models.fields.related.ManyToManyField"),
-            related_model=protocols.ImportPath("djangoexample.relations1.models.Child1"),
+            field_type=ImportPath("django.db.models.fields.related.ManyToManyField"),
+            related_model=ImportPath("djangoexample.relations1.models.Child1"),
         )
 
     def test_it_can_see_many_to_many_relations_hidden_field(self) -> None:
@@ -302,17 +295,13 @@ class TestField:
         mod = djangoexample.relations1.models
 
         field = Field.create(
-            model_import_path=(
-                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
-            ),
+            model_import_path=(mip := ImportPath("djangoexample.relations1.models.Concrete2")),
             field=mod.Concrete2._meta.fields_map["Concrete2_children+"],
         )
 
         assert field == Field(
             model_import_path=mip,
-            field_type=protocols.ImportPath(
-                "django.db.models.fields.reverse_related.ManyToOneRel"
-            ),
+            field_type=ImportPath("django.db.models.fields.reverse_related.ManyToOneRel"),
             # Empty because it refers to a many to many model class that doesn't exist
             related_model=None,
         )
@@ -323,14 +312,12 @@ class TestField:
         mod = djangoexample.relations1.models
 
         field = Field.create(
-            model_import_path=(
-                mip := protocols.ImportPath("djangoexample.relations1.models.Concrete2")
-            ),
+            model_import_path=(mip := ImportPath("djangoexample.relations1.models.Concrete2")),
             field=mod.Concrete2._meta.get_field("concrete1"),
         )
 
         assert field == Field(
             model_import_path=mip,
-            field_type=protocols.ImportPath("django.db.models.fields.related.ForeignKey"),
-            related_model=protocols.ImportPath("djangoexample.relations1.models.Concrete1"),
+            field_type=ImportPath("django.db.models.fields.related.ForeignKey"),
+            related_model=ImportPath("djangoexample.relations1.models.Concrete1"),
         )
