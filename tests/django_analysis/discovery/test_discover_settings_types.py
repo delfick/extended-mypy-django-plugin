@@ -1,7 +1,7 @@
 from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
 
 
-class TestSettingsTypesAnalyzer:
+class TestSettingsTypesDiscovery:
     def test_it_looks_at_values_to_determine_types(
         self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:

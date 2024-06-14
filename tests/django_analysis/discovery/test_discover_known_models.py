@@ -17,7 +17,7 @@ from extended_mypy_django_plugin.django_analysis import (
 )
 
 
-class TestKnownModelsAnalyzer:
+class TestKnownModelsDiscovery:
     def test_it_finds_modules_that_have_models(
         self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:
