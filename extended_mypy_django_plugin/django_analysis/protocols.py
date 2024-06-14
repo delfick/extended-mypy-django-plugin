@@ -301,12 +301,6 @@ class Field(Protocol):
 
 
 class VirtualDependencyNamer(Protocol):
-    @property
-    def namespace(self) -> str:
-        """
-        The import namespace for virtual dependencies
-        """
-
     def __call__(self, module: ImportPath, /) -> ImportPath:
         """
         Return a deterministically determined name representing this module import path
@@ -319,7 +313,12 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     """
 
     def __call__(
-        self, *, discovered_project: Discovered[T_Project], module: Module
+        self,
+        *,
+        discovered_project: Discovered[T_Project],
+        module: Module,
+        hasher: Hasher,
+        virtual_dependency_namer: VirtualDependencyNamer,
     ) -> T_CO_VirtualDependency: ...
 
 
@@ -397,9 +396,9 @@ class VirtualDependencySummary(Protocol):
         """
 
     @property
-    def deps_hash(self) -> str | None:
+    def significant_objects_hash(self) -> str | None:
         """
-        The hash of the related modules/models if this module is part of the installed apps
+        The hash of the related models/querysets if this module is part of the installed apps
         """
 
 
@@ -415,9 +414,11 @@ class VirtualDependency(Protocol):
         """
 
     @property
-    def interface_differentiator(self) -> str:
+    def interface_differentiator(self) -> str | None:
         """
         A string used to change the public interface of this virtual dependency
+
+        Should be None when the module isn't installed
         """
 
     @property

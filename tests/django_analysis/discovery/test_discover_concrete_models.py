@@ -37,7 +37,9 @@ class TestConcreteModelsDiscovery:
                 mod2.ChildOther2,
             ]
         }
-        concrete_models = discovery.ConcreteModelsDiscovery()(loaded_django_example, all_models)
+        concrete_models = discovery.ConcreteModelsDiscovery[Project]()(
+            loaded_django_example, all_models
+        )
 
         assert concrete_models == {
             ImportPath.from_cls(mod.Parent): [

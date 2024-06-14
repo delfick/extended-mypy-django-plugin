@@ -34,3 +34,10 @@ def loaded_django_example() -> protocols.Loaded[Project]:
         env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
     )
     return project.load_project()
+
+
+@pytest.fixture(scope="session")
+def discovered_django_example(
+    loaded_django_example: protocols.Loaded[Project],
+) -> protocols.Discovered[Project]:
+    return loaded_django_example.perform_discovery()
