@@ -29,6 +29,7 @@ def loaded_django_example() -> protocols.Loaded[Project]:
                 module_creator=module_creator
             ),
             discover_settings_types=discovery.NaiveSettingsTypesDiscovery(),
+            discover_concrete_models=discovery.ConcreteModelsDiscovery(),
         ),
         env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
     )

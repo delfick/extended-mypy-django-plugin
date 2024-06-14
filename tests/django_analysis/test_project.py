@@ -52,7 +52,7 @@ class TestReplacedEnvVarsAndSysPath:
 
 
 class TestProject:
-    def test_getting_an_analyzed_project(
+    def test_getting_an_discovered_project(
         self, pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """
@@ -115,6 +115,12 @@ class TestProject:
                 ) -> protocols.ModelModulesMap:
                     return {fake_module.import_path: fake_module}
 
+                def discover_concrete_models(
+                    self, loaded_project: protocols.Loaded[Project], models: protocols.ModelMap, /
+                ) -> protocols.ConcreteModelsMap:
+                    assert models == {fake_model.import_path: fake_model}
+                    return {fake_model.import_path: [fake_model]}
+
             if TYPE_CHECKING:
                 _sta: protocols.Discovery[Project] = cast(Discovery, None)
 
@@ -158,6 +164,7 @@ class TestProject:
                 fake_module.import_path: fake_module
             }
             assert discovered_project.all_models == {fake_model.import_path: fake_model}
+            assert discovered_project.concrete_models == {fake_model.import_path: [fake_model]}
 
         test_content = (
             "from extended_mypy_django_plugin.django_analysis import protocols, ImportPath"

@@ -23,6 +23,7 @@ ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
 ModelMap = Mapping[ImportPath, "Model"]
 ModelModulesMap = Mapping[ImportPath, "Module"]
+ConcreteModelsMap = Mapping[ImportPath, Sequence["Model"]]
 SettingsTypesMap = Mapping[str, str]
 VirtualDependencyMap = Mapping[ImportPath, T_CO_VirtualDependency]
 DjangoField = Union["models.fields.Field[Any, Any]", "ForeignObjectRel", "GenericForeignKey"]
@@ -51,6 +52,16 @@ class InstalledModelsDiscovery(Protocol[T_Project]):
     def __call__(self, loaded_project: Loaded[T_Project], /) -> ModelModulesMap: ...
 
 
+class ConcreteModelsDiscovery(Protocol[T_Project]):
+    """
+    Used to determine concrete models
+    """
+
+    def __call__(
+        self, loaded_project: Loaded[T_Project], all_models: ModelMap, /
+    ) -> ConcreteModelsMap: ...
+
+
 class Discovery(Protocol[T_Project]):
     """
     A container for all the different discovery helpers
@@ -66,6 +77,12 @@ class Discovery(Protocol[T_Project]):
     def discover_installed_models(self) -> InstalledModelsDiscovery[T_Project]:
         """
         Used to discover installed modules containing Django ORM models
+        """
+
+    @property
+    def discover_concrete_models(self) -> ConcreteModelsDiscovery[T_Project]:
+        """
+        Used to determine the concrete models for any model
         """
 
 
@@ -173,6 +190,12 @@ class Discovered(Protocol[T_Project]):
     def settings_types(self) -> SettingsTypesMap:
         """
         All the django settings and a string representation of their type
+        """
+
+    @property
+    def concrete_models(self) -> ConcreteModelsMap:
+        """
+        The map of models to their concrete equivalent
         """
 
 
@@ -410,7 +433,7 @@ class VirtualDependency(Protocol):
         """
 
     @property
-    def concrete_annotations(self) -> Mapping[ImportPath, Sequence[Model]]:
+    def concrete_models(self) -> ConcreteModelsMap:
         """
         The models known by this module and their concrete children
         """
@@ -426,6 +449,7 @@ if TYPE_CHECKING:
     P_Discovery = Discovery[P_Project]
     P_Discovered = Discovered[P_Project]
     P_SettingsTypesDiscovery = SettingsTypesDiscovery[P_Project]
+    P_ConcreteModelsDiscovery = ConcreteModelsDiscovery[P_Project]
     P_InstalledModelsDiscovery = InstalledModelsDiscovery[P_Project]
 
     P_VirtualDependency = VirtualDependency

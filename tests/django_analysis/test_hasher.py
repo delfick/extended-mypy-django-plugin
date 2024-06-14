@@ -9,10 +9,14 @@ tests_dir = pathlib.Path(__file__).parent.parent
 class TestAdler32Hash:
     def test_it_creates_a_consistent_hash(self) -> None:
         found: dict[str, str] = {}
+        contents: set[bytes] = set()
         for root, _, files in os.walk(tests_dir):
             for name in files:
                 made: set[str] = set()
                 content = (pathlib.Path(root) / name).read_bytes()
+                if content in contents:
+                    continue
+                contents.add(content)
 
                 for i in range(10):
                     made.add(hasher.adler32_hash(*content.splitlines()))
