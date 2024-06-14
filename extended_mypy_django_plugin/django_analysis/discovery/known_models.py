@@ -21,7 +21,7 @@ class ModuleCreator(Protocol):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class KnownModelsAnalyzer:
+class DefaultInstalledModulesDiscovery:
     module_creator: ModuleCreator
 
     def __call__(self, loaded_project: protocols.LoadedProject, /) -> protocols.ModelModulesMap:
@@ -76,4 +76,4 @@ class KnownModelsAnalyzer:
 
 
 if TYPE_CHECKING:
-    _KMA: protocols.KnownModelsAnalayzer = cast(KnownModelsAnalyzer, None)
+    _KMA: protocols.InstalledModelsDiscovery = cast(DefaultInstalledModulesDiscovery, None)

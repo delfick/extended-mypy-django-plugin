@@ -28,37 +28,37 @@ class Hasher(Protocol):
         """
 
 
-class SettingsTypesAnalyzer(Protocol):
+class SettingsTypesDiscovery(Protocol):
     """
-    Used determine the Django settings and their types in a Django project
+    Used to discovery the names and types of settings from a loaded project
     """
 
     def __call__(self, loaded_project: LoadedProject, /) -> SettingsTypesMap: ...
 
 
-class KnownModelsAnalayzer(Protocol):
+class InstalledModelsDiscovery(Protocol):
     """
-    Used Find and analyze the known models in a Django project
+    Used to discover installed modules containing Django ORM models in a loaded project
     """
 
     def __call__(self, loaded_project: LoadedProject, /) -> ModelModulesMap: ...
 
 
-class Analyzers(Protocol):
+class Discovery(Protocol):
     """
-    A container for all the different analyzers
+    A container for all the different discovery helpers
     """
 
     @property
-    def analyze_settings_types(self) -> SettingsTypesAnalyzer:
+    def discover_settings_types(self) -> SettingsTypesDiscovery:
         """
-        Used to analyze the settings types in a django project
+        Used to discover settings names and their types
         """
 
     @property
-    def analyze_known_models(self) -> KnownModelsAnalayzer:
+    def discover_installed_models(self) -> InstalledModelsDiscovery:
         """
-        Used to analyze the django orm models in a Django project
+        Used to discover installed modules containing Django ORM models
         """
 
 
@@ -143,13 +143,13 @@ class LoadedProject(Protocol):
         The instantiated Django apps registry
         """
 
-    def analyze_project(self) -> AnalyzedProject:
+    def perform_discovery(self) -> DiscoveredProject:
         """
-        Perform analysis on the loaded django project
+        Perform discovery of important information from the loaded Django project
         """
 
 
-class AnalyzedProject(Protocol):
+class DiscoveredProject(Protocol):
     @property
     def loaded_project(self) -> LoadedProject:
         """
@@ -157,13 +157,7 @@ class AnalyzedProject(Protocol):
         """
 
     @property
-    def hasher(self) -> Hasher:
-        """
-        An object for creating hashes from strings
-        """
-
-    @property
-    def known_model_modules(self) -> ModelModulesMap:
+    def installed_models_modules(self) -> ModelModulesMap:
         """
         The known modules that contain installed Django Models
         """
@@ -296,9 +290,9 @@ class VirtualDependencyCreator(Protocol):
     """
 
     @property
-    def analyzed_project(self) -> AnalyzedProject:
+    def discovered_project(self) -> DiscoveredProject:
         """
-        The analyzed project dependencies are being made for
+        The project with discovered information
         """
 
     @property
@@ -393,12 +387,12 @@ if TYPE_CHECKING:
     P_Module = Module
     P_Hasher = Hasher
     P_Project = Project
-    P_Analyzers = Analyzers
+    P_Discovery = Discovery
     P_LoadedProject = LoadedProject
-    P_AnalyzedProject = AnalyzedProject
+    P_DiscoveredProject = DiscoveredProject
     P_VirtualDependency = VirtualDependency
-    P_KnownModelsAnalayzer = KnownModelsAnalayzer
-    P_SettingsTypesAnalyzer = SettingsTypesAnalyzer
+    P_InstalledModelsDiscovery = InstalledModelsDiscovery
+    P_SettingsTypesDiscovery = SettingsTypesDiscovery
     P_VirtualDependencyNamer = VirtualDependencyNamer
     P_VirtualDependencySummary = VirtualDependencySummary
     P_VirtualDependencyCreator = VirtualDependencyCreator

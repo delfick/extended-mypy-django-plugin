@@ -96,8 +96,8 @@ class TestProject:
 
             fake_module: protocols.Module = FakeModule()
 
-            class Analyzers:
-                def analyze_settings_types(
+            class Discovery:
+                def discover_settings_types(
                     self, loaded_project: protocols.LoadedProject, /
                 ) -> protocols.SettingsTypesMap:
                     assert (
@@ -106,25 +106,25 @@ class TestProject:
                     )
                     return {"not": "accurate"}
 
-                def analyze_known_models(
+                def discover_installed_models(
                     self, loaded_project: protocols.LoadedProject, /
                 ) -> protocols.ModelModulesMap:
                     return {fake_module.import_path: fake_module}
 
             if TYPE_CHECKING:
-                _sta: protocols.Analyzers = cast(Analyzers, None)
+                _sta: protocols.Discovery = cast(Discovery, None)
 
             root_dir = pathlib.Path(os.environ["PROJECT_ROOT"]) / "example"
             project = Project(
                 root_dir=root_dir,
                 hasher=_hasher,
                 additional_sys_path=[str(root_dir)],
-                analyzers=Analyzers(),
+                discovery=Discovery(),
                 env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
             )
 
             with project.instantiate_django() as loaded_project:
-                analyzed_project = loaded_project.analyze_project()
+                discovered_project = loaded_project.perform_discovery()
 
             assert loaded_project.root_dir == root_dir
             assert loaded_project.hasher is _hasher
@@ -136,9 +136,8 @@ class TestProject:
             )
             assert isinstance(loaded_project.apps, Apps)
 
-            assert analyzed_project.loaded_project is loaded_project
-            assert analyzed_project.hasher is _hasher
-            assert analyzed_project.installed_apps == [
+            assert discovered_project.loaded_project is loaded_project
+            assert discovered_project.installed_apps == [
                 "django.contrib.admin",
                 "django.contrib.auth",
                 "django.contrib.contenttypes",
@@ -152,8 +151,10 @@ class TestProject:
                 "djangoexample.relations1",
                 "djangoexample.relations2",
             ]
-            assert analyzed_project.settings_types == {"not": "accurate"}
-            assert analyzed_project.known_model_modules == {fake_module.import_path: fake_module}
+            assert discovered_project.settings_types == {"not": "accurate"}
+            assert discovered_project.installed_models_modules == {
+                fake_module.import_path: fake_module
+            }
 
         test_content = (
             "from extended_mypy_django_plugin.django_analysis import protocols"

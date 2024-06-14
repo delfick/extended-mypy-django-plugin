@@ -68,7 +68,7 @@ class Project:
     env_vars: Mapping[str, str]
     hasher: protocols.Hasher
 
-    analyzers: protocols.Analyzers
+    discovery: protocols.Discovery
 
     @contextlib.contextmanager
     def setup_sys_path_and_env_vars(self) -> Iterator[None]:
@@ -96,7 +96,7 @@ class Project:
                 env_vars=self.env_vars,
                 settings=settings,
                 apps=apps,
-                analyzers=self.analyzers,
+                discovery=self.discovery,
             )
 
     def load_project(self) -> protocols.LoadedProject:
@@ -112,29 +112,29 @@ class LoadedProject:
     apps: Apps
     hasher: protocols.Hasher
 
-    analyzers: protocols.Analyzers
+    discovery: protocols.Discovery
 
-    def analyze_project(self) -> protocols.AnalyzedProject:
-        return AnalyzedProject(
+    def perform_discovery(self) -> protocols.DiscoveredProject:
+        return DiscoveredProject(
             hasher=self.hasher,
             loaded_project=self,
             installed_apps=self.settings.INSTALLED_APPS,
-            settings_types=self.analyzers.analyze_settings_types(self),
-            known_model_modules=self.analyzers.analyze_known_models(self),
+            settings_types=self.discovery.discover_settings_types(self),
+            installed_models_modules=self.discovery.discover_installed_models(self),
         )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class AnalyzedProject:
+class DiscoveredProject:
     hasher: protocols.Hasher
     loaded_project: LoadedProject
 
     installed_apps: list[str]
     settings_types: protocols.SettingsTypesMap
-    known_model_modules: protocols.ModelModulesMap
+    installed_models_modules: protocols.ModelModulesMap
 
 
 if TYPE_CHECKING:
     _P: protocols.Project = cast(Project, None)
     _LP: protocols.LoadedProject = cast(LoadedProject, None)
-    _AP: protocols.AnalyzedProject = cast(AnalyzedProject, None)
+    _AP: protocols.DiscoveredProject = cast(DiscoveredProject, None)
