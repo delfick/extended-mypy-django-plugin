@@ -13,18 +13,22 @@ class VirtualDependencyFolder(Generic[protocols.T_Project, protocols.T_CO_Virtua
         protocols.T_Project, protocols.T_CO_VirtualDependency
     ]
 
-    def generate(
-        self, scratch_root: pathlib.Path
-    ) -> protocols.GeneratedVirtualDependencies[protocols.T_CO_VirtualDependency]:
-        return GeneratedVirtualDependencies(virtual_dependencies={}, root_location=scratch_root)
+    def generate(self) -> protocols.GeneratedVirtualDependencies[protocols.T_CO_VirtualDependency]:
+        return GeneratedVirtualDependencies(
+            virtual_dependencies={
+                import_path: self.virtual_dependency_maker(
+                    discovered_project=self.discovered_project, module=module
+                )
+                for import_path, module in self.discovered_project.installed_models_modules.items()
+            }
+        )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class GeneratedVirtualDependencies(Generic[protocols.T_CO_VirtualDependency]):
     virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_CO_VirtualDependency]
-    root_location: pathlib.Path
 
-    def install(self, destination: pathlib.Path) -> None:
+    def install(self, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
         pass
 
 
