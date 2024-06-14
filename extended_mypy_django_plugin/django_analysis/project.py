@@ -67,7 +67,6 @@ class Project:
     root_dir: pathlib.Path
     additional_sys_path: Sequence[str]
     env_vars: Mapping[str, str]
-    hasher: protocols.Hasher
 
     discovery: protocols.Discovery[Self]
 
@@ -93,7 +92,6 @@ class Project:
 
             yield Loaded(
                 root_dir=self.root_dir,
-                hasher=self.hasher,
                 env_vars=self.env_vars,
                 settings=settings,
                 apps=apps,
@@ -111,13 +109,11 @@ class Loaded(Generic[protocols.T_Project]):
     env_vars: Mapping[str, str]
     settings: LazySettings
     apps: Apps
-    hasher: protocols.Hasher
 
     discovery: protocols.Discovery[protocols.T_Project]
 
     def perform_discovery(self) -> protocols.Discovered[protocols.T_Project]:
         return Discovered(
-            hasher=self.hasher,
             loaded_project=self,
             installed_apps=self.settings.INSTALLED_APPS,
             settings_types=self.discovery.discover_settings_types(self),
@@ -127,7 +123,6 @@ class Loaded(Generic[protocols.T_Project]):
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Discovered(Generic[protocols.T_Project]):
-    hasher: protocols.Hasher
     loaded_project: Loaded[protocols.T_Project]
 
     installed_apps: list[str]
