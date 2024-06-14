@@ -5,7 +5,7 @@ from .. import protocols
 
 
 @dataclasses.dataclass
-class SettingsTypesAnalyzer:
+class NaiveSettingsTypesDiscovery:
     """
     The default implementation is a little naive and is only able to rely on inspecting
     the values on the settings object.
@@ -19,10 +19,15 @@ class SettingsTypesAnalyzer:
             if name.startswith("_") or not name.isupper():
                 continue
 
-            result[name] = str(type(getattr(settings, name)))
+            result[name] = self.type_from_setting(loaded_project, name, getattr(settings, name))
 
         return result
 
+    def type_from_setting(
+        self, loaded_project: protocols.LoadedProject, name: str, value: object
+    ) -> str:
+        return str(type(value))
+
 
 if TYPE_CHECKING:
-    _STA: protocols.SettingsTypesAnalyzer = cast(SettingsTypesAnalyzer, None)
+    _STA: protocols.SettingsTypesDiscovery = cast(NaiveSettingsTypesDiscovery, None)

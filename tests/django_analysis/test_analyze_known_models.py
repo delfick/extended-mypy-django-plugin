@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from django.db import models
 
-from extended_mypy_django_plugin.django_analysis import analyzers, protocols
+from extended_mypy_django_plugin.django_analysis import discovery, protocols
 
 
 class TestKnownModelsAnalyzer:
@@ -36,7 +36,7 @@ class TestKnownModelsAnalyzer:
                 default_factory=dict
             )
 
-        known_modules = analyzers.KnownModelsAnalyzer(module_creator=Module.create)(
+        known_modules = discovery.DefaultInstalledModulesDiscovery(module_creator=Module.create)(
             loaded_django_example
         )
 
