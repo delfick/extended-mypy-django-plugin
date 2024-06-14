@@ -113,11 +113,18 @@ class Loaded(Generic[protocols.T_Project]):
     discovery: protocols.Discovery[protocols.T_Project]
 
     def perform_discovery(self) -> protocols.Discovered[protocols.T_Project]:
+        installed_models_modules = self.discovery.discover_installed_models(self)
+
+        all_models: dict[protocols.ImportPath, protocols.Model] = {}
+        for module in installed_models_modules.values():
+            all_models.update(module.defined_models)
+
         return Discovered(
             loaded_project=self,
+            all_models=all_models,
             installed_apps=self.settings.INSTALLED_APPS,
             settings_types=self.discovery.discover_settings_types(self),
-            installed_models_modules=self.discovery.discover_installed_models(self),
+            installed_models_modules=installed_models_modules,
         )
 
 
@@ -125,6 +132,7 @@ class Loaded(Generic[protocols.T_Project]):
 class Discovered(Generic[protocols.T_Project]):
     loaded_project: Loaded[protocols.T_Project]
 
+    all_models: protocols.ModelMap
     installed_apps: list[str]
     settings_types: protocols.SettingsTypesMap
     installed_models_modules: protocols.ModelModulesMap

@@ -3,6 +3,7 @@ import os
 import pathlib
 import sys
 import textwrap
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -62,7 +63,6 @@ class TestProject:
             import dataclasses
             import os
             import pathlib
-            from collections.abc import Set
             from typing import cast
 
             from django.apps.registry import Apps
@@ -71,20 +71,33 @@ class TestProject:
             from extended_mypy_django_plugin.django_analysis import Project
 
             @dataclasses.dataclass(frozen=True, kw_only=True)
-            class FakeModule:
-                virtual_dependency_import_path: protocols.ImportPath = dataclasses.field(
-                    default_factory=lambda: ImportPath("virtual")
+            class FakeModel:
+                model_name: str = "MyModel"
+                module_import_path: protocols.ImportPath = dataclasses.field(
+                    default_factory=lambda: ImportPath("fake.model")
                 )
+                import_path: protocols.ImportPath = dataclasses.field(
+                    default_factory=lambda: ImportPath("fake.model.MyModel")
+                )
+                is_abstract: bool = False
+                default_custom_queryset: protocols.ImportPath | None = None
+                all_fields: protocols.FieldsMap = dataclasses.field(default_factory=dict)
+                models_in_mro: Sequence[protocols.ImportPath] = dataclasses.field(
+                    default_factory=list
+                )
+
+            @dataclasses.dataclass(frozen=True, kw_only=True)
+            class FakeModule:
                 installed: bool = True
                 import_path: protocols.ImportPath = dataclasses.field(
                     default_factory=lambda: ImportPath("somewhere")
                 )
-                defined_models_by_name: protocols.DefinedModelsMap = dataclasses.field(
-                    default_factory=dict
+                defined_models: protocols.ModelMap = dataclasses.field(
+                    default_factory=lambda: {fake_model.import_path: fake_model}
                 )
-                related_modules: Set[protocols.Module] = dataclasses.field(default_factory=set)
                 models_hash: str = ""
 
+            fake_model: protocols.Model = FakeModel()
             fake_module: protocols.Module = FakeModule()
 
             class Discovery:
@@ -144,11 +157,14 @@ class TestProject:
             assert discovered_project.installed_models_modules == {
                 fake_module.import_path: fake_module
             }
+            assert discovered_project.all_models == {fake_model.import_path: fake_model}
 
         test_content = (
             "from extended_mypy_django_plugin.django_analysis import protocols, ImportPath"
             + "\n"
             + "from typing import TYPE_CHECKING"
+            + "\n"
+            + "from collections.abc import Sequence"
             + "\n\n"
             + textwrap.dedent(inspect.getsource(test_getting_project))
         )
