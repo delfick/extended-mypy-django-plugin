@@ -28,7 +28,9 @@ class VirtualDependencyFolder(Generic[protocols.T_Project, protocols.T_CO_Virtua
 class GeneratedVirtualDependencies(Generic[protocols.T_CO_VirtualDependency]):
     virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_CO_VirtualDependency]
 
-    def install(self, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
+    def install(
+        self, *, scratch_root: pathlib.Path, destination: pathlib.Path, hasher: protocols.Hasher
+    ) -> None:
         pass
 
 
