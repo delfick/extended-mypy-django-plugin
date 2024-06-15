@@ -523,6 +523,27 @@ class VirtualDependencyScribeMaker(Protocol[T_VirtualDependency, T_CO_Report]):
     ) -> VirtualDependencyScribe[T_VirtualDependency, T_CO_Report]: ...
 
 
+class ReportInstaller(Protocol):
+    """
+    Used to write reports to the file system
+    """
+
+    def write_report(
+        self, *, scratch_root: pathlib.Path, virtual_import_path: ImportPath, content: str
+    ) -> None:
+        """
+        Write a single report to the scratch path
+        """
+
+    def install_reports(self, scratch_path: pathlib.Path, destination: pathlib.Path) -> None:
+        """
+        Copy reports from scratch_path into the destination when the reports on the destination
+        are different to the reports in the scratch path.
+
+        Also, delete redundant reports from destination
+        """
+
+
 class ReportCombiner(Protocol[T_CO_Report]):
     """
     Used to combine many reports into one
@@ -565,6 +586,7 @@ if TYPE_CHECKING:
     P_VirtualDependency = VirtualDependency
 
     P_ReportMaker = ReportMaker[P_Report]
+    P_ReportInstaller = ReportInstaller
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
     P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
