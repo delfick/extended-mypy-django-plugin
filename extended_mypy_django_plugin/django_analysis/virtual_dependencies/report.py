@@ -18,14 +18,22 @@ class Report:
     related_report_import_paths: Mapping[protocols.ImportPath, Sequence[protocols.ImportPath]]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class WrittenVirtualDependency(Generic[protocols.T_Report]):
+    content: str
+    summary_hash: str | None
+    report: protocols.T_Report
+    virtual_import_path: protocols.ImportPath
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class VirtualDependencyScribe(Generic[protocols.T_Project, protocols.T_Report]):
     hasher: protocols.Hasher
     report_maker: protocols.ReportMaker[protocols.T_Report]
     discovered_project: protocols.Discovered[protocols.T_Project]
     virtual_dependency: dependency.VirtualDependency[protocols.T_Project]
 
-    def generate_report(self) -> tuple[str, protocols.T_Report, protocols.ImportPath]:
+    def generate_report(self) -> WrittenVirtualDependency[protocols.T_Report]:
         report = self.report_maker(
             concrete_annotations={},
             concrete_querysets={},
@@ -33,7 +41,9 @@ class VirtualDependencyScribe(Generic[protocols.T_Project, protocols.T_Report]):
             related_report_import_paths={},
         )
         virtual_import_path = report.report_import_path[self.virtual_dependency.module.import_path]
-        return "", report, virtual_import_path
+        return WrittenVirtualDependency(
+            content="", summary_hash="", report=report, virtual_import_path=virtual_import_path
+        )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -70,11 +80,12 @@ class ReportInstaller:
         *,
         scratch_root: pathlib.Path,
         virtual_import_path: protocols.ImportPath,
+        summary_hash: str | None,
         content: str,
     ) -> None:
         pass
 
-    def install_reports(self, scratch_path: pathlib.Path, destination: pathlib.Path) -> None:
+    def install_reports(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
         pass
 
 
@@ -114,8 +125,12 @@ if TYPE_CHECKING:
     C_ReportCombiner = ReportCombiner[C_Report]
     C_ReportInstaller = ReportInstaller
     C_VirtualDependencyScribe = VirtualDependencyScribe[project.C_Project, C_Report]
+    C_WrittenVirtualDependency = WrittenVirtualDependency
 
     _R: protocols.Report = cast(Report, None)
+    _WVD: protocols.WrittenVirtualDependency[protocols.P_Report] = cast(
+        WrittenVirtualDependency[protocols.P_Report], None
+    )
     _RM: protocols.P_VirtualDependencyScribe = cast(
         VirtualDependencyScribe[protocols.P_Project, protocols.P_Report], None
     )
@@ -129,3 +144,6 @@ if TYPE_CHECKING:
         ReportFactory[project.C_Project, dependency.C_VirtualDependency, C_Report], None
     )
     _CRM: protocols.ReportMaker[C_Report] = Report
+    _CWVD: protocols.WrittenVirtualDependency[C_Report] = cast(
+        WrittenVirtualDependency[C_Report], None
+    )
