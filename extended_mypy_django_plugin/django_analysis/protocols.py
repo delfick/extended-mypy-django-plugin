@@ -320,41 +320,27 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     ) -> T_CO_VirtualDependency: ...
 
 
-class VirtualDependencyGenerator(Protocol[T_Project, T_CO_VirtualDependency]):
+class VirtualDependencyGenerator(Protocol[T_Project, T_CO_VirtualDependency, T_CO_Report]):
     """
     Object that generates the objects representing the virtual dependencies
     """
 
-    @property
-    def discovered_project(self) -> Discovered[T_Project]:
-        """
-        The project with discovered information
-        """
-
-    @property
-    def virtual_dependency_maker(
-        self,
-    ) -> VirtualDependencyMaker[T_Project, T_CO_VirtualDependency]:
-        """
-        Used to generate a virtual dependency for a module
-        """
-
-    def generate(self) -> GeneratedVirtualDependencies[T_CO_VirtualDependency]:
+    def __call__(
+        self, *, discovered_project: Discovered[T_Project]
+    ) -> GeneratedVirtualDependencies[T_CO_VirtualDependency, T_CO_Report]:
         """
         Generate the virtual dependencies for this project
         """
 
 
-class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency]):
+class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency, T_CO_Report]):
     @property
     def virtual_dependencies(self) -> VirtualDependencyMap[T_CO_VirtualDependency]:
         """
         The virtual dependency items
         """
 
-    def install(
-        self, *, scratch_root: pathlib.Path, destination: pathlib.Path, hasher: Hasher
-    ) -> None:
+    def install(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> T_CO_Report:
         """
         Install the virtual dependencies into their destination.
 
@@ -615,6 +601,8 @@ if TYPE_CHECKING:
 
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
-    P_VirtualDependencyGenerator = VirtualDependencyGenerator[P_Project, P_VirtualDependency]
+    P_VirtualDependencyGenerator = VirtualDependencyGenerator[
+        P_Project, P_VirtualDependency, P_Report
+    ]
     P_VirtualDependencySummary = VirtualDependencySummary
-    P_GeneratedVirtualDependencies = GeneratedVirtualDependencies[P_VirtualDependency]
+    P_GeneratedVirtualDependencies = GeneratedVirtualDependencies[P_VirtualDependency, P_Report]
