@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import pathlib
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Generic, cast
@@ -77,8 +78,39 @@ class ReportInstaller:
         pass
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ReportFactory(
+    Generic[protocols.T_Project, protocols.T_VirtualDependency, protocols.T_Report]
+):
+    report_installer: protocols.ReportInstaller
+    virtual_dependency_scribe_maker: protocols.VirtualDependencyScribeMaker[
+        protocols.T_VirtualDependency, protocols.T_Report
+    ]
+    report_combiner_maker: protocols.ReportCombinerMaker[protocols.T_Report]
+    report_maker: protocols.ReportMaker[protocols.T_Report]
+
+
+def make_report_factory(
+    *,
+    discovered_project: protocols.Discovered[protocols.T_Project],
+    hasher: protocols.Hasher,
+) -> protocols.ReportFactory[dependency.VirtualDependency[protocols.T_Project], Report]:
+    return ReportFactory(
+        report_maker=Report,
+        virtual_dependency_scribe_maker=functools.partial(
+            VirtualDependencyScribe,
+            hasher=hasher,
+            discovered_project=discovered_project,
+            report_maker=Report,
+        ),
+        report_installer=ReportInstaller(),
+        report_combiner_maker=functools.partial(ReportCombiner, report_maker=Report),
+    )
+
+
 if TYPE_CHECKING:
     C_Report = Report
+    C_ReportFactory = ReportFactory[project.C_Project, dependency.C_VirtualDependency, C_Report]
     C_ReportCombiner = ReportCombiner[C_Report]
     C_ReportInstaller = ReportInstaller
     C_VirtualDependencyScribe = VirtualDependencyScribe[project.C_Project, C_Report]
@@ -93,4 +125,7 @@ if TYPE_CHECKING:
         VirtualDependencyScribe[project.C_Project, C_Report], None
     )
     _CRC: protocols.ReportCombiner[C_Report] = cast(C_ReportCombiner, None)
+    _CRF: protocols.ReportFactory[dependency.C_VirtualDependency, C_Report] = cast(
+        ReportFactory[project.C_Project, dependency.C_VirtualDependency, C_Report], None
+    )
     _CRM: protocols.ReportMaker[C_Report] = Report

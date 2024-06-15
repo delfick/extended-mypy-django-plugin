@@ -569,6 +569,26 @@ class ReportCombinerMaker(Protocol[T_Report]):
     def __call__(self, reports: Sequence[T_Report]) -> ReportCombiner[T_Report]: ...
 
 
+class ReportFactory(Protocol[T_VirtualDependency, T_Report]):
+    """
+    Holds everything necessary for creating reports
+    """
+
+    @property
+    def report_installer(self) -> ReportInstaller: ...
+
+    @property
+    def report_maker(self) -> ReportMaker[T_Report]: ...
+
+    @property
+    def virtual_dependency_scribe_maker(
+        self,
+    ) -> VirtualDependencyScribeMaker[T_VirtualDependency, T_Report]: ...
+
+    @property
+    def report_combiner_maker(self) -> ReportCombinerMaker[T_Report]: ...
+
+
 if TYPE_CHECKING:
     P_Model = Model
     P_Field = Field
@@ -591,6 +611,7 @@ if TYPE_CHECKING:
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
     P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
     P_VirtualDependencyScribeMaker = VirtualDependencyScribeMaker[P_VirtualDependency, P_Report]
+    P_ReportFactory = ReportFactory[P_VirtualDependency, P_Report]
 
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
