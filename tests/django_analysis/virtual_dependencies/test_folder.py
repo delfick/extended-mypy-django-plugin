@@ -36,10 +36,13 @@ class TestVirtualDependencyGenerator:
             make_differentiator=lambda: "__differentiated__",
         )
 
-        generated = virtual_dependencies.VirtualDependencyGenerator(
+        report_factory = virtual_dependencies.make_report_factory(
+            hasher=adler32_hash,
             discovered_project=discovered_django_example,
-            virtual_dependency_maker=virtual_dependency_maker,
-        ).generate()
+        )
+        generated = virtual_dependencies.VirtualDependencyGenerator(
+            report_factory=report_factory, virtual_dependency_maker=virtual_dependency_maker
+        )(discovered_project=discovered_django_example)
 
         def IsModule(import_path: str) -> protocols.Module:
             return discovered_django_example.installed_models_modules[ImportPath(import_path)]
@@ -48,6 +51,7 @@ class TestVirtualDependencyGenerator:
             return discovered_django_example.all_models[ImportPath(import_path)]
 
         assert generated == virtual_dependencies.GeneratedVirtualDependencies(
+            report_factory=report_factory,
             virtual_dependencies={
                 ImportPath("django.contrib.admin.models"): CustomVirtualDependency(
                     module=IsModule("django.contrib.admin.models"),
@@ -316,5 +320,5 @@ class TestVirtualDependencyGenerator:
                         ],
                     },
                 ),
-            }
+            },
         )
