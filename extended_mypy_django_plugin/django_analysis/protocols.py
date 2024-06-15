@@ -317,9 +317,9 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     ) -> T_CO_VirtualDependency: ...
 
 
-class VirtualDependencyFolder(Protocol[T_Project, T_CO_VirtualDependency]):
+class VirtualDependencyGenerator(Protocol[T_Project, T_CO_VirtualDependency]):
     """
-    Object that manages the folder containing the on disk virtual dependencies
+    Object that generates the objects representing the virtual dependencies
     """
 
     @property
@@ -452,6 +452,6 @@ if TYPE_CHECKING:
     P_VirtualDependency = VirtualDependency
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
-    P_VirtualDependencyFolder = VirtualDependencyFolder[P_Project, P_VirtualDependency]
+    P_VirtualDependencyGenerator = VirtualDependencyGenerator[P_Project, P_VirtualDependency]
     P_VirtualDependencySummary = VirtualDependencySummary
     P_GeneratedVirtualDependencies = GeneratedVirtualDependencies[P_VirtualDependency]
