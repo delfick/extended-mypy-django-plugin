@@ -10,7 +10,7 @@ from extended_mypy_django_plugin.django_analysis import (
 )
 
 
-class TestVirtualDependencyFolder:
+class TestVirtualDependencyGenerator:
     def test_it_can_generate_virtual_dependencies(
         self, discovered_django_example: protocols.Discovered[Project]
     ) -> None:
@@ -36,7 +36,7 @@ class TestVirtualDependencyFolder:
             make_differentiator=lambda: "__differentiated__",
         )
 
-        generated = virtual_dependencies.VirtualDependencyFolder(
+        generated = virtual_dependencies.VirtualDependencyGenerator(
             discovered_project=discovered_django_example,
             virtual_dependency_maker=virtual_dependency_maker,
         ).generate()

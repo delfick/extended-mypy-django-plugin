@@ -7,7 +7,7 @@ from . import dependency
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class VirtualDependencyFolder(Generic[protocols.T_Project, protocols.T_CO_VirtualDependency]):
+class VirtualDependencyGenerator(Generic[protocols.T_Project, protocols.T_CO_VirtualDependency]):
     discovered_project: protocols.Discovered[protocols.T_Project]
     virtual_dependency_maker: protocols.VirtualDependencyMaker[
         protocols.T_Project, protocols.T_CO_VirtualDependency
@@ -35,21 +35,21 @@ class GeneratedVirtualDependencies(Generic[protocols.T_CO_VirtualDependency]):
 
 
 if TYPE_CHECKING:
-    C_VirtualDependencyFolder = VirtualDependencyFolder[
+    C_VirtualDependencyGenerator = VirtualDependencyGenerator[
         project.C_Project, dependency.C_VirtualDependency
     ]
     C_GeneratedVirtualDependencies = GeneratedVirtualDependencies[dependency.C_VirtualDependency]
 
-    _VDN: protocols.P_VirtualDependencyFolder = cast(
-        VirtualDependencyFolder[protocols.P_Project, protocols.P_VirtualDependency], None
+    _VDN: protocols.P_VirtualDependencyGenerator = cast(
+        VirtualDependencyGenerator[protocols.P_Project, protocols.P_VirtualDependency], None
     )
     _GVD: protocols.P_GeneratedVirtualDependencies = cast(
         GeneratedVirtualDependencies[protocols.P_VirtualDependency], None
     )
 
-    _CVDN: protocols.VirtualDependencyFolder[project.C_Project, dependency.C_VirtualDependency] = (
-        cast(C_VirtualDependencyFolder, None)
-    )
+    _CVDN: protocols.VirtualDependencyGenerator[
+        project.C_Project, dependency.C_VirtualDependency
+    ] = cast(C_VirtualDependencyGenerator, None)
     _CGVD: protocols.GeneratedVirtualDependencies[dependency.C_VirtualDependency] = cast(
         C_GeneratedVirtualDependencies, None
     )
