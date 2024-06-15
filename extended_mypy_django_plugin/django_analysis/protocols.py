@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from django.contrib.contenttypes.fields import GenericForeignKey
     from django.db.models.fields.related import ForeignObjectRel
 
-T_Project = TypeVar("T_Project", bound="Project")
+T_Project = TypeVar("T_Project", bound="P_Project")
 T_CO_VirtualDependency = TypeVar(
-    "T_CO_VirtualDependency", bound="VirtualDependency", covariant=True
+    "T_CO_VirtualDependency", bound="P_VirtualDependency", covariant=True
 )
 
 ImportPath = NewType("ImportPath", str)
