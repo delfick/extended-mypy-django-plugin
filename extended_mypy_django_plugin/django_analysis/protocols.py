@@ -473,6 +473,34 @@ class ReportMaker(Protocol[T_CO_Report]):
     ) -> T_CO_Report: ...
 
 
+class WrittenVirtualDependency(Protocol[T_CO_Report]):
+    @property
+    def content(self) -> str:
+        """
+        The string representing the content of the virtual dependency
+        """
+
+    @property
+    def summary_hash(self) -> str | None:
+        """
+        A hash representing the state of the dependency
+
+        This should be None if the module is not installed
+        """
+
+    @property
+    def report(self) -> T_CO_Report:
+        """
+        The report representing the information in the content
+        """
+
+    @property
+    def virtual_import_path(self) -> ImportPath:
+        """
+        The import path to this virtual dependency
+        """
+
+
 class VirtualDependencyScribe(Protocol[T_CO_VirtualDependency, T_CO_Report]):
     """
     Used to generate the on disk representation of a virtual dependency along with the information
@@ -491,11 +519,9 @@ class VirtualDependencyScribe(Protocol[T_CO_VirtualDependency, T_CO_Report]):
         Used to create the report object
         """
 
-    def generate_report(self) -> tuple[str, T_CO_Report, ImportPath]:
+    def generate_report(self) -> WrittenVirtualDependency[T_CO_Report]:
         """
         Create the content for a virtual dependency and a report of the information in that content
-
-        Should return (content, report, virtual_import_path)
         """
 
 
@@ -515,15 +541,20 @@ class ReportInstaller(Protocol):
     """
 
     def write_report(
-        self, *, scratch_root: pathlib.Path, virtual_import_path: ImportPath, content: str
+        self,
+        *,
+        scratch_root: pathlib.Path,
+        virtual_import_path: ImportPath,
+        content: str,
+        summary_hash: str | None,
     ) -> None:
         """
         Write a single report to the scratch path
         """
 
-    def install_reports(self, scratch_path: pathlib.Path, destination: pathlib.Path) -> None:
+    def install_reports(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
         """
-        Copy reports from scratch_path into the destination when the reports on the destination
+        Copy reports from scratch_root into the destination when the reports on the destination
         are different to the reports in the scratch path.
 
         Also, delete redundant reports from destination
@@ -596,6 +627,7 @@ if TYPE_CHECKING:
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
     P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
+    P_WrittenVirtualDependency = WrittenVirtualDependency[P_Report]
     P_VirtualDependencyScribeMaker = VirtualDependencyScribeMaker[P_VirtualDependency, P_Report]
     P_ReportFactory = ReportFactory[P_VirtualDependency, P_Report]
 
