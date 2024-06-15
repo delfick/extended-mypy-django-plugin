@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 T_Project = TypeVar("T_Project", bound="P_Project")
 T_Report = TypeVar("T_Report", bound="P_Report")
 T_CO_Report = TypeVar("T_CO_Report", bound="P_Report", covariant=True)
+T_VirtualDependency = TypeVar("T_VirtualDependency", bound="P_VirtualDependency")
 T_CO_VirtualDependency = TypeVar(
     "T_CO_VirtualDependency", bound="P_VirtualDependency", covariant=True
 )
@@ -486,6 +487,42 @@ class ReportMaker(Protocol[T_CO_Report]):
     ) -> T_CO_Report: ...
 
 
+class VirtualDependencyScribe(Protocol[T_CO_VirtualDependency, T_CO_Report]):
+    """
+    Used to generate the on disk representation of a virtual dependency along with the information
+    contained in that dependency
+    """
+
+    @property
+    def virtual_dependency(self) -> T_CO_VirtualDependency:
+        """
+        The virtual dependency to create a report from
+        """
+
+    @property
+    def report_maker(self) -> ReportMaker[T_CO_Report]:
+        """
+        Used to create the report object
+        """
+
+    def generate_report(self) -> tuple[str, T_CO_Report, ImportPath]:
+        """
+        Create the content for a virtual dependency and a report of the information in that content
+
+        Should return (content, report, virtual_import_path)
+        """
+
+
+class VirtualDependencyScribeMaker(Protocol[T_VirtualDependency, T_CO_Report]):
+    """
+    Factory to make a VirtualDependencyScribe
+    """
+
+    def __call__(
+        self, *, virtual_dependency: T_VirtualDependency
+    ) -> VirtualDependencyScribe[T_VirtualDependency, T_CO_Report]: ...
+
+
 class ReportCombiner(Protocol[T_CO_Report]):
     """
     Used to combine many reports into one
@@ -530,6 +567,8 @@ if TYPE_CHECKING:
     P_ReportMaker = ReportMaker[P_Report]
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
+    P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
+    P_VirtualDependencyScribeMaker = VirtualDependencyScribeMaker[P_VirtualDependency, P_Report]
 
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
