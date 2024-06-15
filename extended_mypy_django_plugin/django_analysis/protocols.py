@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from django.db.models.fields.related import ForeignObjectRel
 
 T_Project = TypeVar("T_Project", bound="P_Project")
+T_Report = TypeVar("T_Report", bound="P_Report")
+T_CO_Report = TypeVar("T_CO_Report", bound="P_Report", covariant=True)
 T_CO_VirtualDependency = TypeVar(
     "T_CO_VirtualDependency", bound="P_VirtualDependency", covariant=True
 )
@@ -436,6 +438,79 @@ class VirtualDependency(Protocol):
         """
 
 
+class Report(Protocol):
+    """
+    A report of information that can be used by the mypy plugin to easily get
+    information from the virtual dependencies
+    """
+
+    @property
+    def concrete_annotations(self) -> Mapping[ImportPath, ImportPath]:
+        """
+        A map of full import path for a model to the import path of the equivalent typealias
+        representing the concrete children of that model
+        """
+
+    @property
+    def concrete_querysets(self) -> Mapping[ImportPath, ImportPath]:
+        """
+        A map of full import path for a model to the import path of the equivalent typealias
+        representing the concrete querysets of that model
+        """
+
+    @property
+    def report_import_path(self) -> Mapping[ImportPath, ImportPath]:
+        """
+        A map of full import path for a module to the virtual dependency for that module
+        """
+
+    @property
+    def related_report_import_paths(self) -> Mapping[ImportPath, Sequence[ImportPath]]:
+        """
+        A map of related report import paths for any given module
+        """
+
+
+class ReportMaker(Protocol[T_CO_Report]):
+    """
+    Used to construct a report
+    """
+
+    def __call__(
+        self,
+        *,
+        concrete_annotations: Mapping[ImportPath, ImportPath],
+        concrete_querysets: Mapping[ImportPath, ImportPath],
+        report_import_path: Mapping[ImportPath, ImportPath],
+        related_report_import_paths: Mapping[ImportPath, Sequence[ImportPath]],
+    ) -> T_CO_Report: ...
+
+
+class ReportCombiner(Protocol[T_CO_Report]):
+    """
+    Used to combine many reports into one
+    """
+
+    @property
+    def reports(self) -> Sequence[T_CO_Report]:
+        """
+        The reports to combine
+        """
+
+    def combine(self) -> T_CO_Report:
+        """
+        Return a single report that represents all the provided reports as one
+        """
+
+
+class ReportCombinerMaker(Protocol[T_Report]):
+    """
+    Used to create a report combiner
+    """
+
+    def __call__(self, reports: Sequence[T_Report]) -> ReportCombiner[T_Report]: ...
+
+
 if TYPE_CHECKING:
     P_Model = Model
     P_Field = Field
@@ -449,7 +524,13 @@ if TYPE_CHECKING:
     P_ConcreteModelsDiscovery = ConcreteModelsDiscovery[P_Project]
     P_InstalledModelsDiscovery = InstalledModelsDiscovery[P_Project]
 
+    P_Report = Report
     P_VirtualDependency = VirtualDependency
+
+    P_ReportMaker = ReportMaker[P_Report]
+    P_ReportCombiner = ReportCombiner[P_Report]
+    P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
+
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
     P_VirtualDependencyGenerator = VirtualDependencyGenerator[P_Project, P_VirtualDependency]
