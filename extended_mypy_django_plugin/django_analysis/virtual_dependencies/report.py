@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import pathlib
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Generic, cast
 
@@ -61,15 +62,32 @@ class ReportCombiner(Generic[protocols.T_Report]):
         )
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ReportInstaller:
+    def write_report(
+        self,
+        *,
+        scratch_root: pathlib.Path,
+        virtual_import_path: protocols.ImportPath,
+        content: str,
+    ) -> None:
+        pass
+
+    def install_reports(self, scratch_path: pathlib.Path, destination: pathlib.Path) -> None:
+        pass
+
+
 if TYPE_CHECKING:
     C_Report = Report
     C_ReportCombiner = ReportCombiner[C_Report]
+    C_ReportInstaller = ReportInstaller
     C_VirtualDependencyScribe = VirtualDependencyScribe[project.C_Project, C_Report]
 
     _R: protocols.Report = cast(Report, None)
     _RM: protocols.P_VirtualDependencyScribe = cast(
         VirtualDependencyScribe[protocols.P_Project, protocols.P_Report], None
     )
+    _RI: protocols.P_ReportInstaller = cast(ReportInstaller, None)
 
     _CVDS: protocols.VirtualDependencyScribe[dependency.C_VirtualDependency, C_Report] = cast(
         VirtualDependencyScribe[project.C_Project, C_Report], None
