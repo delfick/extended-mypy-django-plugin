@@ -349,7 +349,9 @@ class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency]):
         The virtual dependency items
         """
 
-    def install(self, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
+    def install(
+        self, *, scratch_root: pathlib.Path, destination: pathlib.Path, hasher: Hasher
+    ) -> None:
         """
         Install the virtual dependencies into their destination.
 
