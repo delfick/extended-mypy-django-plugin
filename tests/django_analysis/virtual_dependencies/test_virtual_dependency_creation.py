@@ -9,6 +9,16 @@ from extended_mypy_django_plugin.django_analysis import (
 )
 
 
+@dataclasses.dataclass
+class Namer:
+    namespace: protocols.ImportPath = dataclasses.field(
+        default_factory=lambda: ImportPath("__virtual__")
+    )
+
+    def __call__(self, module: protocols.ImportPath, /) -> protocols.ImportPath:
+        return ImportPath(f"{self.namespace}.mod_{module.replace('.','_')}")
+
+
 class TestVirtualDependency:
     def test_making_virtual_dependency(
         self, discovered_django_example: protocols.Discovered[Project]
@@ -91,13 +101,10 @@ class TestVirtualDependency:
             "module:djangoexample.exampleapp.models>model:djangoexample.exampleapp.models.Child4>field:three>field_type:django.db.models.fields.CharField",
         ]
 
-        def namer(module: protocols.ImportPath, /) -> protocols.ImportPath:
-            return ImportPath(f"__virtual__.mod_{module.replace('.','_')}")
-
         virtual_dependency = virtual_dependencies.VirtualDependency.create(
             discovered_project=discovered_django_example,
             module=module,
-            virtual_dependency_namer=namer,
+            virtual_dependency_namer=Namer(),
             installed_apps_hash="__hashed_installed_apps__",
             make_differentiator=lambda: "__DIFFERENTIATOR__",
         )
@@ -108,9 +115,8 @@ class TestVirtualDependency:
             module=module,
             interface_differentiator="__DIFFERENTIATOR__",
             summary=virtual_dependencies.VirtualDependencySummary(
-                virtual_dependency_name=ImportPath(
-                    "__virtual__.mod_djangoexample_exampleapp_models"
-                ),
+                virtual_namespace=ImportPath("__virtual__"),
+                virtual_import_path=ImportPath("__virtual__.mod_djangoexample_exampleapp_models"),
                 module_import_path=module.import_path,
                 installed_apps_hash="__hashed_installed_apps__",
                 significant_info=significant_info,
@@ -153,13 +159,10 @@ class TestVirtualDependency:
             ImportPath.from_module(djangoexample.relations1.models)
         ]
 
-        def namer(module: protocols.ImportPath, /) -> protocols.ImportPath:
-            return ImportPath(f"__virtual__.mod_{module.replace('.','_')}")
-
         virtual_dependency = virtual_dependencies.VirtualDependency.create(
             discovered_project=discovered_django_example,
             module=module,
-            virtual_dependency_namer=namer,
+            virtual_dependency_namer=Namer(),
             installed_apps_hash="__hashed_installed_apps__",
             make_differentiator=lambda: "__DIFFERENTIATOR__",
         )
@@ -243,13 +246,10 @@ class TestVirtualDependency:
         def make_differentiator() -> str:
             raise AssertionError("shouldn't be used")
 
-        def namer(module: protocols.ImportPath, /) -> protocols.ImportPath:
-            return ImportPath(f"__virtual__.mod_{module.replace('.','_')}")
-
         virtual_dependency = virtual_dependencies.VirtualDependency.create(
             discovered_project=discovered_django_example,
             module=fake_module,
-            virtual_dependency_namer=namer,
+            virtual_dependency_namer=Namer(),
             installed_apps_hash="__hashed_installed_apps__",
             make_differentiator=make_differentiator,
         )
@@ -258,7 +258,8 @@ class TestVirtualDependency:
             module=fake_module,
             interface_differentiator=None,
             summary=virtual_dependencies.VirtualDependencySummary(
-                virtual_dependency_name=ImportPath("__virtual__.mod_fake_model"),
+                virtual_namespace=ImportPath("__virtual__"),
+                virtual_import_path=ImportPath("__virtual__.mod_fake_model"),
                 module_import_path=fake_module.import_path,
                 installed_apps_hash=None,
                 significant_info=None,

@@ -7,7 +7,7 @@ from ..discovery.import_path import ImportPath
 
 @dataclasses.dataclass
 class VirtualDependencyNamer:
-    namespace: str
+    namespace: protocols.ImportPath
     hasher: protocols.Hasher
 
     def __call__(self, module: protocols.ImportPath, /) -> protocols.ImportPath:

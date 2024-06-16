@@ -32,6 +32,7 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
         *,
         scratch_root: pathlib.Path,
         destination: pathlib.Path,
+        virtual_namespace: protocols.ImportPath,
         report_factory: protocols.ReportFactory[protocols.T_VirtualDependency, protocols.T_Report],
     ) -> protocols.T_Report:
         reports: list[protocols.T_Report] = []
@@ -45,9 +46,11 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
             reports.append(written.report)
 
         report_factory.report_installer.install_reports(
-            scratch_root=scratch_root, destination=destination
+            scratch_root=scratch_root,
+            destination=destination,
+            virtual_namespace=virtual_namespace,
         )
-        return report_factory.report_combiner_maker(reports).combine()
+        return report_factory.report_combiner_maker(reports=reports).combine()
 
 
 if TYPE_CHECKING:

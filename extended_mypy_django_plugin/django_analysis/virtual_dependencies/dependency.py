@@ -10,7 +10,8 @@ from .. import project, protocols
 
 @dataclasses.dataclass
 class VirtualDependencySummary:
-    virtual_dependency_name: protocols.ImportPath
+    virtual_namespace: protocols.ImportPath
+    virtual_import_path: protocols.ImportPath
     module_import_path: protocols.ImportPath
     installed_apps_hash: str | None
     significant_info: Sequence[str] | None
@@ -57,7 +58,8 @@ class VirtualDependency(Generic[protocols.T_Project]):
             module=module,
             interface_differentiator=make_differentiator(),
             summary=VirtualDependencySummary(
-                virtual_dependency_name=virtual_dependency_namer(module.import_path),
+                virtual_namespace=virtual_dependency_namer.namespace,
+                virtual_import_path=virtual_dependency_namer(module.import_path),
                 module_import_path=module.import_path,
                 installed_apps_hash=installed_apps_hash,
                 significant_info=list(
@@ -84,7 +86,8 @@ class VirtualDependency(Generic[protocols.T_Project]):
             module=module,
             interface_differentiator=None,
             summary=VirtualDependencySummary(
-                virtual_dependency_name=virtual_dependency_namer(module.import_path),
+                virtual_namespace=virtual_dependency_namer.namespace,
+                virtual_import_path=virtual_dependency_namer(module.import_path),
                 module_import_path=module.import_path,
                 installed_apps_hash=None,
                 significant_info=None,

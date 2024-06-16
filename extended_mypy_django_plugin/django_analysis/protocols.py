@@ -307,6 +307,12 @@ class Field(Protocol):
 
 
 class VirtualDependencyNamer(Protocol):
+    @property
+    def namespace(self) -> ImportPath:
+        """
+        The namespace for the virtual dependencies
+        """
+
     def __call__(self, module: ImportPath, /) -> ImportPath:
         """
         Return a deterministically determined name representing this module import path
@@ -351,6 +357,7 @@ class VirtualDependencyInstaller(Protocol[T_CO_VirtualDependency, T_Report]):
         *,
         scratch_root: pathlib.Path,
         destination: pathlib.Path,
+        virtual_namespace: ImportPath,
         report_factory: ReportFactory[T_CO_VirtualDependency, T_Report],
     ) -> T_Report: ...
 
@@ -363,7 +370,13 @@ class VirtualDependencySummary(Protocol):
     """
 
     @property
-    def virtual_dependency_name(self) -> ImportPath:
+    def virtual_namespace(self) -> ImportPath:
+        """
+        The import path of the virtual dependencies
+        """
+
+    @property
+    def virtual_import_path(self) -> ImportPath:
         """
         The import path the virtual dependency lives at
         """
@@ -526,7 +539,13 @@ class ReportInstaller(Protocol):
         Write a single report to the scratch path
         """
 
-    def install_reports(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
+    def install_reports(
+        self,
+        *,
+        scratch_root: pathlib.Path,
+        destination: pathlib.Path,
+        virtual_namespace: ImportPath,
+    ) -> None:
         """
         Copy reports from scratch_root into the destination when the reports on the destination
         are different to the reports in the scratch path.
@@ -557,7 +576,7 @@ class ReportCombinerMaker(Protocol[T_Report]):
     Used to create a report combiner
     """
 
-    def __call__(self, reports: Sequence[T_Report]) -> ReportCombiner[T_Report]: ...
+    def __call__(self, *, reports: Sequence[T_Report]) -> ReportCombiner[T_Report]: ...
 
 
 class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
