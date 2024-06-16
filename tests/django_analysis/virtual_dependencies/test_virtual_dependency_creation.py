@@ -173,6 +173,7 @@ class TestVirtualDependency:
             "module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Concrete2=djangoexample.relations1.models.Concrete2",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Abstract>is_abstract:True",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>is_abstract:False",
+            "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>custom_queryset:djangoexample.relations1.models.Child1QuerySet",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>mro_0:djangoexample.relations1.models.Abstract",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
