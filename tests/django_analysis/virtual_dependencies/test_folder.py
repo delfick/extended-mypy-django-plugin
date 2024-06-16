@@ -320,6 +320,18 @@ class TestVirtualDependencyGenerator:
                     ],
                 },
             ),
+            ImportPath("djangoexample.empty_models.models"): CustomVirtualDependency(
+                module=IsModule("djangoexample.empty_models.models"),
+                interface_differentiator="__differentiated__",
+                summary=virtual_dependencies.VirtualDependencySummary(
+                    virtual_dependency_name=ImportPath("__virtual__.mod_3808300370"),
+                    module_import_path=ImportPath("djangoexample.empty_models.models"),
+                    installed_apps_hash="__hashed_installed_apps__",
+                    significant_info=["__significant__djangoexample.empty_models.models__"],
+                ),
+                all_related_models=[],
+                concrete_models={},
+            ),
         }
 
 
