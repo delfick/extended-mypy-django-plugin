@@ -259,6 +259,7 @@ class TestVirtualDependencyScribe:
                     b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Concrete2=djangoexample.relations1.models.Concrete2",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Abstract>is_abstract:True",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>custom_queryset:djangoexample.relations1.models.Child1QuerySet",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>mro_0:djangoexample.relations1.models.Abstract",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
@@ -312,12 +313,13 @@ class TestVirtualDependencyScribe:
                 import django.db.models.QuerySet
                 import djangoexample.relations1.models.Abstract
                 import djangoexample.relations1.models.Child1
+                import djangoexample.relations1.models.Child1QuerySet
                 import djangoexample.relations1.models.Child2
                 import djangoexample.relations1.models.Concrete1
                 import djangoexample.relations1.models.Concrete1QuerySet
                 import djangoexample.relations1.models.Concrete2
-                ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child1] | django.db.models.QuerySet[djangoexample.relations1.models.Child2]
-                ConcreteQuerySet__Child1 = django.db.models.QuerySet[djangoexample.relations1.models.Child1]
+                ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child2] | djangoexample.relations1.models.Child1QuerySet
+                ConcreteQuerySet__Child1 = djangoexample.relations1.models.Child1QuerySet
                 ConcreteQuerySet__Child2 = django.db.models.QuerySet[djangoexample.relations1.models.Child2]
                 ConcreteQuerySet__Concrete1 = djangoexample.relations1.models.Concrete1QuerySet
                 ConcreteQuerySet__Concrete2 = django.db.models.QuerySet[djangoexample.relations1.models.Concrete2]

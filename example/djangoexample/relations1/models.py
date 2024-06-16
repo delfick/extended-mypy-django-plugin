@@ -6,8 +6,15 @@ class Abstract(models.Model):
         abstract = True
 
 
-class Child1(Abstract):
+class Child1QuerySet(models.QuerySet["Child1"]):
     pass
+
+
+Child1Manager = models.Manager.from_queryset(Child1QuerySet)
+
+
+class Child1(Abstract):
+    objects = Child1Manager()
 
 
 class Child2(Abstract):
