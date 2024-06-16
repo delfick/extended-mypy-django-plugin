@@ -14,8 +14,15 @@ class Child2(Abstract):
     pass
 
 
-class Concrete1(models.Model):
+class Concrete1QuerySet(models.QuerySet["Concrete1"]):
     pass
+
+
+Concrete1Manager = models.Manager.from_queryset(Concrete1QuerySet)
+
+
+class Concrete1(models.Model):
+    objects = Concrete1Manager()
 
 
 class Concrete2(models.Model):
