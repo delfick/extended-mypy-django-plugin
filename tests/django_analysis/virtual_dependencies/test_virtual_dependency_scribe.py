@@ -189,7 +189,25 @@ class TestVirtualDependencyScribe:
                 ImportPath("djangoexample.exampleapp2.models")
             ]
 
-            content = textwrap.dedent("")
+            content = textwrap.dedent("""
+            from typing import TYPE_CHECKING
+
+            def interface____differentiated__6() -> None:
+                return None
+
+            mod = "djangoexample.exampleapp2.models"
+            summary = "__virtual__.mod_3537308831::djangoexample.exampleapp2.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_great_good__"
+
+            if TYPE_CHECKING:
+                import django.db.models.QuerySet
+                import djangoexample.exampleapp2.models.ChildOther
+                import djangoexample.exampleapp2.models.ChildOther2
+                ConcreteQuerySet__ChildOther = django.db.models.QuerySet[djangoexample.exampleapp2.models.ChildOther]
+                ConcreteQuerySet__ChildOther2 = django.db.models.QuerySet[djangoexample.exampleapp2.models.ChildOther2]
+                Concrete__ChildOther = djangoexample.exampleapp2.models.ChildOther
+                Concrete__ChildOther2 = djangoexample.exampleapp2.models.ChildOther2
+            """).strip()
+
             summary_hash = (
                 "__virtual__.mod_3537308831"
                 "::djangoexample.exampleapp2.models"
@@ -280,7 +298,34 @@ class TestVirtualDependencyScribe:
                 ImportPath("djangoexample.relations1.models")
             ]
 
-            content = textwrap.dedent("")
+            content = textwrap.dedent("""
+            from typing import TYPE_CHECKING
+
+            def interface____differentiated__7() -> None:
+                return None
+
+            mod = "djangoexample.relations1.models"
+            summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_greater_good__"
+
+            if TYPE_CHECKING:
+                import django.db.models.QuerySet
+                import djangoexample.relations1.models.Abstract
+                import djangoexample.relations1.models.Child1
+                import djangoexample.relations1.models.Child2
+                import djangoexample.relations1.models.Concrete1
+                import djangoexample.relations1.models.Concrete2
+                ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child1] | django.db.models.QuerySet[djangoexample.relations1.models.Child2]
+                ConcreteQuerySet__Child1 = django.db.models.QuerySet[djangoexample.relations1.models.Child1]
+                ConcreteQuerySet__Child2 = django.db.models.QuerySet[djangoexample.relations1.models.Child2]
+                ConcreteQuerySet__Concrete1 = django.db.models.QuerySet[djangoexample.relations1.models.Concrete1]
+                ConcreteQuerySet__Concrete2 = django.db.models.QuerySet[djangoexample.relations1.models.Concrete2]
+                Concrete__Abstract = djangoexample.relations1.models.Child1 | djangoexample.relations1.models.Child2
+                Concrete__Child1 = djangoexample.relations1.models.Child1
+                Concrete__Child2 = djangoexample.relations1.models.Child2
+                Concrete__Concrete1 = djangoexample.relations1.models.Concrete1
+                Concrete__Concrete2 = djangoexample.relations1.models.Concrete2
+            """).strip()
+
             summary_hash = (
                 "__virtual__.mod_3327724610"
                 "::djangoexample.relations1.models"
@@ -314,6 +359,55 @@ class TestVirtualDependencyScribe:
                         "djangoexample.relations1.models": {"djangoexample.relations2.models"},
                         "djangoexample.relations2.models": {"djangoexample.relations1.models"},
                     },
+                ),
+                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+            )
+
+            assert hasher_called == [1]
+
+        def test_writing_virtual_dependencies_3(
+            self, discovered_django_example: protocols.Discovered[Project]
+        ) -> None:
+            scenario = self.Scenario(discovered_django_example)
+
+            hasher_called: list[int] = []
+
+            def hasher(*parts: bytes) -> str:
+                hasher_called.append(1)
+                assert parts == (b"module:djangoexample.empty_models.models",)
+                return "__hashed_for_bad__"
+
+            virtual_dependency = scenario.all_virtual_dependencies[
+                ImportPath("djangoexample.empty_models.models")
+            ]
+
+            content = textwrap.dedent("""
+            from typing import TYPE_CHECKING
+
+            def interface____differentiated__10() -> None:
+                return None
+
+            mod = "djangoexample.empty_models.models"
+            summary = "__virtual__.mod_3808300370::djangoexample.empty_models.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_bad__"
+            """).strip()
+
+            summary_hash = (
+                "__virtual__.mod_3808300370"
+                "::djangoexample.empty_models.models"
+                "::installed_apps=__installed_apps_hash__"
+                "::significant=__hashed_for_bad__"
+            )
+
+            written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
+            assert written == virtual_dependencies.WrittenVirtualDependency(
+                content=content,
+                summary_hash=summary_hash,
+                report=virtual_dependencies.Report(
+                    report_import_path={
+                        ImportPath("djangoexample.empty_models.models"): ImportPath(
+                            "__virtual__.mod_3808300370"
+                        )
+                    }
                 ),
                 virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
             )

@@ -61,6 +61,7 @@ class TestKnownModelsDiscovery:
         import django.contrib.contenttypes.models
         import django.contrib.sessions.base_session
         import django.contrib.sessions.models
+        import djangoexample.empty_models.models
         import djangoexample.exampleapp.models
         import djangoexample.exampleapp2.models
         import djangoexample.only_abstract.models
@@ -136,6 +137,13 @@ class TestKnownModelsDiscovery:
                 module=(mod := djangoexample.relations2.models),
                 models=[mod.Thing],
                 defined_models=mock.ANY,
+            ),
+            ExampleModule(
+                installed=True,
+                import_path=ImportPath("djangoexample.empty_models.models"),
+                module=(mod := djangoexample.empty_models.models),
+                models=[],
+                defined_models={},
             ),
             # # There is no way for our discovery to know about these without some kind of invasive
             # # traversal of every file in site-packages. We do know about them at mypy time and create

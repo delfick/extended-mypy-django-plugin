@@ -8,6 +8,7 @@ import os
 import pathlib
 import re
 import shutil
+import textwrap
 from collections.abc import Iterator, MutableMapping, MutableSet, Sequence
 from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, cast
 
@@ -186,10 +187,46 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         virtual_import_path: protocols.ImportPath,
         summary_hash: str | None,
     ) -> str:
+        differentiator = self.virtual_dependency.interface_differentiator
+        module_import_path = self.virtual_dependency.summary.module_import_path
+        summary = "None" if summary_hash is None else f'"{summary_hash}"'
+        content = textwrap.dedent(f"""
+        from typing import TYPE_CHECKING
+
+        def interface__{'empty__' if differentiator is None else differentiator}() -> None:
+            return None
+
+        mod = "{module_import_path}"
+        summary = {summary}
+
+        if TYPE_CHECKING:
+        """)
+
+        added_imports: set[protocols.ImportPath] = set()
+        annotations: set[str] = set()
+
         for model, concrete in self.virtual_dependency.concrete_models.items():
+            querysets: set[str] = set()
+
+            added_imports.add(model)
+            for conc in concrete:
+                added_imports.add(conc.import_path)
+                if conc.default_custom_queryset:
+                    added_imports.add(conc.default_custom_queryset)
+                    querysets.add(conc.default_custom_queryset)
+                else:
+                    added_imports.add(ImportPath("django.db.models.QuerySet"))
+                    querysets.add(f"django.db.models.QuerySet[{conc.import_path}]")
+
             ns, name = ImportPath.split(model)
             concrete_name = f"Concrete__{name}"
             queryset_name = f"ConcreteQuerySet__{name}"
+
+            annotations.add(
+                f"{concrete_name} = {' | '.join(sorted(conc.import_path for conc in concrete))}"
+            )
+            annotations.add(f"{queryset_name} = {' | '.join(sorted(querysets))}")
+
             report.register_model(
                 model_import_path=model,
                 virtual_import_path=virtual_import_path,
@@ -197,7 +234,18 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 concrete_name=concrete_name,
                 concrete_models=concrete,
             )
-        return ""
+
+        extra_lines = [
+            *(f"    import {import_path}" for import_path in sorted(added_imports)),
+            *(f"    {line}" for line in sorted(annotations)),
+        ]
+
+        if extra_lines:
+            content = content + "\n".join(extra_lines)
+        else:
+            content = content[: -len("\n\nif TYPE_CHECKING:") + 1]
+
+        return content.strip()
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

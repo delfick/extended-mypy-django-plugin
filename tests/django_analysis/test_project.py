@@ -158,6 +158,7 @@ class TestProject:
                 "djangoexample.no_models",
                 "djangoexample.relations1",
                 "djangoexample.relations2",
+                "djangoexample.empty_models",
             ]
             assert discovered_project.settings_types == {"not": "accurate"}
             assert discovered_project.installed_models_modules == {
