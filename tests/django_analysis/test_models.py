@@ -211,7 +211,9 @@ class TestModel:
             ),
             import_path=(mip := ImportPath(f"{module_import_path}.Concrete1")),
             is_abstract=False,
-            default_custom_queryset=None,
+            default_custom_queryset=ImportPath(
+                "djangoexample.relations1.models.Concrete1QuerySet"
+            ),
             all_fields={
                 "id": EmptyField(model_import_path=mip, field=mod.Concrete1._meta.get_field("id")),
                 "c2s": EmptyField(

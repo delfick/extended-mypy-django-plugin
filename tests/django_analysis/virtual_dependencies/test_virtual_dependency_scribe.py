@@ -272,6 +272,7 @@ class TestVirtualDependencyScribe:
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id>field_type:django.db.models.fields.BigAutoField",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>custom_queryset:djangoexample.relations1.models.Concrete1QuerySet",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
                     b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>related_model:djangoexample.relations1.models.Concrete2",
@@ -313,11 +314,12 @@ class TestVirtualDependencyScribe:
                 import djangoexample.relations1.models.Child1
                 import djangoexample.relations1.models.Child2
                 import djangoexample.relations1.models.Concrete1
+                import djangoexample.relations1.models.Concrete1QuerySet
                 import djangoexample.relations1.models.Concrete2
                 ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child1] | django.db.models.QuerySet[djangoexample.relations1.models.Child2]
                 ConcreteQuerySet__Child1 = django.db.models.QuerySet[djangoexample.relations1.models.Child1]
                 ConcreteQuerySet__Child2 = django.db.models.QuerySet[djangoexample.relations1.models.Child2]
-                ConcreteQuerySet__Concrete1 = django.db.models.QuerySet[djangoexample.relations1.models.Concrete1]
+                ConcreteQuerySet__Concrete1 = djangoexample.relations1.models.Concrete1QuerySet
                 ConcreteQuerySet__Concrete2 = django.db.models.QuerySet[djangoexample.relations1.models.Concrete2]
                 Concrete__Abstract = djangoexample.relations1.models.Child1 | djangoexample.relations1.models.Child2
                 Concrete__Child1 = djangoexample.relations1.models.Child1

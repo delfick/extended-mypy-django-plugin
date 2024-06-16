@@ -186,6 +186,7 @@ class TestVirtualDependency:
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id>field_type:django.db.models.fields.BigAutoField",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>is_abstract:False",
+            "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>custom_queryset:djangoexample.relations1.models.Concrete1QuerySet",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>related_model:djangoexample.relations1.models.Concrete2",
