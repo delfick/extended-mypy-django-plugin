@@ -217,7 +217,7 @@ class TestVirtualDependencyScribe:
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
             assert written == virtual_dependencies.WrittenVirtualDependency(
-                content=content,
+                content=content + "\n",
                 summary_hash=summary_hash,
                 report=scenario.make_report(
                     concrete_annotations={
@@ -339,7 +339,7 @@ class TestVirtualDependencyScribe:
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
             assert written == virtual_dependencies.WrittenVirtualDependency(
-                content=content,
+                content=content + "\n",
                 summary_hash=summary_hash,
                 report=scenario.make_report(
                     concrete_annotations={
@@ -404,7 +404,7 @@ class TestVirtualDependencyScribe:
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
             assert written == virtual_dependencies.WrittenVirtualDependency(
-                content=content,
+                content=content + "\n",
                 summary_hash=summary_hash,
                 report=virtual_dependencies.Report(
                     report_import_path={
