@@ -247,7 +247,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         else:
             content = content[: -len("\n\nif TYPE_CHECKING:") + 1]
 
-        return content.strip()
+        return content.strip() + "\n"
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
