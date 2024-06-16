@@ -222,10 +222,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             concrete_name = f"Concrete__{name}"
             queryset_name = f"ConcreteQuerySet__{name}"
 
-            annotations.add(
-                f"{concrete_name} = {' | '.join(sorted(conc.import_path for conc in concrete))}"
-            )
-            annotations.add(f"{queryset_name} = {' | '.join(sorted(querysets))}")
+            if concrete:
+                annotations.add(
+                    f"{concrete_name} = {' | '.join(sorted(conc.import_path for conc in concrete))}"
+                )
+            if querysets:
+                annotations.add(f"{queryset_name} = {' | '.join(sorted(querysets))}")
 
             report.register_model(
                 model_import_path=model,

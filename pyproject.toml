@@ -41,6 +41,7 @@ extend-exclude = [
     ".pytest_cache",
     "tools/.python",
     "tools/deps",
+    "tests/django_analysis/virtual_dependencies/generated_reports",
     "__pycache__",
 ]
 
