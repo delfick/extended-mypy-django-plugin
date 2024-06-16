@@ -3,8 +3,10 @@ from __future__ import annotations
 import collections
 import dataclasses
 import functools
+import os
 import pathlib
-from collections.abc import Iterator, MutableMapping, MutableSet, Sequence
+import shutil
+from collections.abc import Callable, Iterator, MutableMapping, MutableSet, Sequence
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 from .. import protocols
@@ -103,6 +105,15 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             content="", summary_hash="", report=report, virtual_import_path=virtual_import_path
         )
 
+    @classmethod
+    def get_report_summary(cls, location: pathlib.Path) -> str | None:
+        """
+        Given some location return the summary from that location.
+
+        If the report doesn't have a summary or is for a module that doesn't exist anymore then return None
+        """
+        return None
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportCombiner(Generic[T_Report]):
@@ -125,6 +136,7 @@ class ReportCombiner(Generic[T_Report]):
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportInstaller:
     _written: dict[pathlib.Path, str | None] = dataclasses.field(init=False, default_factory=dict)
+    _get_report_summary: Callable[[pathlib.Path], str | None]
 
     def write_report(
         self,
@@ -134,10 +146,43 @@ class ReportInstaller:
         virtual_import_path: protocols.ImportPath,
         content: str,
     ) -> None:
-        pass
+        location = scratch_root / f"{virtual_import_path.replace('.', os.sep)}.py"
+        if not location.is_relative_to(scratch_root):
+            raise RuntimeError(
+                f"Virtual dependency ends up being outside of the scratch root: {virtual_import_path}"
+            )
+        location.parent.mkdir(parents=True, exist_ok=True)
+        location.write_text(content)
+        self._written[location] = summary_hash
 
     def install_reports(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
-        pass
+        seen: set[pathlib.Path] = set()
+        for location, summary in self._written.items():
+            relative_path = location.relative_to(scratch_root)
+            destination_path = destination / relative_path
+
+            seen.add(destination_path)
+            found_summary: str | None = None
+            if destination_path.exists():
+                found_summary = self._get_report_summary(destination_path)
+
+            if found_summary != summary:
+                destination_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(location, destination_path)
+
+        for root, dirs, files in os.walk(destination):
+            for name in list(dirs):
+                location = pathlib.Path(root) / name
+                if location not in seen:
+                    if self._get_report_summary(location) is None:
+                        shutil.rmtree(location)
+                        dirs.remove(name)
+
+            for name in files:
+                location = pathlib.Path(root) / name
+                if location not in seen:
+                    if self._get_report_summary(location) is None:
+                        location.unlink()
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -177,7 +222,9 @@ def make_report_factory(
     return ReportFactory(
         report_maker=Report,
         report_scribe=report_scribe,
-        report_installer=ReportInstaller(),
+        report_installer=ReportInstaller(
+            _get_report_summary=VirtualDependencyScribe.get_report_summary
+        ),
         report_combiner_maker=functools.partial(ReportCombiner, report_maker=Report),
     )
 
