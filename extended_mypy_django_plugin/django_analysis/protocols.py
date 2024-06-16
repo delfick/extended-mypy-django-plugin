@@ -21,6 +21,9 @@ T_VirtualDependency = TypeVar("T_VirtualDependency", bound="P_VirtualDependency"
 T_CO_VirtualDependency = TypeVar(
     "T_CO_VirtualDependency", bound="P_VirtualDependency", covariant=True
 )
+T_COT_VirtualDependency = TypeVar(
+    "T_COT_VirtualDependency", bound="P_VirtualDependency", contravariant=True
+)
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
@@ -320,35 +323,36 @@ class VirtualDependencyMaker(Protocol[T_Project, T_CO_VirtualDependency]):
     ) -> T_CO_VirtualDependency: ...
 
 
-class VirtualDependencyGenerator(Protocol[T_Project, T_CO_VirtualDependency, T_CO_Report]):
+class VirtualDependencyGenerator(Protocol[T_Project, T_CO_VirtualDependency]):
     """
     Object that generates the objects representing the virtual dependencies
     """
 
     def __call__(
         self, *, discovered_project: Discovered[T_Project]
-    ) -> GeneratedVirtualDependencies[T_CO_VirtualDependency, T_CO_Report]:
+    ) -> VirtualDependencyMap[T_CO_VirtualDependency]:
         """
         Generate the virtual dependencies for this project
         """
 
 
-class GeneratedVirtualDependencies(Protocol[T_CO_VirtualDependency, T_CO_Report]):
-    @property
-    def virtual_dependencies(self) -> VirtualDependencyMap[T_CO_VirtualDependency]:
-        """
-        The virtual dependency items
-        """
+class VirtualDependencyInstaller(Protocol[T_CO_VirtualDependency, T_Report]):
+    """
+    Used Install the virtual dependencies into their destination.
 
-    def install(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> T_CO_Report:
-        """
-        Install the virtual dependencies into their destination.
+    Implementations should:
 
-        Implementations should:
+    * Build the reports in the scratch root before installing in the final destination
+    * Clear out reports in the final destination that represent modules that don't exist anymore
+    """
 
-        * Build the reports in the scratch root before installing in the final destination
-        * Clear out reports in the final destination that represent modules that don't exist anymore
-        """
+    def __call__(
+        self,
+        *,
+        scratch_root: pathlib.Path,
+        destination: pathlib.Path,
+        report_factory: ReportFactory[T_CO_VirtualDependency, T_Report],
+    ) -> T_Report: ...
 
 
 class VirtualDependencySummary(Protocol):
@@ -491,38 +495,18 @@ class WrittenVirtualDependency(Protocol[T_CO_Report]):
         """
 
 
-class VirtualDependencyScribe(Protocol[T_CO_VirtualDependency, T_CO_Report]):
+class VirtualDependencyScribe(Protocol[T_COT_VirtualDependency, T_CO_Report]):
     """
     Used to generate the on disk representation of a virtual dependency along with the information
     contained in that dependency
     """
 
-    @property
-    def virtual_dependency(self) -> T_CO_VirtualDependency:
-        """
-        The virtual dependency to create a report from
-        """
-
-    @property
-    def report_maker(self) -> ReportMaker[T_CO_Report]:
-        """
-        Used to create the report object
-        """
-
-    def generate_report(self) -> WrittenVirtualDependency[T_CO_Report]:
-        """
-        Create the content for a virtual dependency and a report of the information in that content
-        """
-
-
-class VirtualDependencyScribeMaker(Protocol[T_VirtualDependency, T_CO_Report]):
-    """
-    Factory to make a VirtualDependencyScribe
-    """
-
     def __call__(
-        self, *, virtual_dependency: T_VirtualDependency
-    ) -> VirtualDependencyScribe[T_VirtualDependency, T_CO_Report]: ...
+        self,
+        *,
+        virtual_dependency: T_COT_VirtualDependency,
+        all_virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency],
+    ) -> WrittenVirtualDependency[T_CO_Report]: ...
 
 
 class ReportInstaller(Protocol):
@@ -576,7 +560,7 @@ class ReportCombinerMaker(Protocol[T_Report]):
     def __call__(self, reports: Sequence[T_Report]) -> ReportCombiner[T_Report]: ...
 
 
-class ReportFactory(Protocol[T_VirtualDependency, T_Report]):
+class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
     """
     Holds everything necessary for creating reports
     """
@@ -588,12 +572,11 @@ class ReportFactory(Protocol[T_VirtualDependency, T_Report]):
     def report_maker(self) -> ReportMaker[T_Report]: ...
 
     @property
-    def virtual_dependency_scribe_maker(
-        self,
-    ) -> VirtualDependencyScribeMaker[T_VirtualDependency, T_Report]: ...
-
-    @property
     def report_combiner_maker(self) -> ReportCombinerMaker[T_Report]: ...
+
+    def deploy_scribes(
+        self, virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency]
+    ) -> Iterator[WrittenVirtualDependency[T_Report]]: ...
 
 
 if TYPE_CHECKING:
@@ -613,18 +596,15 @@ if TYPE_CHECKING:
     P_VirtualDependency = VirtualDependency
 
     P_ReportMaker = ReportMaker[P_Report]
+    P_ReportFactory = ReportFactory[P_VirtualDependency, P_Report]
     P_ReportInstaller = ReportInstaller
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
-    P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
-    P_WrittenVirtualDependency = WrittenVirtualDependency[P_Report]
-    P_VirtualDependencyScribeMaker = VirtualDependencyScribeMaker[P_VirtualDependency, P_Report]
-    P_ReportFactory = ReportFactory[P_VirtualDependency, P_Report]
 
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer
-    P_VirtualDependencyGenerator = VirtualDependencyGenerator[
-        P_Project, P_VirtualDependency, P_Report
-    ]
+    P_VirtualDependencyGenerator = VirtualDependencyGenerator[P_Project, P_VirtualDependency]
     P_VirtualDependencySummary = VirtualDependencySummary
-    P_GeneratedVirtualDependencies = GeneratedVirtualDependencies[P_VirtualDependency, P_Report]
+    P_VirtualDependencyInstaller = VirtualDependencyInstaller[P_VirtualDependency, P_Report]
+    P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
+    P_WrittenVirtualDependency = WrittenVirtualDependency[P_Report]

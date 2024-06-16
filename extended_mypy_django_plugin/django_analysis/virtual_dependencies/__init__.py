@@ -1,5 +1,5 @@
 from .dependency import VirtualDependency, VirtualDependencySummary
-from .folder import GeneratedVirtualDependencies, VirtualDependencyGenerator
+from .folder import VirtualDependencyGenerator, VirtualDependencyInstaller
 from .namer import VirtualDependencyNamer
 from .report import (
     Report,
@@ -21,5 +21,5 @@ __all__ = [
     "VirtualDependency",
     "VirtualDependencySummary",
     "VirtualDependencyGenerator",
-    "GeneratedVirtualDependencies",
+    "VirtualDependencyInstaller",
 ]
