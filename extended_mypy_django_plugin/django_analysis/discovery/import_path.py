@@ -30,6 +30,21 @@ class ImportPathHelper:
         """
         return self(module.__name__)
 
+    def split(
+        self, path: protocols.ImportPath
+    ) -> tuple[protocols.ImportPath, protocols.ImportPath]:
+        """
+        Split a path into it's namespace and name.
+
+        So `my.code.Thing` splits into (`my.code`, `Thing`)
+
+        If the path is not namespaced then a InvalidImportPath will be raised
+        """
+        if "." not in path:
+            raise InvalidImportPath(f"Provided path was not namespaced: '{path}'")
+        namespace, name = path.rsplit(".", 1)
+        return protocols.ImportPath(namespace), protocols.ImportPath(name)
+
     def __call__(self, path: str) -> protocols.ImportPath:
         """
         Return a string as a protocols.ImportPath type.

@@ -28,6 +28,20 @@ class TestImportPathHelper:
             == "extended_mypy_django_plugin.django_analysis.discovery.import_path"
         )
 
+    def test_can_split_an_import_path(self) -> None:
+        assert ImportPath.split(protocols.ImportPath("somewhere.nice")) == (
+            protocols.ImportPath("somewhere"),
+            protocols.ImportPath("nice"),
+        )
+        assert ImportPath.split(protocols.ImportPath("somewhere.else.that.is.good")) == (
+            protocols.ImportPath("somewhere.else.that.is"),
+            protocols.ImportPath("good"),
+        )
+
+    def test_complains_if_splitting_non_namespaced_import(self) -> None:
+        with pytest.raises(discovery.InvalidImportPath):
+            ImportPath.split(protocols.ImportPath("not_namespaced"))
+
     def test_turns_string_into_import_path(self) -> None:
         assert ImportPath("hello.there") == protocols.ImportPath("hello.there")
         assert ImportPath("place") == protocols.ImportPath("place")
