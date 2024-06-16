@@ -137,7 +137,7 @@ class TestBuildingReport:
                 model_import_path=self.parent.import_path,
                 virtual_import_path=ImportPath(f"virtual.{self.parent.module_import_path}"),
                 concrete_name="Concrete__Parent",
-                concrete_queryset_name="Queryset__Parent",
+                concrete_queryset_name="QuerySet__Parent",
                 concrete_models=[self.model1, self.model2],
             )
 
@@ -158,7 +158,7 @@ class TestBuildingReport:
                 model_import_path=self.model1.import_path,
                 virtual_import_path=ImportPath(f"virtual.{self.model1.module_import_path}"),
                 concrete_name="Concrete__Model1",
-                concrete_queryset_name="Queryset__Model1",
+                concrete_queryset_name="QuerySet__Model1",
                 concrete_models=[self.model1],
             )
 
@@ -190,7 +190,7 @@ class TestBuildingReport:
                 model_import_path=self.model2.import_path,
                 virtual_import_path=ImportPath(f"virtual.{self.model2.module_import_path}"),
                 concrete_name="Concrete__Model2",
-                concrete_queryset_name="Queryset__Model2",
+                concrete_queryset_name="QuerySet__Model2",
                 concrete_models=[self.model2],
             )
 
@@ -217,7 +217,7 @@ class TestBuildingReport:
                 model_import_path=self.model3.import_path,
                 virtual_import_path=ImportPath(f"virtual.{self.model3.module_import_path}"),
                 concrete_name="Concrete__Model3",
-                concrete_queryset_name="Queryset__Model3",
+                concrete_queryset_name="QuerySet__Model3",
                 concrete_models=[self.model3],
             )
 
@@ -232,7 +232,7 @@ class TestBuildingReport:
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Concrete__Parent"),
             },
             concrete_querysets={
-                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Queryset__Parent"),
+                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {
@@ -257,7 +257,7 @@ class TestBuildingReport:
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Concrete__Model1"),
             },
             concrete_querysets={
-                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Queryset__Model1"),
+                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {ImportPath("my.models")},
@@ -277,7 +277,7 @@ class TestBuildingReport:
                 ImportPath("my.models.Model2"): ImportPath("virtual.my.models.Concrete__Model2"),
             },
             concrete_querysets={
-                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.Queryset__Model2"),
+                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {ImportPath("my.models")},
@@ -300,7 +300,7 @@ class TestBuildingReport:
             },
             concrete_querysets={
                 ImportPath("other.models.Model3"): ImportPath(
-                    "virtual.other.models.Queryset__Model3"
+                    "virtual.other.models.QuerySet__Model3"
                 ),
             },
             related_import_paths={
@@ -326,7 +326,7 @@ class TestBuildingReport:
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Concrete__Parent"),
             },
             concrete_querysets={
-                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Queryset__Parent"),
+                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {
@@ -348,8 +348,8 @@ class TestBuildingReport:
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Concrete__Model1"),
             },
             concrete_querysets={
-                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Queryset__Parent"),
-                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Queryset__Model1"),
+                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
+                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {
@@ -372,9 +372,9 @@ class TestBuildingReport:
                 ImportPath("my.models.Model2"): ImportPath("virtual.my.models.Concrete__Model2"),
             },
             concrete_querysets={
-                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Queryset__Parent"),
-                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Queryset__Model1"),
-                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.Queryset__Model2"),
+                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
+                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
+                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
             },
             related_import_paths={
                 ImportPath("my.parents"): {
@@ -404,11 +404,11 @@ class TestBuildingReport:
                 ),
             },
             concrete_querysets={
-                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.Queryset__Parent"),
-                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.Queryset__Model1"),
-                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.Queryset__Model2"),
+                ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
+                ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
+                ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
                 ImportPath("other.models.Model3"): ImportPath(
-                    "virtual.other.models.Queryset__Model3"
+                    "virtual.other.models.QuerySet__Model3"
                 ),
             },
             related_import_paths={
