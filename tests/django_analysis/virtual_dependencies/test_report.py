@@ -15,8 +15,8 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M1"): ImportPath("VM1"),
             },
-            related_report_import_paths={
-                ImportPath("M1"): [ImportPath("VM1"), ImportPath("VM2")],
+            related_import_paths={
+                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
             },
         )
         report2 = virtual_dependencies.Report(
@@ -29,8 +29,8 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M2"): ImportPath("VM2"),
             },
-            related_report_import_paths={
-                ImportPath("M2"): [ImportPath("VM1"), ImportPath("VM2")],
+            related_import_paths={
+                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
             },
         )
         report3 = virtual_dependencies.Report(
@@ -47,8 +47,8 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M3"): ImportPath("VM3"),
             },
-            related_report_import_paths={
-                ImportPath("M3"): [ImportPath("VM3")],
+            related_import_paths={
+                ImportPath("M3"): {ImportPath("VM3")},
             },
         )
 
@@ -78,9 +78,9 @@ class TestCombiningReports:
                 ImportPath("M2"): ImportPath("VM2"),
                 ImportPath("M3"): ImportPath("VM3"),
             },
-            related_report_import_paths={
-                ImportPath("M1"): [ImportPath("VM1"), ImportPath("VM2")],
-                ImportPath("M2"): [ImportPath("VM1"), ImportPath("VM2")],
-                ImportPath("M3"): [ImportPath("VM3")],
+            related_import_paths={
+                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
+                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
+                ImportPath("M3"): {ImportPath("VM3")},
             },
         )

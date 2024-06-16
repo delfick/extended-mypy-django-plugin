@@ -1,21 +1,51 @@
 from __future__ import annotations
 
+import collections
 import dataclasses
 import functools
 import pathlib
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Generic, cast
+from collections.abc import MutableMapping, MutableSet, Sequence
+from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 from .. import project, protocols
 from . import dependency
 
+T_Report = TypeVar("T_Report", bound="Report")
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Report:
-    concrete_annotations: Mapping[protocols.ImportPath, protocols.ImportPath]
-    concrete_querysets: Mapping[protocols.ImportPath, protocols.ImportPath]
-    report_import_path: Mapping[protocols.ImportPath, protocols.ImportPath]
-    related_report_import_paths: Mapping[protocols.ImportPath, Sequence[protocols.ImportPath]]
+    concrete_annotations: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
+        dataclasses.field(default_factory=dict)
+    )
+    concrete_querysets: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
+        dataclasses.field(default_factory=dict)
+    )
+    report_import_path: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
+        dataclasses.field(default_factory=dict)
+    )
+    related_import_paths: MutableMapping[
+        protocols.ImportPath, MutableSet[protocols.ImportPath]
+    ] = dataclasses.field(default_factory=lambda: collections.defaultdict(set))
+
+    def register_module(
+        self,
+        *,
+        module_import_path: protocols.ImportPath,
+        virtual_import_path: protocols.ImportPath,
+    ) -> None:
+        pass
+
+    def register_model(
+        self,
+        *,
+        model_import_path: protocols.ImportPath,
+        virtual_import_path: protocols.ImportPath,
+        concrete_name: str,
+        concrete_queryset_name: str,
+        concrete_models: Sequence[protocols.Model],
+    ) -> None:
+        pass
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -34,43 +64,29 @@ class VirtualDependencyScribe(Generic[protocols.T_Project, protocols.T_Report]):
     virtual_dependency: dependency.VirtualDependency[protocols.T_Project]
 
     def generate_report(self) -> WrittenVirtualDependency[protocols.T_Report]:
-        report = self.report_maker(
-            concrete_annotations={},
-            concrete_querysets={},
-            report_import_path={},
-            related_report_import_paths={},
-        )
-        virtual_import_path = report.report_import_path[self.virtual_dependency.module.import_path]
+        report = self.report_maker()
+        virtual_import_path = self.virtual_dependency.summary.virtual_dependency_name
         return WrittenVirtualDependency(
             content="", summary_hash="", report=report, virtual_import_path=virtual_import_path
         )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class ReportCombiner(Generic[protocols.T_Report]):
-    reports: Sequence[protocols.T_Report]
-    report_maker: protocols.ReportMaker[protocols.T_Report]
+class ReportCombiner(Generic[T_Report]):
+    reports: Sequence[T_Report]
+    report_maker: protocols.ReportMaker[T_Report]
 
-    def combine(self) -> protocols.T_Report:
-        concrete_annotations: dict[protocols.ImportPath, protocols.ImportPath] = {}
-        concrete_querysets: dict[protocols.ImportPath, protocols.ImportPath] = {}
-        report_import_path: dict[protocols.ImportPath, protocols.ImportPath] = {}
-        related_report_import_paths: dict[
-            protocols.ImportPath, Sequence[protocols.ImportPath]
-        ] = {}
-
+    def combine(self) -> T_Report:
+        final = self.report_maker()
         for report in self.reports:
-            concrete_annotations.update(report.concrete_annotations)
-            concrete_querysets.update(report.concrete_querysets)
-            report_import_path.update(report.report_import_path)
-            related_report_import_paths.update(report.related_report_import_paths)
+            final.concrete_annotations.update(report.concrete_annotations)
+            final.concrete_querysets.update(report.concrete_querysets)
+            final.report_import_path.update(report.report_import_path)
 
-        return self.report_maker(
-            concrete_annotations=concrete_annotations,
-            concrete_querysets=concrete_querysets,
-            report_import_path=report_import_path,
-            related_report_import_paths=related_report_import_paths,
-        )
+            for path, related in report.related_import_paths.items():
+                final.related_import_paths[path] |= related
+
+        return final
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
