@@ -7,6 +7,7 @@ from .report import (
     ReportFactory,
     ReportInstaller,
     VirtualDependencyScribe,
+    WrittenVirtualDependency,
     make_report_factory,
 )
 
@@ -22,4 +23,5 @@ __all__ = [
     "VirtualDependencySummary",
     "VirtualDependencyGenerator",
     "VirtualDependencyInstaller",
+    "WrittenVirtualDependency",
 ]

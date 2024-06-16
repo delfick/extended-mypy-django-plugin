@@ -1,8 +1,14 @@
+import dataclasses
 import functools
-from collections.abc import Iterator
+import pathlib
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, cast
+
+import pytest
 
 from extended_mypy_django_plugin.django_analysis import (
     ImportPath,
+    Module,
     Project,
     adler32_hash,
     protocols,
@@ -315,3 +321,150 @@ class TestVirtualDependencyGenerator:
                 },
             ),
         }
+
+
+class TestVirtualDependencyInstaller:
+    def test_it_uses_the_report_factory(self, tmp_path_factory: pytest.TempPathFactory) -> None:
+        scratch_root = tmp_path_factory.mktemp("scratch_root")
+        destination = tmp_path_factory.mktemp("destination")
+
+        installed: list[tuple[pathlib.Path, pathlib.Path]] = []
+        written: dict[tuple[pathlib.Path, protocols.ImportPath], tuple[str, str | None]] = {}
+
+        class Dep(virtual_dependencies.VirtualDependency[Project]):
+            pass
+
+        @dataclasses.dataclass
+        class Report:
+            modules: set[tuple[protocols.ImportPath, protocols.ImportPath]] = dataclasses.field(
+                default_factory=set
+            )
+            combined: bool = False
+
+            def register_module(
+                self,
+                *,
+                module_import_path: protocols.ImportPath,
+                virtual_import_path: protocols.ImportPath,
+            ) -> None:
+                self.modules.add((module_import_path, virtual_import_path))
+
+            def register_model(
+                self,
+                *,
+                model_import_path: protocols.ImportPath,
+                virtual_import_path: protocols.ImportPath,
+                concrete_name: str,
+                concrete_queryset_name: str,
+                concrete_models: Sequence[protocols.Model],
+            ) -> None:
+                raise ValueError("not called")
+
+        @dataclasses.dataclass
+        class ReportCombiner:
+            reports: Sequence[Report]
+
+            def combine(self) -> Report:
+                final = Report(combined=True)
+                for report in self.reports:
+                    final.modules |= report.modules
+
+                return final
+
+        @dataclasses.dataclass
+        class ReportInstaller:
+            def write_report(
+                self,
+                *,
+                scratch_root: pathlib.Path,
+                summary_hash: str | None,
+                virtual_import_path: protocols.ImportPath,
+                content: str,
+            ) -> None:
+                key = (scratch_root, virtual_import_path)
+                assert key not in written
+                written[key] = (content, summary_hash)
+
+            def install_reports(
+                self, *, scratch_root: pathlib.Path, destination: pathlib.Path
+            ) -> None:
+                installed.append((scratch_root, destination))
+
+        class ReportFactory:
+            def __init__(self) -> None:
+                self.report_installer = ReportInstaller()
+                self.report_maker = Report
+                self.report_combiner_maker = ReportCombiner
+
+            def deploy_scribes(
+                self, all_virtual_dependencies: protocols.VirtualDependencyMap[Dep]
+            ) -> Iterator[protocols.WrittenVirtualDependency[Report]]:
+                for virtual_dependency in all_virtual_dependencies.values():
+                    report = self.report_maker()
+                    report.register_module(
+                        module_import_path=virtual_dependency.summary.module_import_path,
+                        virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+                    )
+                    yield virtual_dependencies.WrittenVirtualDependency(
+                        content=f"CONTENT__{virtual_dependency.summary.module_import_path}",
+                        summary_hash=f"SUMMARY__{virtual_dependency.summary.module_import_path}",
+                        report=report,
+                        virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+                    )
+
+        if TYPE_CHECKING:
+            _D: protocols.VirtualDependency = cast(Dep, None)
+            _R: protocols.Report = cast(Report, None)
+            _RC: protocols.ReportCombiner[Report] = cast(ReportCombiner, None)
+            _RCM: protocols.ReportCombinerMaker[Report] = ReportCombiner
+            _RI: protocols.ReportInstaller = cast(ReportInstaller, None)
+            _RF: protocols.ReportFactory[Dep, Report] = cast(ReportFactory, None)
+
+        installer = virtual_dependencies.VirtualDependencyInstaller[Dep, Report](
+            virtual_dependencies={
+                ImportPath("M1"): Dep(
+                    module=Module(installed=True, import_path=ImportPath("M1"), defined_models={}),
+                    interface_differentiator="__differentiated__",
+                    summary=virtual_dependencies.VirtualDependencySummary(
+                        virtual_dependency_name=ImportPath("__virtual__.M1"),
+                        module_import_path=ImportPath("M1"),
+                        installed_apps_hash="__hashed_installed_apps__",
+                        significant_info=["__significant__django.contrib.admin.models__"],
+                    ),
+                    all_related_models=[],
+                    concrete_models={},
+                ),
+                ImportPath("M2"): Dep(
+                    module=Module(installed=True, import_path=ImportPath("M2"), defined_models={}),
+                    interface_differentiator="__differentiated__",
+                    summary=virtual_dependencies.VirtualDependencySummary(
+                        virtual_dependency_name=ImportPath("__virtual__.M2"),
+                        module_import_path=ImportPath("M2"),
+                        installed_apps_hash="__hashed_installed_apps__",
+                        significant_info=["__significant__django.contrib.admin.models__"],
+                    ),
+                    all_related_models=[],
+                    concrete_models={},
+                ),
+            }
+        )
+
+        assert written == {}
+        assert installed == []
+        report = installer(
+            scratch_root=scratch_root, destination=destination, report_factory=ReportFactory()
+        )
+
+        assert report == Report(
+            combined=True,
+            modules={
+                (ImportPath("M1"), ImportPath("__virtual__.M1")),
+                (ImportPath("M2"), ImportPath("__virtual__.M2")),
+            },
+        )
+
+        assert written == {
+            (scratch_root, ImportPath("__virtual__.M1")): ("CONTENT__M1", "SUMMARY__M1"),
+            (scratch_root, ImportPath("__virtual__.M2")): ("CONTENT__M2", "SUMMARY__M2"),
+        }
+        assert installed == [(scratch_root, destination)]
