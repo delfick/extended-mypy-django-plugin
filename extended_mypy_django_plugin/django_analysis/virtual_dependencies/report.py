@@ -107,9 +107,23 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
 
     def write(self) -> WrittenVirtualDependency[protocols.T_Report]:
         report = self.report_maker()
+        summary_hash = self._get_summary_hash()
+
+        module_import_path = self.virtual_dependency.summary.module_import_path
         virtual_import_path = self.virtual_dependency.summary.virtual_dependency_name
+        report.register_module(
+            module_import_path=module_import_path, virtual_import_path=virtual_import_path
+        )
+
+        content = self._template_virtual_dependency(
+            report=report, virtual_import_path=virtual_import_path, summary_hash=summary_hash
+        )
+
         return WrittenVirtualDependency(
-            content="", summary_hash="", report=report, virtual_import_path=virtual_import_path
+            content=content,
+            summary_hash=summary_hash,
+            report=report,
+            virtual_import_path=virtual_import_path,
         )
 
     @classmethod
@@ -148,6 +162,42 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             return None
         else:
             return summary
+
+    def _get_summary_hash(self) -> str | None:
+        summary = self.virtual_dependency.summary
+        summary_hash: str | None = None
+        if summary.significant_info:
+            significant = self.hasher(*(info.encode() for info in summary.significant_info))
+            summary_hash = "::".join(
+                [
+                    f"{summary.virtual_dependency_name}",
+                    str(summary.module_import_path),
+                    f"installed_apps={summary.installed_apps_hash}",
+                    f"significant={significant}",
+                ]
+            )
+
+        return summary_hash
+
+    def _template_virtual_dependency(
+        self,
+        *,
+        report: protocols.T_Report,
+        virtual_import_path: protocols.ImportPath,
+        summary_hash: str | None,
+    ) -> str:
+        for model, concrete in self.virtual_dependency.concrete_models.items():
+            ns, name = ImportPath.split(model)
+            concrete_name = f"Concrete__{name}"
+            queryset_name = f"ConcreteQuerySet__{name}"
+            report.register_model(
+                model_import_path=model,
+                virtual_import_path=virtual_import_path,
+                concrete_queryset_name=queryset_name,
+                concrete_name=concrete_name,
+                concrete_models=concrete,
+            )
+        return ""
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

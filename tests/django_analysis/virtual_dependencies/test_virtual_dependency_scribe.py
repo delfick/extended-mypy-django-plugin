@@ -1,10 +1,18 @@
+import functools
 import importlib
 import pathlib
 import shutil
+import textwrap
 
 import pytest
 
-from extended_mypy_django_plugin.django_analysis import virtual_dependencies
+from extended_mypy_django_plugin.django_analysis import (
+    ImportPath,
+    Project,
+    adler32_hash,
+    protocols,
+    virtual_dependencies,
+)
 
 ReportSummaryGetter = virtual_dependencies.ReportSummaryGetter
 
@@ -82,3 +90,232 @@ class TestVirtualDependencyScribe:
 
             location.write_text('mod = "pytest"\nsummary = "ladelala"')
             assert get_report_summary(location) == "ladelala"
+
+    class TestWrite:
+        class Scenario:
+            def __init__(self, discovered_project: protocols.Discovered[Project]) -> None:
+                self.count: int = 0
+
+                def make_differentiator() -> str:
+                    self.count += 1
+                    return f"__differentiated__{self.count}"
+
+                virtual_dependency_maker = functools.partial(
+                    virtual_dependencies.VirtualDependency[Project].create,
+                    virtual_dependency_namer=virtual_dependencies.VirtualDependencyNamer(
+                        namespace="__virtual__", hasher=adler32_hash
+                    ),
+                    installed_apps_hash="__installed_apps_hash__",
+                    make_differentiator=make_differentiator,
+                )
+
+                self.all_virtual_dependencies = virtual_dependencies.VirtualDependencyGenerator(
+                    virtual_dependency_maker=virtual_dependency_maker
+                )(discovered_project=discovered_project)
+
+            def scribe(
+                self,
+                *,
+                hasher: protocols.Hasher,
+                virtual_dependency: virtual_dependencies.VirtualDependency[Project],
+            ) -> virtual_dependencies.WrittenVirtualDependency[virtual_dependencies.Report]:
+                return virtual_dependencies.VirtualDependencyScribe(
+                    hasher=hasher,
+                    report_maker=virtual_dependencies.Report,
+                    virtual_dependency=virtual_dependency,
+                    all_virtual_dependencies=self.all_virtual_dependencies,
+                ).write()
+
+            def make_report(
+                self,
+                *,
+                concrete_annotations: dict[str, str],
+                concrete_querysets: dict[str, str],
+                report_import_path: dict[str, str],
+                related_import_paths: dict[str, set[str]],
+            ) -> virtual_dependencies.Report:
+                """
+                Helper to make the tests below easier to read
+                """
+                return virtual_dependencies.Report(
+                    concrete_annotations={
+                        ImportPath(k): ImportPath(v) for k, v in concrete_annotations.items()
+                    },
+                    concrete_querysets={
+                        ImportPath(k): ImportPath(v) for k, v in concrete_querysets.items()
+                    },
+                    report_import_path={
+                        ImportPath(k): ImportPath(v) for k, v in report_import_path.items()
+                    },
+                    related_import_paths={
+                        ImportPath(k): {ImportPath(v) for v in vs}
+                        for k, vs in related_import_paths.items()
+                    },
+                )
+
+        def test_writing_virtual_dependencies_1(
+            self, discovered_django_example: protocols.Discovered[Project]
+        ) -> None:
+            scenario = self.Scenario(discovered_django_example)
+
+            hasher_called: list[int] = []
+
+            def hasher(*parts: bytes) -> str:
+                hasher_called.append(1)
+                assert parts == (
+                    b"module:djangoexample.exampleapp2.models",
+                    b"module:djangoexample.exampleapp2.models>concrete:djangoexample.exampleapp2.models.ChildOther=djangoexample.exampleapp2.models.ChildOther",
+                    b"module:djangoexample.exampleapp2.models>concrete:djangoexample.exampleapp2.models.ChildOther2=djangoexample.exampleapp2.models.ChildOther2",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>is_abstract:False",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>mro_0:djangoexample.exampleapp.models.Parent",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:id",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:one",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:one>field_type:django.db.models.fields.CharField",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:two",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther>field:two>field_type:django.db.models.fields.CharField",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>is_abstract:False",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>mro_0:djangoexample.exampleapp.models.Parent",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:id",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:one",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:one>field_type:django.db.models.fields.CharField",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:two",
+                    b"module:djangoexample.exampleapp2.models>model:djangoexample.exampleapp2.models.ChildOther2>field:two>field_type:django.db.models.fields.CharField",
+                )
+                return "__hashed_for_great_good__"
+
+            virtual_dependency = scenario.all_virtual_dependencies[
+                ImportPath("djangoexample.exampleapp2.models")
+            ]
+
+            content = textwrap.dedent("")
+            summary_hash = (
+                "__virtual__.mod_3537308831"
+                "::djangoexample.exampleapp2.models"
+                "::installed_apps=__installed_apps_hash__"
+                "::significant=__hashed_for_great_good__"
+            )
+
+            written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
+            assert written == virtual_dependencies.WrittenVirtualDependency(
+                content=content,
+                summary_hash=summary_hash,
+                report=scenario.make_report(
+                    concrete_annotations={
+                        "djangoexample.exampleapp2.models.ChildOther": "__virtual__.mod_3537308831.Concrete__ChildOther",
+                        "djangoexample.exampleapp2.models.ChildOther2": "__virtual__.mod_3537308831.Concrete__ChildOther2",
+                    },
+                    concrete_querysets={
+                        "djangoexample.exampleapp2.models.ChildOther": "__virtual__.mod_3537308831.ConcreteQuerySet__ChildOther",
+                        "djangoexample.exampleapp2.models.ChildOther2": "__virtual__.mod_3537308831.ConcreteQuerySet__ChildOther2",
+                    },
+                    report_import_path={
+                        "djangoexample.exampleapp2.models": "__virtual__.mod_3537308831"
+                    },
+                    related_import_paths={
+                        "djangoexample.exampleapp2.models": {"djangoexample.exampleapp.models"},
+                        "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
+                    },
+                ),
+                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+            )
+
+            assert hasher_called == [1]
+
+        def test_writing_virtual_dependencies_2(
+            self, discovered_django_example: protocols.Discovered[Project]
+        ) -> None:
+            scenario = self.Scenario(discovered_django_example)
+
+            hasher_called: list[int] = []
+
+            def hasher(*parts: bytes) -> str:
+                hasher_called.append(1)
+                assert parts == (
+                    b"module:djangoexample.relations1.models",
+                    b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Abstract=djangoexample.relations1.models.Child1,djangoexample.relations1.models.Child2",
+                    b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Child1=djangoexample.relations1.models.Child1",
+                    b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Child2=djangoexample.relations1.models.Child2",
+                    b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Concrete1=djangoexample.relations1.models.Concrete1",
+                    b"module:djangoexample.relations1.models>concrete:djangoexample.relations1.models.Concrete2=djangoexample.relations1.models.Concrete2",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Abstract>is_abstract:True",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>mro_0:djangoexample.relations1.models.Abstract",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:Concrete2_children+>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:children",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:children>field_type:django.db.models.fields.reverse_related.ManyToManyRel",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:children>related_model:djangoexample.relations1.models.Concrete2",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:id",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child1>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>mro_0:djangoexample.relations1.models.Abstract",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Child2>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:c2s>related_model:djangoexample.relations1.models.Concrete2",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:thing",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:thing>field_type:django.db.models.fields.reverse_related.OneToOneRel",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:thing>related_model:djangoexample.relations2.models.Thing",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:id",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete1>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>is_abstract:False",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:Concrete2_children+",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:Concrete2_children+>field_type:django.db.models.fields.reverse_related.ManyToOneRel",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:id",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:id>field_type:django.db.models.fields.BigAutoField",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:concrete1",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:concrete1>field_type:django.db.models.fields.related.ForeignKey",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:concrete1>related_model:djangoexample.relations1.models.Concrete1",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:children",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:children>field_type:django.db.models.fields.related.ManyToManyField",
+                    b"module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:children>related_model:djangoexample.relations1.models.Child1",
+                )
+                return "__hashed_for_greater_good__"
+
+            virtual_dependency = scenario.all_virtual_dependencies[
+                ImportPath("djangoexample.relations1.models")
+            ]
+
+            content = textwrap.dedent("")
+            summary_hash = (
+                "__virtual__.mod_3327724610"
+                "::djangoexample.relations1.models"
+                "::installed_apps=__installed_apps_hash__"
+                "::significant=__hashed_for_greater_good__"
+            )
+
+            written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
+            assert written == virtual_dependencies.WrittenVirtualDependency(
+                content=content,
+                summary_hash=summary_hash,
+                report=scenario.make_report(
+                    concrete_annotations={
+                        "djangoexample.relations1.models.Abstract": "__virtual__.mod_3327724610.Concrete__Abstract",
+                        "djangoexample.relations1.models.Child1": "__virtual__.mod_3327724610.Concrete__Child1",
+                        "djangoexample.relations1.models.Child2": "__virtual__.mod_3327724610.Concrete__Child2",
+                        "djangoexample.relations1.models.Concrete1": "__virtual__.mod_3327724610.Concrete__Concrete1",
+                        "djangoexample.relations1.models.Concrete2": "__virtual__.mod_3327724610.Concrete__Concrete2",
+                    },
+                    concrete_querysets={
+                        "djangoexample.relations1.models.Abstract": "__virtual__.mod_3327724610.ConcreteQuerySet__Abstract",
+                        "djangoexample.relations1.models.Child1": "__virtual__.mod_3327724610.ConcreteQuerySet__Child1",
+                        "djangoexample.relations1.models.Child2": "__virtual__.mod_3327724610.ConcreteQuerySet__Child2",
+                        "djangoexample.relations1.models.Concrete1": "__virtual__.mod_3327724610.ConcreteQuerySet__Concrete1",
+                        "djangoexample.relations1.models.Concrete2": "__virtual__.mod_3327724610.ConcreteQuerySet__Concrete2",
+                    },
+                    report_import_path={
+                        "djangoexample.relations1.models": "__virtual__.mod_3327724610"
+                    },
+                    related_import_paths={
+                        "djangoexample.relations1.models": {"djangoexample.relations2.models"},
+                        "djangoexample.relations2.models": {"djangoexample.relations1.models"},
+                    },
+                ),
+                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+            )
+
+            assert hasher_called == [1]
