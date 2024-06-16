@@ -111,7 +111,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         summary_hash = self._get_summary_hash()
 
         module_import_path = self.virtual_dependency.summary.module_import_path
-        virtual_import_path = self.virtual_dependency.summary.virtual_dependency_name
+        virtual_import_path = self.virtual_dependency.summary.virtual_import_path
         report.register_module(
             module_import_path=module_import_path, virtual_import_path=virtual_import_path
         )
@@ -171,7 +171,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             significant = self.hasher(*(info.encode() for info in summary.significant_info))
             summary_hash = "::".join(
                 [
-                    f"{summary.virtual_dependency_name}",
+                    f"{summary.virtual_import_path}",
                     str(summary.module_import_path),
                     f"installed_apps={summary.installed_apps_hash}",
                     f"significant={significant}",
@@ -300,7 +300,16 @@ class ReportInstaller:
         location.write_text(content)
         self._written[location] = summary_hash
 
-    def install_reports(self, *, scratch_root: pathlib.Path, destination: pathlib.Path) -> None:
+    def install_reports(
+        self,
+        *,
+        scratch_root: pathlib.Path,
+        destination: pathlib.Path,
+        virtual_namespace: protocols.ImportPath,
+    ) -> None:
+        virtual_destination = destination / virtual_namespace
+        virtual_destination.mkdir(parents=True, exist_ok=True)
+
         seen: set[pathlib.Path] = set()
         for location, summary in self._written.items():
             relative_path = location.relative_to(scratch_root)
@@ -315,7 +324,7 @@ class ReportInstaller:
                 destination_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(location, destination_path)
 
-        for root, dirs, files in os.walk(destination):
+        for root, dirs, files in os.walk(virtual_destination):
             for name in list(dirs):
                 location = pathlib.Path(root) / name
                 if location not in seen:

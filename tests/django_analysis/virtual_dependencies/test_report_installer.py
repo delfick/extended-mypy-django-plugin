@@ -105,40 +105,50 @@ class TestReportInstaller:
     class TestInstallReports:
         def test_it_works_on_empty_folder(self, tmp_path_factory: pytest.TempPathFactory) -> None:
             scratch_root = tmp_path_factory.mktemp("scratch_root")
-            destination = tmp_path_factory.mktemp("destination")
+            destination_holder = tmp_path_factory.mktemp("destination")
+            destination = destination_holder / "__virtual__"
 
             installer = virtual_dependencies.ReportInstaller(_get_report_summary=lambda path: None)
-            installer.install_reports(scratch_root=scratch_root, destination=destination)
+            installer.install_reports(
+                scratch_root=scratch_root,
+                destination=destination_holder,
+                virtual_namespace=ImportPath("__virtual__"),
+            )
             assert len(list(destination.iterdir())) == 0
 
         def test_it_copies_over_everything_that_was_written(
             self, tmp_path_factory: pytest.TempPathFactory
         ) -> None:
             scratch_root = tmp_path_factory.mktemp("scratch_root")
-            destination = tmp_path_factory.mktemp("destination")
+            destination_holder = tmp_path_factory.mktemp("destination")
+            destination = destination_holder / "__virtual__"
 
             installer = virtual_dependencies.ReportInstaller(_get_report_summary=lambda path: None)
 
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s1",
-                virtual_import_path=ImportPath("mod_one"),
+                virtual_import_path=ImportPath("__virtual__.mod_one"),
                 content="1",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s2",
-                virtual_import_path=ImportPath("mod_two"),
+                virtual_import_path=ImportPath("__virtual__.mod_two"),
                 content="2",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s3",
-                virtual_import_path=ImportPath("mod_three"),
+                virtual_import_path=ImportPath("__virtual__.mod_three"),
                 content="3",
             )
 
-            installer.install_reports(scratch_root=scratch_root, destination=destination)
+            installer.install_reports(
+                scratch_root=scratch_root,
+                destination=destination_holder,
+                virtual_namespace=ImportPath("__virtual__"),
+            )
             assert len(list(destination.iterdir())) == 3
 
             assert (destination / "mod_one.py").read_text() == "1"
@@ -149,7 +159,9 @@ class TestReportInstaller:
             self, tmp_path_factory: pytest.TempPathFactory
         ) -> None:
             scratch_root = tmp_path_factory.mktemp("scratch_root")
-            destination = tmp_path_factory.mktemp("destination")
+            destination_holder = tmp_path_factory.mktemp("destination")
+            destination = destination_holder / "__virtual__"
+            destination.mkdir()
 
             (mod_one := destination / "mod_one.py").write_text("0")
             (mod_two := destination / "mod_two.py").write_text("existing")
@@ -195,35 +207,39 @@ class TestReportInstaller:
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s1",
-                virtual_import_path=ImportPath("mod_one"),
+                virtual_import_path=ImportPath("__virtual__.mod_one"),
                 content="1",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s2",
-                virtual_import_path=ImportPath("mod_two"),
+                virtual_import_path=ImportPath("__virtual__.mod_two"),
                 content="2",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="s3",
-                virtual_import_path=ImportPath("mod_three"),
+                virtual_import_path=ImportPath("__virtual__.mod_three"),
                 content="3",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="__nested_hash__",
-                virtual_import_path=ImportPath("nested.mc.nestface"),
+                virtual_import_path=ImportPath("__virtual__.nested.mc.nestface"),
                 content="deep",
             )
             installer.write_report(
                 scratch_root=scratch_root,
                 summary_hash="__deep_hash__",
-                virtual_import_path=ImportPath("hidden.down.here"),
+                virtual_import_path=ImportPath("__virtual__.hidden.down.here"),
                 content="hiding",
             )
 
-            installer.install_reports(scratch_root=scratch_root, destination=destination)
+            installer.install_reports(
+                scratch_root=scratch_root,
+                destination=destination_holder,
+                virtual_namespace=ImportPath("__virtual__"),
+            )
             found: list[pathlib.Path] = []
             for root, _, files in os.walk(destination):
                 for name in files:

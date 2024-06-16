@@ -103,7 +103,7 @@ class TestVirtualDependencyScribe:
                 virtual_dependency_maker = functools.partial(
                     virtual_dependencies.VirtualDependency[Project].create,
                     virtual_dependency_namer=virtual_dependencies.VirtualDependencyNamer(
-                        namespace="__virtual__", hasher=adler32_hash
+                        namespace=ImportPath("__virtual__"), hasher=adler32_hash
                     ),
                     installed_apps_hash="__installed_apps_hash__",
                     make_differentiator=make_differentiator,
@@ -236,7 +236,7 @@ class TestVirtualDependencyScribe:
                         "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
                     },
                 ),
-                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+                virtual_import_path=virtual_dependency.summary.virtual_import_path,
             )
 
             assert hasher_called == [1]
@@ -364,7 +364,7 @@ class TestVirtualDependencyScribe:
                         "djangoexample.relations2.models": {"djangoexample.relations1.models"},
                     },
                 ),
-                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+                virtual_import_path=virtual_dependency.summary.virtual_import_path,
             )
 
             assert hasher_called == [1]
@@ -413,7 +413,7 @@ class TestVirtualDependencyScribe:
                         )
                     }
                 ),
-                virtual_import_path=virtual_dependency.summary.virtual_dependency_name,
+                virtual_import_path=virtual_dependency.summary.virtual_import_path,
             )
 
             assert hasher_called == [1]
