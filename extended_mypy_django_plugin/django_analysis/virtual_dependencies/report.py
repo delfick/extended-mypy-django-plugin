@@ -3,17 +3,24 @@ from __future__ import annotations
 import collections
 import dataclasses
 import functools
+import importlib
 import os
 import pathlib
+import re
 import shutil
-from collections.abc import Callable, Iterator, MutableMapping, MutableSet, Sequence
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from collections.abc import Iterator, MutableMapping, MutableSet, Sequence
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, cast
 
 from .. import protocols
 from ..discovery import ImportPath
 from . import dependency
 
 T_Report = TypeVar("T_Report", bound="Report")
+
+regexes = {
+    "mod_decl": re.compile(r'^mod = "(?P<mod>[^"]+)"$'),
+    "summary_decl": re.compile(r'^summary = "(?P<summary>[^"]+)"$'),
+}
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -112,7 +119,35 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
 
         If the report doesn't have a summary or is for a module that doesn't exist anymore then return None
         """
-        return None
+        if not location.is_file():
+            return None
+
+        if location.suffix != ".py":
+            return None
+
+        mod: str | None = None
+        summary: str | None = None
+        for line in location.read_text().splitlines():
+            m = regexes["mod_decl"].match(line)
+            if m:
+                mod = m.groupdict()["mod"]
+
+            m = regexes["summary_decl"].match(line)
+            if m:
+                summary = m.groupdict()["summary"]
+
+            if mod and summary:
+                break
+
+        if mod is None or summary is None:
+            return None
+
+        try:
+            importlib.util.find_spec(mod)
+        except ModuleNotFoundError:
+            return None
+        else:
+            return summary
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -133,10 +168,22 @@ class ReportCombiner(Generic[T_Report]):
         return final
 
 
+class ReportSummaryGetter(Protocol):
+    """
+    Protocol for a callable that returns a summary from a path
+
+    Where None is returned if the path isn't a valid virtual dependency
+
+    And a string is the summary from that virtual dependency
+    """
+
+    def __call__(self, location: pathlib.Path, /) -> str | None: ...
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportInstaller:
     _written: dict[pathlib.Path, str | None] = dataclasses.field(init=False, default_factory=dict)
-    _get_report_summary: Callable[[pathlib.Path], str | None]
+    _get_report_summary: ReportSummaryGetter
 
     def write_report(
         self,
