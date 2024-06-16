@@ -8,6 +8,7 @@ from collections.abc import MutableMapping, MutableSet, Sequence
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 from .. import project, protocols
+from ..discovery import ImportPath
 from . import dependency
 
 T_Report = TypeVar("T_Report", bound="Report")
@@ -34,7 +35,7 @@ class Report:
         module_import_path: protocols.ImportPath,
         virtual_import_path: protocols.ImportPath,
     ) -> None:
-        pass
+        self.report_import_path[module_import_path] = virtual_import_path
 
     def register_model(
         self,
@@ -45,7 +46,39 @@ class Report:
         concrete_queryset_name: str,
         concrete_models: Sequence[protocols.Model],
     ) -> None:
-        pass
+        module_import_path, name = ImportPath.split(model_import_path)
+
+        self.concrete_annotations[model_import_path] = ImportPath(
+            f"{virtual_import_path}.{concrete_name}"
+        )
+        self.concrete_querysets[model_import_path] = ImportPath(
+            f"{virtual_import_path}.{concrete_queryset_name}"
+        )
+
+        for concrete in concrete_models:
+            ns, _ = ImportPath.split(concrete.import_path)
+            if ns != module_import_path:
+                self.related_import_paths[module_import_path].add(ns)
+                self.related_import_paths[ns].add(module_import_path)
+
+            if concrete.default_custom_queryset:
+                ns, _ = ImportPath.split(concrete.default_custom_queryset)
+                if ns != module_import_path:
+                    self.related_import_paths[module_import_path].add(ns)
+                    self.related_import_paths[ns].add(module_import_path)
+
+            for field in concrete.all_fields.values():
+                if field.related_model:
+                    ns, _ = ImportPath.split(field.related_model)
+                    if ns != module_import_path:
+                        self.related_import_paths[module_import_path].add(ns)
+                        self.related_import_paths[ns].add(module_import_path)
+
+            for mro in concrete.models_in_mro:
+                ns, _ = ImportPath.split(mro)
+                if ns != module_import_path:
+                    self.related_import_paths[module_import_path].add(ns)
+                    self.related_import_paths[ns].add(module_import_path)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
