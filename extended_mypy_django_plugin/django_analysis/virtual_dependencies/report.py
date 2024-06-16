@@ -7,7 +7,7 @@ import pathlib
 from collections.abc import Iterator, MutableMapping, MutableSet, Sequence
 from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
-from .. import project, protocols
+from .. import protocols
 from ..discovery import ImportPath
 from . import dependency
 
@@ -90,14 +90,11 @@ class WrittenVirtualDependency(Generic[protocols.T_Report]):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class VirtualDependencyScribe(Generic[protocols.T_Project, protocols.T_Report]):
+class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
     hasher: protocols.Hasher
     report_maker: protocols.ReportMaker[protocols.T_Report]
-    discovered_project: protocols.Discovered[protocols.T_Project]
-    virtual_dependency: dependency.VirtualDependency[protocols.T_Project]
-    all_virtual_dependencies: protocols.VirtualDependencyMap[
-        dependency.VirtualDependency[protocols.T_Project]
-    ]
+    virtual_dependency: protocols.T_VirtualDependency
+    all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
 
     def write(self) -> WrittenVirtualDependency[protocols.T_Report]:
         report = self.report_maker()
@@ -127,12 +124,14 @@ class ReportCombiner(Generic[T_Report]):
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportInstaller:
+    _written: dict[pathlib.Path, str | None] = dataclasses.field(init=False, default_factory=dict)
+
     def write_report(
         self,
         *,
         scratch_root: pathlib.Path,
-        virtual_import_path: protocols.ImportPath,
         summary_hash: str | None,
+        virtual_import_path: protocols.ImportPath,
         content: str,
     ) -> None:
         pass
@@ -142,15 +141,17 @@ class ReportInstaller:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class ReportFactory(Generic[protocols.T_Project, protocols.T_VirtualDependency, T_Report]):
+class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
     report_installer: protocols.ReportInstaller
-    report_combiner_maker: protocols.ReportCombinerMaker[T_Report]
-    report_maker: protocols.ReportMaker[T_Report]
-    report_scribe: protocols.VirtualDependencyScribe[protocols.T_VirtualDependency, T_Report]
+    report_combiner_maker: protocols.ReportCombinerMaker[protocols.T_Report]
+    report_maker: protocols.ReportMaker[protocols.T_Report]
+    report_scribe: protocols.VirtualDependencyScribe[
+        protocols.T_VirtualDependency, protocols.T_Report
+    ]
 
     def deploy_scribes(
         self, virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
-    ) -> Iterator[protocols.WrittenVirtualDependency[T_Report]]:
+    ) -> Iterator[protocols.WrittenVirtualDependency[protocols.T_Report]]:
         for virtual_dependency in virtual_dependencies.values():
             yield self.report_scribe(
                 virtual_dependency=virtual_dependency,
@@ -159,18 +160,15 @@ class ReportFactory(Generic[protocols.T_Project, protocols.T_VirtualDependency, 
 
 
 def make_report_factory(
-    *, discovered_project: protocols.Discovered[protocols.T_Project], hasher: protocols.Hasher
-) -> protocols.ReportFactory[dependency.VirtualDependency[protocols.T_Project], Report]:
+    *, hasher: protocols.Hasher
+) -> protocols.ReportFactory[protocols.T_VirtualDependency, Report]:
     def report_scribe(
         *,
-        virtual_dependency: dependency.VirtualDependency[protocols.T_Project],
-        all_virtual_dependencies: protocols.VirtualDependencyMap[
-            dependency.VirtualDependency[protocols.T_Project]
-        ],
+        virtual_dependency: protocols.T_VirtualDependency,
+        all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency],
     ) -> protocols.WrittenVirtualDependency[Report]:
         return VirtualDependencyScribe(
             hasher=hasher,
-            discovered_project=discovered_project,
             report_maker=Report,
             virtual_dependency=virtual_dependency,
             all_virtual_dependencies=all_virtual_dependencies,
@@ -186,13 +184,16 @@ def make_report_factory(
 
 if TYPE_CHECKING:
     C_Report = Report
-    C_ReportFactory = ReportFactory[project.C_Project, dependency.C_VirtualDependency, C_Report]
+    C_ReportFactory = ReportFactory[dependency.C_VirtualDependency, C_Report]
     C_ReportCombiner = ReportCombiner[C_Report]
     C_ReportInstaller = ReportInstaller
     C_WrittenVirtualDependency = WrittenVirtualDependency[C_Report]
 
-    _R: protocols.Report = cast(Report, None)
-    _WVD: protocols.WrittenVirtualDependency[protocols.P_Report] = cast(
+    _R: protocols.P_Report = cast(Report, None)
+    _RF: protocols.P_ReportFactory = cast(
+        ReportFactory[protocols.P_VirtualDependency, protocols.P_Report], None
+    )
+    _WVD: protocols.P_WrittenVirtualDependency = cast(
         WrittenVirtualDependency[protocols.P_Report], None
     )
     _RI: protocols.P_ReportInstaller = cast(ReportInstaller, None)
