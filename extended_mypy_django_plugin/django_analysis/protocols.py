@@ -431,30 +431,27 @@ class Report(Protocol):
     information from the virtual dependencies
     """
 
-    @property
-    def concrete_annotations(self) -> Mapping[ImportPath, ImportPath]:
+    def register_module(
+        self,
+        *,
+        module_import_path: ImportPath,
+        virtual_import_path: ImportPath,
+    ) -> None:
         """
-        A map of full import path for a model to the import path of the equivalent typealias
-        representing the concrete children of that model
-        """
-
-    @property
-    def concrete_querysets(self) -> Mapping[ImportPath, ImportPath]:
-        """
-        A map of full import path for a model to the import path of the equivalent typealias
-        representing the concrete querysets of that model
+        Register a module to it's virtual path
         """
 
-    @property
-    def report_import_path(self) -> Mapping[ImportPath, ImportPath]:
+    def register_model(
+        self,
+        *,
+        model_import_path: ImportPath,
+        virtual_import_path: ImportPath,
+        concrete_name: str,
+        concrete_queryset_name: str,
+        concrete_models: Sequence[Model],
+    ) -> None:
         """
-        A map of full import path for a module to the virtual dependency for that module
-        """
-
-    @property
-    def related_report_import_paths(self) -> Mapping[ImportPath, Sequence[ImportPath]]:
-        """
-        A map of related report import paths for any given module
+        Register details about a model
         """
 
 
@@ -463,14 +460,7 @@ class ReportMaker(Protocol[T_CO_Report]):
     Used to construct a report
     """
 
-    def __call__(
-        self,
-        *,
-        concrete_annotations: Mapping[ImportPath, ImportPath],
-        concrete_querysets: Mapping[ImportPath, ImportPath],
-        report_import_path: Mapping[ImportPath, ImportPath],
-        related_report_import_paths: Mapping[ImportPath, Sequence[ImportPath]],
-    ) -> T_CO_Report: ...
+    def __call__(self) -> T_CO_Report: ...
 
 
 class WrittenVirtualDependency(Protocol[T_CO_Report]):

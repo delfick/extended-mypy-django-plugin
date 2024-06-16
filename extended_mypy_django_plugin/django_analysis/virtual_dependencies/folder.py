@@ -39,12 +39,7 @@ class GeneratedVirtualDependencies(Generic[protocols.T_VirtualDependency, protoc
     def install(
         self, *, scratch_root: pathlib.Path, destination: pathlib.Path
     ) -> protocols.T_Report:
-        return self.report_factory.report_maker(
-            concrete_annotations={},
-            concrete_querysets={},
-            report_import_path={},
-            related_report_import_paths={},
-        )
+        return self.report_factory.report_maker()
 
 
 if TYPE_CHECKING:
