@@ -8,7 +8,6 @@ This section explores the different parts of how this plugin is implemented.
 
     hook
     plugin
-    config
     reports
     store
     dependencies

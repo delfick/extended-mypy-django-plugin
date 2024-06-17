@@ -1,128 +1,127 @@
-"""
-The config class is copied from ``django-stubs`` except it also looks for a
-``python_identifier`` option and ensures it's a valid python identifier.
-"""
-
 import configparser
+import dataclasses
+import os
 import pathlib
 import sys
-from collections.abc import Callable
-from functools import partial
-from pathlib import Path
-from typing import Any, NoReturn
+from collections.abc import Mapping
 
-from mypy_django_plugin.config import (
-    COULD_NOT_LOAD_FILE,
-    MISSING_DJANGO_SETTINGS,
-    MISSING_SECTION,
-    DjangoPluginConfig,
-    exit_with_error,
-)
+from typing_extensions import Self
 
-if sys.version_info[:2] >= (3, 11):
+if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
 
-MISSING_SCRATCH_PATH = "missing required 'scratch_path' config"
-INVALID_BOOL_SETTING = "invalid {key!r}: the setting must be a boolean"
+
+@dataclasses.dataclass(frozen=True)
+class ExtraOptions:
+    """
+    The extended_mypy_django_plugin adds two options to the django-stubs configuration in the mypy configuration
+
+    This relies on django-stubs itself complaining before this point if the configuration isn't
+    a valid configuration file before loading those options and finding the two additional options:
+
+    scratch_path
+        A folder where virtual dependencies are written to
+
+    determine_django_state_script (optional)
+        A script that can be run in a subprocess to determine the state of the django project.
+        This is used when run in daemon mode to determine if the daemon needs to be restarted
+    """
+
+    scratch_path: pathlib.Path
+    determine_django_state_script: pathlib.Path | None
+
+    @classmethod
+    def from_config(cls, filepath: pathlib.Path) -> Self:
+        """
+        Construct the extra options from the mypy configuration
+        """
+        options = _parse_mypy_config(filepath)
+
+        scratch_path = _sanitize_path(filepath, options, "scratch_path", required=True)
+        assert scratch_path is not None
+
+        determine_django_state_script = _sanitize_path(
+            filepath, options, "determine_django_state_script"
+        )
+
+        scratch_path.mkdir(parents=True, exist_ok=True)
+
+        if determine_django_state_script is not None:
+            error_prefix = f"The specified 'determine_django_state_script' option ({determine_django_state_script})"
+
+            if not determine_django_state_script.exists():
+                raise ValueError(f"{error_prefix} does not exist")
+
+            if not determine_django_state_script.is_file():
+                raise ValueError(f"{error_prefix} is not a file")
+
+            if not os.access(determine_django_state_script, os.X_OK):
+                raise ValueError(f"{error_prefix} is not executable")
+
+        return cls(
+            scratch_path=scratch_path, determine_django_state_script=determine_django_state_script
+        )
+
+    def for_report(self) -> dict[str, str]:
+        """
+        Get the options that were found to be used for the mypy report_config_data hook
+        """
+        return {
+            "scratch_path": str(self.scratch_path),
+            "determine_django_state_script": str(self.determine_django_state_script),
+        }
 
 
-class Config(DjangoPluginConfig):
-    __slots__ = (
-        "django_settings_module",
-        "strict_settings",
-        "scratch_path",
-        "determine_django_state_script",
-    )
-    scratch_path: Path
-    determine_django_state_script: Path | None
+def _parse_mypy_config(filepath: pathlib.Path) -> Mapping[str, object]:
+    if filepath.suffix == ".toml":
+        return _parse_toml_config(filepath)
+    else:
+        return _parse_ini_config(filepath)
 
-    def parse_toml_file(self, filepath: pathlib.Path) -> None:
-        toml_exit: Callable[[str], NoReturn] = partial(exit_with_error, is_toml=True)
-        try:
-            with filepath.open(mode="rb") as f:
-                data = tomllib.load(f)
-        except (tomllib.TOMLDecodeError, OSError):
-            toml_exit(COULD_NOT_LOAD_FILE)
 
-        try:
-            config: dict[str, Any] = data["tool"]["django-stubs"]
-        except KeyError:
-            toml_exit(MISSING_SECTION.format(section="tool.django-stubs"))
+def _parse_toml_config(filepath: pathlib.Path) -> Mapping[str, object]:
+    # We know that ExtendedMypyStubs calls this code after we have a valid config
+    # So I'm skipping error handling on loading the config file
+    with filepath.open(mode="rb") as f:
+        data = tomllib.load(f)
 
-        if "django_settings_module" not in config:
-            toml_exit(MISSING_DJANGO_SETTINGS)
+    result = data["tool"]["django-stubs"]
+    if not isinstance(result, Mapping):
+        raise ValueError("The tool.django-stubs section was not a dictionary")
 
-        if "scratch_path" not in config:
-            toml_exit(MISSING_SCRATCH_PATH)
+    return result
 
-        self.django_settings_module = config["django_settings_module"]
-        if not isinstance(self.django_settings_module, str):
-            toml_exit("invalid 'django_settings_module': the setting must be a string")
 
-        if not isinstance(config["scratch_path"], str):
-            toml_exit("invalid 'scratch_path': the setting must be a string")
-        self.scratch_path = filepath.parent / config["scratch_path"]
-        self.scratch_path.mkdir(parents=True, exist_ok=True)
+def _parse_ini_config(filepath: pathlib.Path) -> Mapping[str, object]:
+    # We know that ExtendedMypyStubs calls this code after we have a valid config
+    # So I'm skipping error handling on loading the config file
+    parser = configparser.ConfigParser()
+    with filepath.open(encoding="utf-8") as f:
+        parser.read_file(f, source=str(filepath))
 
-        if "installed_apps_path" in config:
-            if not isinstance(config["determine_django_state_script"], str):
-                toml_exit("invalid 'determine_django_state_script': the setting must be a string")
-            self.determine_django_state_script = (
-                filepath.parent / config["determine_django_state_script"]
+    return dict(parser.items("mypy.plugins.django-stubs"))
+
+
+def _sanitize_path(
+    config_path: pathlib.Path,
+    options: Mapping[str, object],
+    option: str,
+    *,
+    required: bool = False,
+) -> pathlib.Path | None:
+    if not isinstance(value := options.get(option), str):
+        if required:
+            raise ValueError(
+                f"Please specify '{option}' in the django-stubs section of your mypy configuration ({config_path}) as a string path"
             )
         else:
-            self.determine_django_state_script = None
+            return None
 
-        self.strict_settings = config.get("strict_settings", True)
-        if not isinstance(self.strict_settings, bool):
-            toml_exit(INVALID_BOOL_SETTING.format(key="strict_settings"))
+    while value and value.startswith('"'):
+        value = value[1:]
+    while value and value.endswith('"'):
+        value = value[:-1]
 
-    def parse_ini_file(self, filepath: Path) -> None:
-        parser = configparser.ConfigParser()
-        try:
-            with filepath.open(encoding="utf-8") as f:
-                parser.read_file(f, source=str(filepath))
-        except OSError:
-            exit_with_error(COULD_NOT_LOAD_FILE)
-
-        section = "mypy.plugins.django-stubs"
-        if not parser.has_section(section):
-            exit_with_error(MISSING_SECTION.format(section=section))
-
-        if not parser.has_option(section, "django_settings_module"):
-            exit_with_error(MISSING_DJANGO_SETTINGS)
-
-        if not parser.has_option(section, "scratch_path"):
-            exit_with_error(MISSING_SCRATCH_PATH)
-
-        self.django_settings_module = parser.get(section, "django_settings_module").strip("'\"")
-
-        self.scratch_path = filepath.parent / parser.get(section, "scratch_path").strip("'\"")
-        self.scratch_path.mkdir(parents=True, exist_ok=True)
-
-        if parser.has_option(section, "determine_django_state_script"):
-            self.determine_django_state_script = filepath.parent / parser.get(
-                section, "determine_django_state_script"
-            ).strip("'\"")
-        else:
-            self.determine_django_state_script = None
-
-        try:
-            self.strict_settings = parser.getboolean(section, "strict_settings", fallback=True)
-        except ValueError:
-            exit_with_error(INVALID_BOOL_SETTING.format(key="strict_settings"))
-
-    def to_json(self) -> dict[str, Any]:
-        """We use this method to reset mypy cache via `report_config_data` hook."""
-        return {
-            "django_settings_module": self.django_settings_module,
-            "scratch_path": str(self.scratch_path),
-            "determine_django_state_script": (
-                None
-                if self.determine_django_state_script is None
-                else str(self.determine_django_state_script)
-            ),
-            "strict_settings": self.strict_settings,
-        }
+    return pathlib.Path(value.replace("$MYPY_CONFIG_FILE_DIR", str(config_path.parent)))

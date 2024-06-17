@@ -1,0 +1,167 @@
+import os
+import pathlib
+import shutil
+import textwrap
+
+import pytest
+
+from extended_mypy_django_plugin.plugin import _config
+
+
+class TestGetExtraOptions:
+    def test_it_can_get_options_from_ini_file(self, tmp_path: pathlib.Path) -> None:
+        config = tmp_path / "config.ini"
+
+        determine_django_state_script = tmp_path / "determine_version.py"
+        determine_django_state_script.write_text("#!/usr/bin/env python")
+        os.chmod(str(determine_django_state_script), 0o755)
+
+        config.write_text(
+            textwrap.dedent("""
+        [mypy.plugins.django-stubs]
+        scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main
+        determine_django_state_script = $MYPY_CONFIG_FILE_DIR/determine_version.py
+        """)
+        )
+
+        expected_scratch = tmp_path / ".mypy_django_scratch" / "main"
+        assert not expected_scratch.exists()
+
+        assert _config.ExtraOptions.from_config(config) == _config.ExtraOptions(
+            scratch_path=expected_scratch,
+            determine_django_state_script=determine_django_state_script,
+        )
+
+        assert expected_scratch.exists()
+
+    def test_it_can_get_options_from_toml_file(self, tmp_path: pathlib.Path) -> None:
+        config = tmp_path / "pyproject.toml"
+
+        determine_django_state_script = tmp_path / "determine_version.py"
+        determine_django_state_script.write_text("#!/usr/bin/env python")
+        os.chmod(str(determine_django_state_script), 0o755)
+
+        config.write_text(
+            textwrap.dedent("""
+        [tool.django-stubs]
+        scratch_path = "$MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main"
+        determine_django_state_script = "$MYPY_CONFIG_FILE_DIR/determine_version.py"
+        """)
+        )
+
+        expected_scratch = tmp_path / ".mypy_django_scratch" / "main"
+        assert not expected_scratch.exists()
+
+        assert _config.ExtraOptions.from_config(config) == _config.ExtraOptions(
+            scratch_path=expected_scratch,
+            determine_django_state_script=determine_django_state_script,
+        )
+
+        assert expected_scratch.exists()
+
+    def test_determine_django_state_script_is_optional(self, tmp_path: pathlib.Path) -> None:
+        versions = (
+            (
+                "mypy.ini",
+                """
+                [mypy.plugins.django-stubs]
+                scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main
+                """,
+            ),
+            (
+                "pyproject.toml",
+                """
+                [tool.django-stubs]
+                scratch_path = "$MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main"
+                """,
+            ),
+        )
+
+        for name, content in versions:
+            config = tmp_path / name
+            config.write_text(textwrap.dedent(content))
+
+            assert _config.ExtraOptions.from_config(config).determine_django_state_script is None
+
+    def test_complains_if_scratch_path_not_specified(self, tmp_path: pathlib.Path) -> None:
+        versions = (
+            (
+                "mypy.ini",
+                """
+                [mypy.plugins.django-stubs]
+                """,
+            ),
+            (
+                "pyproject.toml",
+                """
+                [tool.django-stubs]
+                """,
+            ),
+        )
+
+        for name, content in versions:
+            config = tmp_path / name
+            config.write_text(textwrap.dedent(content))
+
+            with pytest.raises(
+                ValueError,
+                match="Please specify 'scratch_path' in the django-stubs section of your mypy configuration",
+            ):
+                _config.ExtraOptions.from_config(config)
+
+    def test_complains_if_determine_django_state_script_is_not_valid(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        versions = (
+            (
+                "mypy.ini",
+                """
+                [mypy.plugins.django-stubs]
+                scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main
+                determine_django_state_script = $MYPY_CONFIG_FILE_DIR/determine_version.py
+                """,
+            ),
+            (
+                "pyproject.toml",
+                """
+                [tool.django-stubs]
+                scratch_path = "$MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main"
+                determine_django_state_script = "$MYPY_CONFIG_FILE_DIR/determine_version.py"
+                """,
+            ),
+        )
+
+        for name, content in versions:
+            config = tmp_path / name
+            config.write_text(textwrap.dedent(content))
+
+            determine_django_state_script = tmp_path / "determine_version.py"
+            determine_django_state_script.unlink(missing_ok=True)
+
+            with pytest.raises(
+                ValueError,
+                match=r"The specified 'determine_django_state_script' option \([^\)]+\) does not exist",
+            ):
+                _config.ExtraOptions.from_config(config)
+
+            determine_django_state_script.mkdir()
+            with pytest.raises(
+                ValueError,
+                match=r"The specified 'determine_django_state_script' option \([^\)]+\) is not a file",
+            ):
+                _config.ExtraOptions.from_config(config)
+
+            shutil.rmtree(determine_django_state_script)
+            determine_django_state_script.write_text("#!/usr/bin/env python")
+
+            with pytest.raises(
+                ValueError,
+                match=r"The specified 'determine_django_state_script' option \([^\)]+\) is not executable",
+            ):
+                _config.ExtraOptions.from_config(config)
+
+            os.chmod(str(determine_django_state_script), 0o755)
+            assert (
+                _config.ExtraOptions.from_config(config).determine_django_state_script
+                == determine_django_state_script
+            )
