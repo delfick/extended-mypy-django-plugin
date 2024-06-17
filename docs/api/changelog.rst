@@ -3,6 +3,12 @@
 Changelog
 ---------
 
+.. _release-0.6.0:
+
+0.6.0 - TBD
+    * The extra configuration now relies on the config using a ``$MYPY_CONFIG_FILE_DIR``
+      marker rather than assuming the paths are relative to the configuration.
+
 .. _release-0.5.5:
 
 0.5.5 - 6 June 2024

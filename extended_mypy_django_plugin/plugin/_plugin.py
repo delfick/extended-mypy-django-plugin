@@ -1,11 +1,11 @@
 import enum
 import functools
+import pathlib
 import sys
 from collections.abc import Callable
 from typing import Generic
 
 from mypy.checker import TypeChecker
-from mypy.modulefinder import mypy_path
 from mypy.nodes import MypyFile, SymbolNode, SymbolTableNode, TypeInfo
 from mypy.options import Options
 from mypy.plugin import (
@@ -16,13 +16,13 @@ from mypy.plugin import (
     FunctionSigContext,
     MethodContext,
     MethodSigContext,
+    ReportConfigContext,
 )
 from mypy.semanal import SemanticAnalyzer
 from mypy.typeanal import TypeAnalyser
 from mypy.types import FunctionLike, Instance
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
-from mypy_django_plugin.django.context import DjangoContext
 from mypy_django_plugin.transformers.managers import (
     resolve_manager_method,
     resolve_manager_method_from_instance,
@@ -61,28 +61,22 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
     .. autoattribute:: get_attribute_hook
     """
 
-    plugin_config: _config.Config
-
     def __init__(self, options: Options, mypy_version_tuple: tuple[int, int]) -> None:
-        super(main.NewSemanalDjangoPlugin, self).__init__(options)
+        super().__init__(options)
         self.mypy_version_tuple = mypy_version_tuple
-
-        self.plugin_config = _config.Config(options.config_file)
-        # Add paths from MYPYPATH env var
-        sys.path.extend(mypy_path())
-        # Add paths from mypy_path config option
-        sys.path.extend(options.mypy_path)
-
         self.running_in_daemon: bool = "dmypy" in sys.argv[0]
 
-        # Ensure we have a working django context before doing anything
-        # So when we try to import things that depend on that, they don't crash us!
-        self.django_context = DjangoContext(self.plugin_config.django_settings_module)
+        if options.config_file is None:
+            raise RuntimeError(
+                "The django-stubs plugin should already have been sad about no config file at this point"
+            )
+
+        self.extra_options = _config.ExtraOptions.from_config(pathlib.Path(options.config_file))
 
         self.report = _reports.Reports.create(
-            determine_django_state_script=self.plugin_config.determine_django_state_script,
+            determine_django_state_script=self.extra_options.determine_django_state_script,
             django_settings_module=self.plugin_config.django_settings_module,
-            scratch_path=self.plugin_config.scratch_path,
+            scratch_path=self.extra_options.scratch_path,
         )
 
         self.store = _store.Store(
@@ -148,6 +142,16 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
 
         return None
 
+    def report_config_data(self, ctx: ReportConfigContext) -> dict[str, object]:
+        """
+        Add our extra options to the report config data, so that mypy knows to clear the cache
+        if those settings change.
+        """
+        return {
+            **super().report_config_data(ctx),
+            "extended_mypy_django_plugin": self.extra_options.for_report(),
+        }
+
     def determine_plugin_version(self, previous_version: int | None = None) -> int:
         """
         Used to set `__version__' where the plugin is defined.
@@ -158,7 +162,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
             return 0
         else:
             return self.report.determine_version_hash(
-                self.plugin_config.scratch_path, previous_version
+                self.extra_options.scratch_path, previous_version
             )
 
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
