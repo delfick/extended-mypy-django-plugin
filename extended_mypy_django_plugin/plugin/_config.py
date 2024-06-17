@@ -5,6 +5,7 @@ import pathlib
 import sys
 from collections.abc import Mapping
 
+from mypy_django_plugin import config as django_stubs_config
 from typing_extensions import Self
 
 if sys.version_info >= (3, 11):
@@ -18,9 +19,6 @@ class ExtraOptions:
     """
     The extended_mypy_django_plugin adds two options to the django-stubs configuration in the mypy configuration
 
-    This relies on django-stubs itself complaining before this point if the configuration isn't
-    a valid configuration file before loading those options and finding the two additional options:
-
     scratch_path
         A folder where virtual dependencies are written to
 
@@ -33,12 +31,18 @@ class ExtraOptions:
     determine_django_state_script: pathlib.Path | None
 
     @classmethod
-    def from_config(cls, filepath: pathlib.Path) -> Self:
+    def from_config(cls, filepath: str | pathlib.Path | None) -> Self:
+        if filepath is None:
+            django_stubs_config.exit_with_error(django_stubs_config.INVALID_FILE)
+
+        config_path = pathlib.Path(filepath)
+        return cls.from_options(options=_parse_mypy_config(config_path), filepath=config_path)
+
+    @classmethod
+    def from_options(cls, *, options: Mapping[str, object], filepath: pathlib.Path) -> Self:
         """
         Construct the extra options from the mypy configuration
         """
-        options = _parse_mypy_config(filepath)
-
         scratch_path = _sanitize_path(filepath, options, "scratch_path", required=True)
         assert scratch_path is not None
 
@@ -82,24 +86,36 @@ def _parse_mypy_config(filepath: pathlib.Path) -> Mapping[str, object]:
 
 
 def _parse_toml_config(filepath: pathlib.Path) -> Mapping[str, object]:
-    # We know that ExtendedMypyStubs calls this code after we have a valid config
-    # So I'm skipping error handling on loading the config file
-    with filepath.open(mode="rb") as f:
-        data = tomllib.load(f)
+    try:
+        with filepath.open(mode="rb") as f:
+            data = tomllib.load(f)
+    except (tomllib.TOMLDecodeError, OSError):
+        django_stubs_config.exit_with_error(django_stubs_config.COULD_NOT_LOAD_FILE, is_toml=True)
 
-    result = data["tool"]["django-stubs"]
-    if not isinstance(result, Mapping):
-        raise ValueError("The tool.django-stubs section was not a dictionary")
+    if not isinstance(tool := data.get("tool"), Mapping) or not isinstance(
+        result := tool.get("django-stubs"), Mapping
+    ):
+        django_stubs_config.exit_with_error(
+            django_stubs_config.MISSING_SECTION.format(section="tool.django-stubs"),
+            is_toml=True,
+        )
 
     return result
 
 
 def _parse_ini_config(filepath: pathlib.Path) -> Mapping[str, object]:
-    # We know that ExtendedMypyStubs calls this code after we have a valid config
-    # So I'm skipping error handling on loading the config file
     parser = configparser.ConfigParser()
-    with filepath.open(encoding="utf-8") as f:
-        parser.read_file(f, source=str(filepath))
+    try:
+        with filepath.open(encoding="utf-8") as f:
+            parser.read_file(f, source=str(filepath))
+    except (configparser.ParsingError, OSError):
+        django_stubs_config.exit_with_error(django_stubs_config.COULD_NOT_LOAD_FILE)
+
+    section = "mypy.plugins.django-stubs"
+    if not parser.has_section(section):
+        django_stubs_config.exit_with_error(
+            django_stubs_config.MISSING_SECTION.format(section=section)
+        )
 
     return dict(parser.items("mypy.plugins.django-stubs"))
 

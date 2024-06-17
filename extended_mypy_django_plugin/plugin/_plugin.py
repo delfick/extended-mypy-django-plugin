@@ -1,6 +1,5 @@
 import enum
 import functools
-import pathlib
 import sys
 from collections.abc import Callable
 from typing import Generic
@@ -62,16 +61,11 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
     """
 
     def __init__(self, options: Options, mypy_version_tuple: tuple[int, int]) -> None:
-        super().__init__(options)
+        self.extra_options = _config.ExtraOptions.from_config(options.config_file)
         self.mypy_version_tuple = mypy_version_tuple
         self.running_in_daemon: bool = "dmypy" in sys.argv[0]
 
-        if options.config_file is None:
-            raise RuntimeError(
-                "The django-stubs plugin should already have been sad about no config file at this point"
-            )
-
-        self.extra_options = _config.ExtraOptions.from_config(pathlib.Path(options.config_file))
+        super().__init__(options)
 
         self.report = _reports.Reports.create(
             determine_django_state_script=self.extra_options.determine_django_state_script,
