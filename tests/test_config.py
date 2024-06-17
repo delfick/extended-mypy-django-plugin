@@ -165,3 +165,60 @@ class TestGetExtraOptions:
                 _config.ExtraOptions.from_config(config).determine_django_state_script
                 == determine_django_state_script
             )
+
+    def test_complains_if_config_file_is_none(self) -> None:
+        with pytest.raises(SystemExit):
+            _config.ExtraOptions.from_config(None)
+
+    def test_complains_if_config_file_is_invalid_format(self, tmp_path: pathlib.Path) -> None:
+        versions = (
+            (
+                "mypy.ini",
+                """
+                [mypy.plugins.django-stubs
+                scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main
+                """,
+            ),
+            (
+                "pyproject.toml",
+                """
+                [tool.django-stubs
+                scratch_path = "$MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/main"
+                determine_django_state_script = "$MYPY_CONFIG_FILE_DIR/determine_version.py"
+                """,
+            ),
+        )
+
+        for name, content in versions:
+            config = tmp_path / name
+            config.write_text(textwrap.dedent(content))
+
+            with pytest.raises(SystemExit):
+                _config.ExtraOptions.from_config(config)
+
+    def test_complains_if_config_file_is_missing_django_stubs_section(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        versions = (
+            (
+                "mypy.ini",
+                """
+                [mypy.plugins.not-correct]
+                hello = there
+                """,
+            ),
+            (
+                "pyproject.toml",
+                """
+                [tool.not-correct]
+                hello = "there"
+                """,
+            ),
+        )
+
+        for name, content in versions:
+            config = tmp_path / name
+            config.write_text(textwrap.dedent(content))
+
+            with pytest.raises(SystemExit):
+                _config.ExtraOptions.from_config(config)
