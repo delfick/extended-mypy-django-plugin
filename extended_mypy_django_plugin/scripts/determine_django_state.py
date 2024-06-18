@@ -1,84 +1,92 @@
 #!/usr/bin/env python
 
 import argparse
+import importlib
 import os
 import pathlib
+import re
 import sys
-from collections.abc import Callable
-from typing import TYPE_CHECKING
 
-from extended_mypy_django_plugin import scripts
-
-if TYPE_CHECKING:
-    from django.apps.registry import Apps
-    from django.conf import LazySettings
+from extended_mypy_django_plugin.entry import PluginProvider
+from extended_mypy_django_plugin.plugin import ExtraOptions, Report
 
 
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config-file", help="The path to the mypy config file")
+    parser.add_argument("--mypy-plugin", help="The mypy plugins configured", nargs="+")
     parser.add_argument(
-        "--django-settings-module", help="The setting value to use for DJANGO_SETTINGS_MODULE"
-    )
-    parser.add_argument(
-        "--apps-file",
-        help="The file to print the installed apps to, one app per line",
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        "--known-models-file",
-        help="The file to print the known models to",
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        "--known-settings-file",
-        help="The file to print the known settings to",
-        type=pathlib.Path,
-    )
-    parser.add_argument(
-        "--scratch-path",
-        help="The folder that the plugin is allowed to write in",
-        type=pathlib.Path,
+        "--version-file", help="File to write the version to", type=pathlib.Path, required=True
     )
     return parser
 
 
-def main(
-    argv: list[str] | None = None,
-    additional_django_setup: Callable[[], None] | None = None,
-    record_known_settings: Callable[[pathlib.Path, "LazySettings"], None] | None = None,
-    record_known_models: Callable[[pathlib.Path, "Apps"], None] | None = None,
-) -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = make_parser()
     args = parser.parse_args(argv)
 
-    if (args.scratch_path / "__assume_django_state_unchanged__").exists():
+    extra_options = ExtraOptions.from_config(args.config_file)
+
+    if (extra_options.scratch_path / "__assume_django_state_unchanged__").exists():
         sys.exit(2)
 
-    os.environ["DJANGO_SETTINGS_MODULE"] = args.django_settings_module
-    if additional_django_setup:
-        additional_django_setup()
+    plugin_provider: PluginProvider[Report] | None = None
 
-    # add current directory to sys.path
-    sys.path.append(str(pathlib.Path.cwd()))
+    for plugin in args.mypy_plugin:
+        found = load_plugin(plugin, args.config_file)
+        if isinstance(found, PluginProvider):
+            plugin_provider = found
+            break
 
-    from django.apps import apps
-    from django.conf import settings
+    if plugin_provider is None:
+        raise ValueError("Couldn't find the extension that provides extended_mypy_django_plugin")
 
-    if not settings.configured:
-        settings._setup()  # type: ignore[misc]
-    apps.populate(settings.INSTALLED_APPS)
+    report = plugin_provider.plugin_cls.make_virtual_dependency_report(
+        extra_options=extra_options,
+        virtual_dependency_handler=plugin_provider.virtual_dependency_handler,
+    )
 
-    assert apps.apps_ready, "Apps are not ready"
-    assert settings.configured, "Settings are not configured"
+    args.version_file.write_text(report.version)
 
-    args.apps_file.write_text("\n".join(settings.INSTALLED_APPS))
-    if record_known_models is None:
-        record_known_models = scripts.record_known_models
-    record_known_models(args.known_models_file, apps)
 
-    if record_known_settings is None:
-        record_known_settings = scripts.record_known_settings
-    record_known_settings(args.known_settings_file, settings)
+def load_plugin(plugin_path: str, config_file: str) -> object | None:
+    """
+    This is heavily based off what mypy itself does to load plugins
+    """
+    func_name = "plugin"
+    plugin_dir: str | None = None
+    if ":" in os.path.basename(plugin_path):
+        plugin_path, func_name = plugin_path.rsplit(":", 1)
+
+    if plugin_path.endswith(".py"):
+        # Plugin paths can be relative to the config file location.
+        plugin_path = os.path.join(os.path.dirname(config_file), plugin_path)
+        if not os.path.isfile(plugin_path):
+            return None
+
+        plugin_dir = os.path.abspath(os.path.dirname(plugin_path))
+        fnam = os.path.basename(plugin_path)
+        module_name = fnam[:-3]
+        sys.path.insert(0, plugin_dir)
+    elif re.search(r"[\\/]", plugin_path):
+        # Plugin does not have a .py extension
+        return None
+    else:
+        module_name = plugin_path
+
+    try:
+        module = importlib.import_module(module_name)
+    except Exception:
+        return None
+    finally:
+        if plugin_dir is not None:
+            assert sys.path[0] == plugin_dir
+            del sys.path[0]
+
+    if not hasattr(module, func_name):
+        return None
+
+    return getattr(module, func_name, None)
 
 
 if __name__ == "__main__":

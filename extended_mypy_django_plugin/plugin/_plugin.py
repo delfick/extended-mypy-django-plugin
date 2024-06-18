@@ -1,6 +1,5 @@
 import enum
 import functools
-import sys
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
@@ -29,7 +28,12 @@ from mypy_django_plugin.transformers.managers import (
 from typing_extensions import assert_never
 
 from . import _config, _dependencies, _hook, _known_annotations, _reports, _store, actions
-from ._virtual_dependencies import Report, T_Report, VirtualDependencyHandlerProtocol
+from ._virtual_dependencies import (
+    CombinedReportProtocol,
+    Report,
+    T_Report,
+    VirtualDependencyHandlerProtocol,
+)
 
 # Can't re-use the same type var in an embedded class
 # So we make another type var that we can substitute T_Report into
@@ -65,26 +69,36 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     .. autoattribute:: get_attribute_hook
     """
 
+    @classmethod
+    def make_virtual_dependency_report(
+        cls,
+        *,
+        extra_options: _config.ExtraOptions,
+        virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
+    ) -> CombinedReportProtocol[T_Report]:
+        return virtual_dependency_handler(
+            project_root=extra_options.project_root,
+            django_settings_module=extra_options.django_settings_module,
+            virtual_deps_destination=extra_options.scratch_path,
+        )
+
     def __init__(
         self,
         options: Options,
         mypy_version_tuple: tuple[int, int],
         virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
     ) -> None:
+        self.options = options
         self.extra_options = _config.ExtraOptions.from_config(options.config_file)
         self.mypy_version_tuple = mypy_version_tuple
-        self.running_in_daemon: bool = "dmypy" in sys.argv[0]
 
-        self.virtual_dependency_report = virtual_dependency_handler(
-            project_root=self.extra_options.project_root,
-            django_settings_module=self.extra_options.django_settings_module,
-            virtual_deps_destination=self.extra_options.scratch_path,
+        self.virtual_dependency_report = self.make_virtual_dependency_report(
+            extra_options=self.extra_options, virtual_dependency_handler=virtual_dependency_handler
         )
 
         super().__init__(options)
 
         self.report = _reports.Reports.create(
-            determine_django_state_script=self.extra_options.determine_django_state_script,
             django_settings_module=self.plugin_config.django_settings_module,
             scratch_path=self.extra_options.scratch_path,
         )
@@ -161,19 +175,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             **super().report_config_data(ctx),
             "extended_mypy_django_plugin": self.extra_options.for_report(),
         }
-
-    def determine_plugin_version(self, previous_version: int | None = None) -> int:
-        """
-        Used to set `__version__' where the plugin is defined.
-
-        This lets us tell dmypy to restart itself as necessary.
-        """
-        if not self.running_in_daemon:
-            return 0
-        else:
-            return self.report.determine_version_hash(
-                self.extra_options.scratch_path, previous_version
-            )
 
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         """

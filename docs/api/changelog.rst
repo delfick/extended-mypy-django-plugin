@@ -8,6 +8,10 @@ Changelog
 0.6.0 - TBD
     * The extra configuration now relies on the config using a ``$MYPY_CONFIG_FILE_DIR``
       marker rather than assuming the paths are relative to the configuration.
+    * Removed the need to specify a script for determining django state
+    * The plugin provider now takes in an object that will be used to determine django state
+      and this is used for both the plugin itself and for what the determine state script was
+      doing.
 
 .. _release-0.5.5:
 

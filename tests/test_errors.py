@@ -1,5 +1,5 @@
-import os
 import pathlib
+import sys
 import textwrap
 
 import pytest
@@ -80,24 +80,37 @@ class TestErrors:
         if not scenario.for_daemon:
             pytest.skip("Test only relevant for the daemon")
 
-        determine_script = tmp_path / "determine.py"
+        plugin_provider = tmp_path / "plugin.py"
 
-        determine_script.write_text(
+        plugin_provider.write_text(
             textwrap.dedent("""
-        #!/usr/bin/env python
+            import pathlib
 
-        from extended_mypy_django_plugin.scripts.determine_django_state import main
+            from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
+            from extended_mypy_django_plugin.entry import PluginProvider
+            from extended_mypy_django_plugin.plugin import DefaultVirtualDependencyHandler, ExtendedMypyStubs
 
 
-        if __name__ == "__main__":
-            raise ValueError("Computer says no")
-            main()
-        """)
+            class VirtualDependencyHandler(DefaultVirtualDependencyHandler[Project]):
+                @classmethod
+                def discover_project(
+                    cls, *, project_root: pathlib.Path, django_settings_module: str
+                ) -> protocols.Discovered[Project]:
+                    raise ValueError("Computer says no")
+
+
+            plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
+            """)
         )
 
-        os.chmod(determine_script, 0o755)
-        scenario.scenario.additional_mypy_config += (
-            f"\ndetermine_django_state_script = {determine_script}"
+        scenario.scenario.additional_mypy_config = textwrap.dedent(
+            f"""
+            [mypy]
+            plugins = {plugin_provider}
+
+            [mypy.plugins.django-stubs]
+            django_settings_module = mysettings
+            """
         )
 
         with pytest.raises(pytest_mypy_plugins.utils.TypecheckAssertionError) as err:
@@ -115,16 +128,9 @@ class TestErrors:
             
             Daemon crashed!
             Traceback (most recent call last):
-            RuntimeError:
-            Failed to determine information about the django setup
-            
-              > *python {determine_script} --django-settings-module mysettings --apps-file * --known-models-file * --scratch-path *
-              |
-              | Traceback (most recent call last):
-              |   File "{determine_script}", line 8, in <module>
-              |     raise ValueError("Computer says no")
-              | ValueError: Computer says no
-              |
+            File "*extended_mypy_django_plugin/plugin/_plugin.py", line *, in make_virtual_dependency_report
+            File "{plugin_provider}", line *, in discover_project
+            ValueError: Computer says no
             """,
         )
 
@@ -134,41 +140,67 @@ class TestErrors:
         if not scenario.for_daemon:
             pytest.skip("Test only relevant for the daemon")
 
-        determine_script = tmp_path / "determine.py"
+        plugin_provider = tmp_path / "plugin.py"
+        marker = tmp_path / "marker"
+        marker2 = tmp_path / "marker2"
 
-        determine_script.write_text(
-            textwrap.dedent("""
-        #!/usr/bin/env python
+        # pytest plugin I use needs work which is under way but in the meantime I must hack around
+        # how inside the test I can't turn off the auto second try
+        marker.write_text("")
+        marker2.write_text("")
 
-        from extended_mypy_django_plugin.scripts.determine_django_state import main
+        # Changing the contents of this file will trigger the daemon to restart
+        # So we instead rely on the existence or absence of a file to trigger the error
+        plugin_provider.write_text(
+            textwrap.dedent(f"""
+            import pathlib
+
+            from extended_mypy_django_plugin.django_analysis import Project, protocols
+            from extended_mypy_django_plugin.main import PluginProvider, VirtualDependencyHandler, ExtendedMypyStubs
 
 
-        if __name__ == "__main__":
-            main()
+            class VirtualDependencyHandler(VirtualDependencyHandler):
+                @classmethod
+                def discover_project(
+                    cls, *, project_root: pathlib.Path, django_settings_module: str
+                ) -> protocols.Discovered[Project]:
+                    if pathlib.Path("{marker}").exists():
+                        pathlib.Path("{marker}").unlink()
+                        return super().discover_project(
+                            project_root=project_root,
+                            django_settings_module=django_settings_module,
+                        )
+
+                    if pathlib.Path("{marker2}").exists():
+                        pathlib.Path("{marker2}").unlink()
+                        return super().discover_project(
+                            project_root=project_root,
+                            django_settings_module=django_settings_module,
+                        )
+
+                    # Make this only fail on the startup to show if the run after restart works then
+                    # then this failing doesn't break the daemon
+                    pathlib.Path("{marker}").write_text('')
+                    raise ValueError("Computer says no")
+
+
+            plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
         """)
         )
 
-        os.chmod(determine_script, 0o755)
-        scenario.scenario.additional_mypy_config += (
-            f"\ndetermine_django_state_script = {determine_script}"
+        scenario.scenario.additional_mypy_config = textwrap.dedent(
+            f"""
+            [mypy]
+            plugins = {plugin_provider}
+
+            [mypy.plugins.django-stubs]
+            django_settings_module = mysettings
+            """
         )
 
         @scenario.run_and_check_mypy_after
         def _(expected: OutputBuilder) -> None:
             pass
-
-        determine_script.write_text(
-            textwrap.dedent("""
-        #!/usr/bin/env python
-
-        from extended_mypy_django_plugin.scripts.determine_django_state import main
-
-
-        if __name__ == "__main__":
-            raise ValueError("Computer says no")
-            main()
-        """)
-        )
 
         called: list[int] = []
 
@@ -177,15 +209,22 @@ class TestErrors:
                 called.append(ret_code)
 
                 assert ret_code == 0
+                command = (
+                    f"{sys.executable} -m extended_mypy_django_plugin.scripts.determine_django_state"
+                    f" --config-file {scenario.scenario.execution_path}/mypy.ini"
+                    f" --mypy-plugin {plugin_provider}"
+                    " --version-file *"
+                )
+
                 assertions.assert_glob_lines(
                     stdout + stderr,
                     f"""
                     Failed to determine information about the django setup
-                    
-                    > */python {determine_script} --django-settings-module mysettings --apps-file * --known-models-file * --scratch-path *
+
+                    > {command}
                     |
                     | Traceback (most recent call last):
-                    |   File "{determine_script}", line 8, in <module>
+                    |   File "{plugin_provider}", line *, in discover_project
                     |     raise ValueError("Computer says no")
                     | ValueError: Computer says no
                     |
@@ -195,18 +234,6 @@ class TestErrors:
         scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoCrashShowsFailure)
         assert called == [0]
 
-        determine_script.write_text(
-            textwrap.dedent("""
-        #!/usr/bin/env python
-
-        from extended_mypy_django_plugin.scripts.determine_django_state import main
-
-
-        if __name__ == "__main__":
-            main()
-        """)
-        )
-
         class CheckNoOutput(OutputChecker):
             def check(self, ret_code: int, stdout: str, stderr: str) -> None:
                 called.append(ret_code)
@@ -214,5 +241,6 @@ class TestErrors:
                 assert ret_code == 0
                 assert stdout + stderr == ""
 
+        marker.write_text("")
         scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoOutput)
         assert called == [0, 0]
