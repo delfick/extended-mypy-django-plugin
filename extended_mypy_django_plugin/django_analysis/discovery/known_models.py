@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import importlib
 import inspect
 import types
@@ -22,9 +23,17 @@ class ModuleCreator(Protocol):
     ) -> protocols.Module: ...
 
 
+def make_module_creator() -> ModuleCreator:
+    from extended_mypy_django_plugin import django_analysis
+
+    field_creator = django_analysis.Field.create
+    model_creator = functools.partial(django_analysis.Model.create, field_creator=field_creator)
+    return functools.partial(django_analysis.Module.create, model_creator=model_creator)
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class DefaultInstalledModulesDiscovery(Generic[protocols.T_Project]):
-    module_creator: ModuleCreator
+    module_creator: ModuleCreator = dataclasses.field(default_factory=make_module_creator)
 
     def __call__(
         self, loaded_project: protocols.Loaded[protocols.T_Project], /

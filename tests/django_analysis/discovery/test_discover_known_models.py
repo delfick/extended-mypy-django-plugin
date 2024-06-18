@@ -1,20 +1,11 @@
 import dataclasses
-import functools
 import types
 from collections.abc import Sequence
 from unittest import mock
 
 from django.db import models
 
-from extended_mypy_django_plugin.django_analysis import (
-    Field,
-    ImportPath,
-    Model,
-    Module,
-    Project,
-    discovery,
-    protocols,
-)
+from extended_mypy_django_plugin.django_analysis import ImportPath, Project, discovery, protocols
 
 
 class TestKnownModelsDiscovery:
@@ -31,11 +22,8 @@ class TestKnownModelsDiscovery:
                 module: types.ModuleType | None,
                 models: Sequence[type[models.Model]],
             ) -> protocols.Module:
-                defined_models = Module.create(
-                    model_creator=functools.partial(Model.create, field_creator=Field.create),
-                    import_path=import_path,
-                    module=module,
-                    models=models,
+                defined_models = discovery.make_module_creator()(
+                    import_path=import_path, module=module, models=models
                 ).defined_models
                 return cls(
                     installed=module is not None,
