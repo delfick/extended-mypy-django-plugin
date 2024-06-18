@@ -388,12 +388,12 @@ class TestVirtualDependencyInstaller:
         class ReportCombiner:
             reports: Sequence[Report]
 
-            def combine(self) -> Report:
+            def combine(self, *, version: str) -> protocols.CombinedReport[Report]:
                 final = Report(combined=True)
                 for report in self.reports:
                     final.modules |= report.modules
 
-                return final
+                return virtual_dependencies.CombinedReport(version=version, report=final)
 
         @dataclasses.dataclass
         class ReportInstaller:
@@ -488,12 +488,15 @@ class TestVirtualDependencyInstaller:
             report_factory=ReportFactory(),
         )
 
-        assert report == Report(
-            combined=True,
-            modules={
-                (ImportPath("M1"), ImportPath("__virtual__.M1")),
-                (ImportPath("M2"), ImportPath("__virtual__.M2")),
-            },
+        assert report == virtual_dependencies.CombinedReport(
+            version="__version__",
+            report=Report(
+                combined=True,
+                modules={
+                    (ImportPath("M1"), ImportPath("__virtual__.M1")),
+                    (ImportPath("M2"), ImportPath("__virtual__.M2")),
+                },
+            ),
         )
 
         assert written == {

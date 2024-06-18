@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 
 from ..django_analysis import project, protocols, virtual_dependencies
 from ..django_analysis.protocols import (
+    CombinedReport as CombinedReportProtocol,
+)
+from ..django_analysis.protocols import (
     VirtualDependencyHandler as VirtualDependencyHandlerProtocol,
 )
 
@@ -48,6 +51,7 @@ class DefaultVirtualDependencyHandler(
 
 __all__ = [
     "VirtualDependencyHandlerProtocol",
+    "CombinedReportProtocol",
     "DefaultVirtualDependencyHandler",
     "T_Report",
     "Report",

@@ -62,9 +62,10 @@ class TestCombiningReports:
 
         final_report = virtual_dependencies.ReportCombiner(
             report_maker=virtual_dependencies.Report, reports=(report1, report2, report3)
-        ).combine()
+        ).combine(version="__version__")
 
-        assert final_report == virtual_dependencies.Report(
+        assert final_report.version == "__version__"
+        assert final_report.report == virtual_dependencies.Report(
             concrete_annotations={
                 ImportPath("P1"): ImportPath("CP1"),
                 ImportPath("C1"): ImportPath("CC1"),

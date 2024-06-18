@@ -37,12 +37,14 @@ class VirtualDependencyHandler(
         project_root: pathlib.Path,
         django_settings_module: str,
         virtual_deps_destination: pathlib.Path,
-    ) -> protocols.T_Report:
+    ) -> protocols.CombinedReport[protocols.T_Report]:
         return cls.create(
             project_root=project_root, django_settings_module=django_settings_module
         ).make_report(virtual_deps_destination=virtual_deps_destination)
 
-    def make_report(self, virtual_deps_destination: pathlib.Path) -> protocols.T_Report:
+    def make_report(
+        self, virtual_deps_destination: pathlib.Path
+    ) -> protocols.CombinedReport[protocols.T_Report]:
         installed_apps_hash = self.hash_installed_apps()
         virtual_namespace = self.get_virtual_namespace()
         virtual_dependency_namer = self.make_virtual_dependency_namer(
