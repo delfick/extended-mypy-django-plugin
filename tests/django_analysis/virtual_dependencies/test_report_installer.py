@@ -66,7 +66,7 @@ class TestReportInstaller:
                     found.append(pathlib.Path(root) / name)
 
             location3 = scratch_root / "mod_other.py"
-            assert found == [location, location3, location2]
+            assert sorted(found) == sorted([location, location3, location2])
             assert location.read_text() == content
             assert location2.read_text() == content2
             assert location3.read_text() == content3
