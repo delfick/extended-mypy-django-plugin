@@ -1,15 +1,10 @@
 import dataclasses
 import importlib.resources
 import importlib.util
-import io
 import itertools
 import pathlib
 import re
-import shlex
 import shutil
-import stat
-import subprocess
-import sys
 import tempfile
 import textwrap
 import time
@@ -262,29 +257,10 @@ class Reports:
     def create(
         cls,
         *,
-        determine_django_state_script: pathlib.Path | None,
         django_settings_module: str,
         scratch_path: pathlib.Path,
         reports_dir_prefix: str = "__virtual_extended_mypy_django_plugin_report__",
     ) -> "Reports":
-        if determine_django_state_script is not None:
-            if not determine_django_state_script.exists():
-                raise ValueError("The provided script for finding installed apps does not exist")
-
-            if not determine_django_state_script.stat().st_mode & stat.S_IXUSR:
-                raise ValueError(
-                    "The provided script for finding installed apps is not executable!"
-                )
-
-        if determine_django_state_script is None:
-            determine_django_state_script = pathlib.Path(
-                str(
-                    importlib.resources.files("extended_mypy_django_plugin")
-                    / "scripts"
-                    / "determine_django_state.py"
-                )
-            )
-
         reports_dir = scratch_path / reports_dir_prefix
         if reports_dir.exists() and not reports_dir.is_dir():
             reports_dir.unlink()
@@ -292,134 +268,16 @@ class Reports:
 
         return cls(
             store=_Store.read(prefix=reports_dir_prefix, reports_dir=reports_dir),
-            determine_django_state_script=determine_django_state_script,
             django_settings_module=django_settings_module,
         )
 
-    def __init__(
-        self,
-        *,
-        store: _Store,
-        determine_django_state_script: pathlib.Path,
-        django_settings_module: str,
-    ) -> None:
+    def __init__(self, *, store: _Store, django_settings_module: str) -> None:
         self._store = store
-        self._determine_django_state_script = determine_django_state_script
         self._django_settings_module = django_settings_module
         self._known_concrete_models: MutableMapping[str, set[str]] = defaultdict(set)
 
     def known_concrete_models(self, fullname: str) -> set[str]:
         return self._known_concrete_models[fullname]
-
-    def lines_hash(self) -> str:
-        buffer = io.BytesIO()
-        for path in self._store.reports_dir.iterdir():
-            valid_dependency = (
-                path.is_file() and path.suffix == ".py" and not path.name.startswith(".")
-            )
-            if not valid_dependency:
-                continue
-
-            content = path.read_bytes()
-            if b"def value_not_installed" not in content:
-                buffer.write(b"\n")
-                buffer.write(path.name.encode())
-                buffer.write(b"\n")
-                buffer.write(path.read_bytes())
-
-        return str(zlib.adler32(buffer.getbuffer()))
-
-    def determine_version_hash(
-        self, scratch_path: pathlib.Path, previous_version: int | None
-    ) -> int:
-        result_file_cm = tempfile.NamedTemporaryFile()
-        known_settings_file_cm = tempfile.NamedTemporaryFile()
-        known_models_file_cm = tempfile.NamedTemporaryFile()
-        with (
-            result_file_cm as result_file,
-            known_models_file_cm as known_models_file,
-            known_settings_file_cm as known_settings_file,
-        ):
-            if self._determine_django_state_script is not None:
-                script = self._determine_django_state_script
-            else:
-                script = pathlib.Path(
-                    str(
-                        importlib.resources.files("extended_mypy_django_plugin")
-                        / "scripts"
-                        / "determine_django_state.py"
-                    )
-                )
-
-            cmd: list[str] = []
-
-            if script.suffix == ".py":
-                cmd.append(sys.executable)
-            else:
-                with open(script) as fle:
-                    line = fle.readline()
-                    if line.startswith("#!"):
-                        cmd.extend(shlex.split(line[2:]))
-
-            cmd.extend(
-                [
-                    str(script),
-                    "--django-settings-module",
-                    self._django_settings_module,
-                    "--apps-file",
-                    result_file.name,
-                    "--known-models-file",
-                    known_models_file.name,
-                    "--known-settings-file",
-                    known_settings_file.name,
-                    "--scratch-path",
-                    str(scratch_path),
-                ]
-            )
-
-            try:
-                subprocess.run(cmd, capture_output=True, check=True)
-            except subprocess.CalledProcessError as err:
-                if err.returncode == 2:
-                    return 1 if previous_version is None else previous_version
-                else:
-                    message = [
-                        "",
-                        "Failed to determine information about the django setup",
-                        "",
-                        f"  > {' '.join(cmd)}",
-                        "  |",
-                    ]
-                    if err.stdout:
-                        for line in err.stdout.splitlines():
-                            if isinstance(line, bytes):
-                                line = line.decode()
-                            message.append(f"  | {line}")
-                        if err.stderr:
-                            message.append("  |")
-                    if err.stderr:
-                        for line in err.stderr.splitlines():
-                            if isinstance(line, bytes):
-                                line = line.decode()
-                            message.append(f"  | {line}")
-                    message.append("  |")
-
-                    if previous_version:
-                        print("\n".join(message), file=sys.stderr)  # noqa: T201
-                        return previous_version
-                    else:
-                        raise RuntimeError("\n".join(message)) from None
-
-            installed_apps_hash = str(zlib.adler32(pathlib.Path(result_file.name).read_bytes()))
-            known_settings_hash = str(
-                zlib.adler32(pathlib.Path(known_settings_file.name).read_bytes())
-            )
-            known_models_hash = str(
-                zlib.adler32(pathlib.Path(known_models_file.name).read_bytes())
-            )
-            return zlib.adler32(
-                f"{installed_apps_hash}.{known_models_hash}.{known_settings_hash}.{self.lines_hash()}".encode()
-            )
 
     def report_names_getter(
         self,

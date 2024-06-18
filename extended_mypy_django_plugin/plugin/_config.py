@@ -1,6 +1,5 @@
 import configparser
 import dataclasses
-import os
 import pathlib
 import sys
 from collections.abc import Mapping
@@ -24,10 +23,6 @@ class ExtraOptions:
     scratch_path
         A folder where virtual dependencies are written to
 
-    determine_django_state_script (optional)
-        A script that can be run in a subprocess to determine the state of the django project.
-        This is used when run in daemon mode to determine if the daemon needs to be restarted
-
     project_root
         This defaults to the folder the config is found in. It should be the path to the root of
         the project. This value will be added to sys.path before Django is loaded
@@ -39,7 +34,6 @@ class ExtraOptions:
     scratch_path: pathlib.Path
     project_root: pathlib.Path
     django_settings_module: protocols.ImportPath
-    determine_django_state_script: pathlib.Path | None
 
     @classmethod
     def from_config(cls, filepath: str | pathlib.Path | None) -> Self:
@@ -67,27 +61,10 @@ class ExtraOptions:
         assert django_settings_module_value is not None
         django_settings_module = ImportPath(django_settings_module_value)
 
-        determine_django_state_script = _sanitize_path(
-            filepath, options, "determine_django_state_script"
-        )
-
         scratch_path.mkdir(parents=True, exist_ok=True)
-
-        if determine_django_state_script is not None:
-            error_prefix = f"The specified 'determine_django_state_script' option ({determine_django_state_script})"
-
-            if not determine_django_state_script.exists():
-                raise ValueError(f"{error_prefix} does not exist")
-
-            if not determine_django_state_script.is_file():
-                raise ValueError(f"{error_prefix} is not a file")
-
-            if not os.access(determine_django_state_script, os.X_OK):
-                raise ValueError(f"{error_prefix} is not executable")
 
         return cls(
             scratch_path=scratch_path,
-            determine_django_state_script=determine_django_state_script,
             project_root=project_root,
             django_settings_module=django_settings_module,
         )
@@ -100,7 +77,6 @@ class ExtraOptions:
             "scratch_path": str(self.scratch_path),
             "project_root": str(self.project_root),
             "django_settings_module": self.django_settings_module,
-            "determine_django_state_script": str(self.determine_django_state_script),
         }
 
 
