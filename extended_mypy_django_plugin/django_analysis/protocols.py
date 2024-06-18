@@ -358,7 +358,7 @@ class VirtualDependencyInstaller(Protocol[T_CO_VirtualDependency, T_Report]):
         destination: pathlib.Path,
         virtual_namespace: ImportPath,
         report_factory: ReportFactory[T_CO_VirtualDependency, T_Report],
-    ) -> T_Report: ...
+    ) -> CombinedReport[T_Report]: ...
 
 
 class VirtualDependencySummary(Protocol):
@@ -471,6 +471,21 @@ class Report(Protocol):
         """
 
 
+class CombinedReport(Protocol[T_CO_Report]):
+    @property
+    def version(self) -> str:
+        """
+        Used to determine a string that represents the state of the report
+        such that the string changing indicates the state of the project changed
+        """
+
+    @property
+    def report(self) -> T_CO_Report:
+        """
+        The final combined report
+        """
+
+
 class ReportMaker(Protocol[T_CO_Report]):
     """
     Used to construct a report
@@ -564,7 +579,7 @@ class ReportCombiner(Protocol[T_CO_Report]):
         The reports to combine
         """
 
-    def combine(self) -> T_CO_Report:
+    def combine(self, *, version: str) -> CombinedReport[T_CO_Report]:
         """
         Return a single report that represents all the provided reports as one
         """
@@ -609,7 +624,7 @@ class VirtualDependencyHandler(Protocol[T_CO_Report]):
         project_root: pathlib.Path,
         django_settings_module: str,
         virtual_deps_destination: pathlib.Path,
-    ) -> T_CO_Report: ...
+    ) -> CombinedReport[T_CO_Report]: ...
 
 
 if TYPE_CHECKING:
@@ -630,6 +645,7 @@ if TYPE_CHECKING:
 
     P_ReportMaker = ReportMaker[P_Report]
     P_ReportFactory = ReportFactory[P_VirtualDependency, P_Report]
+    P_CombinedReport = CombinedReport[P_Report]
     P_ReportInstaller = ReportInstaller
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]

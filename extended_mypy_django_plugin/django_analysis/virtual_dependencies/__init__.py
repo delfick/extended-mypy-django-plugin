@@ -3,6 +3,7 @@ from .folder import VirtualDependencyGenerator, VirtualDependencyInstaller
 from .handler import VirtualDependencyHandler
 from .namer import VirtualDependencyNamer
 from .report import (
+    CombinedReport,
     Report,
     ReportCombiner,
     ReportFactory,
@@ -15,6 +16,7 @@ from .report import (
 
 __all__ = [
     "Report",
+    "CombinedReport",
     "ReportFactory",
     "ReportCombiner",
     "ReportInstaller",

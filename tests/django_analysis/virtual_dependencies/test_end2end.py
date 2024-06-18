@@ -103,7 +103,7 @@ class TestEnd2End:
             virtual_deps_destination=destination,
         )
 
-        assert report == make_report(
+        assert report.report == make_report(
             concrete_annotations={
                 "django.contrib.admin.models.LogEntry": "__virtual__.mod_2456226428.Concrete__LogEntry",
                 "django.contrib.auth.models.AbstractUser": "__virtual__.mod_2289830437.Concrete__AbstractUser",

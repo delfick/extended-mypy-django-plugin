@@ -25,6 +25,12 @@ regexes = {
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
+class CombinedReport(Generic[protocols.T_Report]):
+    version: str
+    report: protocols.T_Report
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class Report:
     concrete_annotations: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
         dataclasses.field(default_factory=dict)
@@ -255,7 +261,7 @@ class ReportCombiner(Generic[T_Report]):
     reports: Sequence[T_Report]
     report_maker: protocols.ReportMaker[T_Report]
 
-    def combine(self) -> T_Report:
+    def combine(self, *, version: str) -> protocols.CombinedReport[T_Report]:
         final = self.report_maker()
         for report in self.reports:
             final.concrete_annotations.update(report.concrete_annotations)
@@ -265,7 +271,7 @@ class ReportCombiner(Generic[T_Report]):
             for path, related in report.related_import_paths.items():
                 final.related_import_paths[path] |= related
 
-        return final
+        return CombinedReport(version=version, report=final)
 
 
 class ReportSummaryGetter(Protocol):
@@ -387,12 +393,14 @@ def make_report_factory(
 
 if TYPE_CHECKING:
     C_Report = Report
+    C_CombinedReport = CombinedReport[Report]
     C_ReportFactory = ReportFactory[dependency.C_VirtualDependency, C_Report]
     C_ReportCombiner = ReportCombiner[C_Report]
     C_ReportInstaller = ReportInstaller
     C_WrittenVirtualDependency = WrittenVirtualDependency[C_Report]
 
     _R: protocols.P_Report = cast(Report, None)
+    _RC: protocols.P_CombinedReport = cast(CombinedReport[protocols.P_Report], None)
     _RF: protocols.P_ReportFactory = cast(
         ReportFactory[protocols.P_VirtualDependency, protocols.P_Report], None
     )
@@ -402,6 +410,7 @@ if TYPE_CHECKING:
     _RI: protocols.P_ReportInstaller = cast(ReportInstaller, None)
 
     _CRC: protocols.ReportCombiner[C_Report] = cast(C_ReportCombiner, None)
+    _CRCC: protocols.CombinedReport[C_Report] = cast(C_CombinedReport, None)
     _CRF: protocols.ReportFactory[dependency.C_VirtualDependency, C_Report] = cast(
         C_ReportFactory, None
     )
