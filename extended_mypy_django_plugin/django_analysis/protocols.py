@@ -597,6 +597,21 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
     ) -> Iterator[WrittenVirtualDependency[T_Report]]: ...
 
 
+class VirtualDependencyHandler(Protocol[T_CO_Report]):
+    """
+    This is the interface required by the mypy plugin to create virtual dependencies and get a report
+    of the information held by those virtual dependencies
+    """
+
+    def __call__(
+        self,
+        *,
+        project_root: pathlib.Path,
+        django_settings_module: str,
+        virtual_deps_destination: pathlib.Path,
+    ) -> T_CO_Report: ...
+
+
 if TYPE_CHECKING:
     P_Model = Model
     P_Field = Field
@@ -626,3 +641,4 @@ if TYPE_CHECKING:
     P_VirtualDependencyInstaller = VirtualDependencyInstaller[P_VirtualDependency, P_Report]
     P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
     P_WrittenVirtualDependency = WrittenVirtualDependency[P_Report]
+    P_VirtualDependencyHandler = VirtualDependencyHandler[P_Report]
