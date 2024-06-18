@@ -22,8 +22,9 @@ class PluginProvider(Generic[T_Report]):
 
         from extended_mypy_django_plugin.plugin import ExtendedMypyStubs
         from extended_mypy_django_plugin.entry import PluginProvider
+        from extended_mypy_django_plugin.main import VirtualDependencyHandler
 
-        plugin = PluginProvider(ExtendedMypyStubs, locals())
+        plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
     """
 
     previous_version: str
