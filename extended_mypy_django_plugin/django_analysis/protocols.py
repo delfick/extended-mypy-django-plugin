@@ -611,6 +611,18 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
         self, virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency]
     ) -> Iterator[WrittenVirtualDependency[T_Report]]: ...
 
+    def determine_version(
+        self,
+        *,
+        destination: pathlib.Path,
+        virtual_namespace: ImportPath,
+        project_version: str,
+        written_dependencies: Sequence[WrittenVirtualDependency[T_Report]],
+    ) -> str:
+        """
+        Determine a version for the project, such that it only changes if the mypy daemon needs to be restarted
+        """
+
 
 class VirtualDependencyHandler(Protocol[T_CO_Report]):
     """

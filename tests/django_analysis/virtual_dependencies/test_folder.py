@@ -440,6 +440,20 @@ class TestVirtualDependencyInstaller:
                         virtual_import_path=virtual_dependency.summary.virtual_import_path,
                     )
 
+            def determine_version(
+                self,
+                *,
+                destination: pathlib.Path,
+                virtual_namespace: protocols.ImportPath,
+                project_version: str,
+                written_dependencies: Sequence[
+                    protocols.WrittenVirtualDependency[protocols.T_Report]
+                ],
+            ) -> str:
+                assert project_version == "__project_version__"
+                assert virtual_namespace == ImportPath("__virtual__")
+                return "__version__"
+
         if TYPE_CHECKING:
             _D: protocols.VirtualDependency = cast(Dep, None)
             _R: protocols.Report = cast(Report, None)
@@ -449,6 +463,7 @@ class TestVirtualDependencyInstaller:
             _RF: protocols.ReportFactory[Dep, Report] = cast(ReportFactory, None)
 
         installer = virtual_dependencies.VirtualDependencyInstaller[Dep, Report](
+            project_version="__project_version__",
             virtual_dependencies={
                 ImportPath("M1"): Dep(
                     module=Module(installed=True, import_path=ImportPath("M1"), defined_models={}),
@@ -476,7 +491,7 @@ class TestVirtualDependencyInstaller:
                     all_related_models=[],
                     concrete_models={},
                 ),
-            }
+            },
         )
 
         assert written == {}

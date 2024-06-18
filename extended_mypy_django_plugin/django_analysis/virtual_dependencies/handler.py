@@ -46,6 +46,7 @@ class VirtualDependencyHandler(
         self, virtual_deps_destination: pathlib.Path
     ) -> protocols.CombinedReport[protocols.T_Report]:
         installed_apps_hash = self.hash_installed_apps()
+        settings_types_hash = self.hash_settings_types()
         virtual_namespace = self.get_virtual_namespace()
         virtual_dependency_namer = self.make_virtual_dependency_namer(
             virtual_namespace=virtual_namespace
@@ -59,8 +60,11 @@ class VirtualDependencyHandler(
             virtual_dependency_maker=virtual_dependency_maker
         )
         report_factory = self.make_report_factory()
+        project_version = (
+            f"installed_apps:{installed_apps_hash}|settings_types:{settings_types_hash}"
+        )
         virtual_dependency_installer = self.make_virtual_dependency_installer(
-            all_virtual_dependencies=all_virtual_dependencies
+            project_version=project_version, all_virtual_dependencies=all_virtual_dependencies
         )
 
         with tempfile.TemporaryDirectory() as scratch_root:
@@ -94,9 +98,12 @@ class VirtualDependencyHandler(
     def make_virtual_dependency_installer(
         self,
         *,
+        project_version: str,
         all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency],
     ) -> protocols.VirtualDependencyInstaller[protocols.T_VirtualDependency, protocols.T_Report]:
-        return VirtualDependencyInstaller(virtual_dependencies=all_virtual_dependencies)
+        return VirtualDependencyInstaller(
+            project_version=project_version, virtual_dependencies=all_virtual_dependencies
+        )
 
     @classmethod
     def make_hasher(cls) -> protocols.Hasher:
@@ -108,6 +115,11 @@ class VirtualDependencyHandler(
     def hash_installed_apps(self) -> str:
         return self.hasher(
             *(app.encode() for app in self.discovered.loaded_project.settings.INSTALLED_APPS)
+        )
+
+    def hash_settings_types(self) -> str:
+        return self.hasher(
+            *(f"{k}:{v}".encode() for k, v in sorted(self.discovered.settings_types.items()))
         )
 
     def make_virtual_dependency_namer(
