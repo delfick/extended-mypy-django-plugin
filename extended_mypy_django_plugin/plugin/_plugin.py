@@ -30,14 +30,14 @@ from typing_extensions import assert_never
 from . import _config, _dependencies, _hook, _known_annotations, _reports, _store, actions
 from ._virtual_dependencies import (
     CombinedReportProtocol,
-    Report,
+    ReportProtocol,
     T_Report,
     VirtualDependencyHandlerProtocol,
 )
 
 # Can't re-use the same type var in an embedded class
 # So we make another type var that we can substitute T_Report into
-T2_Report = TypeVar("T2_Report", bound=Report)
+T2_Report = TypeVar("T2_Report", bound=ReportProtocol)
 
 
 class Hook(

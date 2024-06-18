@@ -1,7 +1,7 @@
 import abc
 import functools
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 from ..django_analysis import project, protocols, virtual_dependencies
 from ..django_analysis.protocols import (
@@ -11,8 +11,12 @@ from ..django_analysis.protocols import (
     VirtualDependencyHandler as VirtualDependencyHandlerProtocol,
 )
 
-Report = virtual_dependencies.Report
-T_Report = TypeVar("T_Report", bound=Report)
+
+class ReportProtocol(Protocol):
+    pass
+
+
+T_Report = TypeVar("T_Report", bound=ReportProtocol)
 
 
 class DefaultVirtualDependencyHandler(
@@ -20,14 +24,14 @@ class DefaultVirtualDependencyHandler(
     virtual_dependencies.VirtualDependencyHandler[
         protocols.T_Project,
         virtual_dependencies.VirtualDependency[protocols.T_Project],
-        Report,
+        virtual_dependencies.Report,
     ],
     abc.ABC,
 ):
     def make_report_factory(
         self,
     ) -> protocols.ReportFactory[
-        virtual_dependencies.VirtualDependency[protocols.T_Project], Report
+        virtual_dependencies.VirtualDependency[protocols.T_Project], virtual_dependencies.Report
     ]:
         return virtual_dependencies.make_report_factory(hasher=self.hasher)
 
@@ -52,15 +56,17 @@ class DefaultVirtualDependencyHandler(
 __all__ = [
     "VirtualDependencyHandlerProtocol",
     "CombinedReportProtocol",
+    "ReportProtocol",
     "DefaultVirtualDependencyHandler",
     "T_Report",
-    "Report",
 ]
 
 if TYPE_CHECKING:
     C_VirtualDependencyHandler = DefaultVirtualDependencyHandler[project.C_Project]
 
-    _DVDH: VirtualDependencyHandlerProtocol[Report] = DefaultVirtualDependencyHandler[
-        protocols.P_Project
-    ].create_report
-    _CDVDH: VirtualDependencyHandlerProtocol[Report] = C_VirtualDependencyHandler.create_report
+    _DVDH: VirtualDependencyHandlerProtocol[virtual_dependencies.Report] = (
+        DefaultVirtualDependencyHandler[protocols.P_Project].create_report
+    )
+    _CDVDH: VirtualDependencyHandlerProtocol[virtual_dependencies.Report] = (
+        C_VirtualDependencyHandler.create_report
+    )
