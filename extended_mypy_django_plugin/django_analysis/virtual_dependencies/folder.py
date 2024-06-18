@@ -25,6 +25,7 @@ class VirtualDependencyGenerator(Generic[protocols.T_Project, protocols.T_Virtua
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
+    project_version: str
     virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
 
     def __call__(
@@ -36,6 +37,7 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
         report_factory: protocols.ReportFactory[protocols.T_VirtualDependency, protocols.T_Report],
     ) -> protocols.CombinedReport[protocols.T_Report]:
         reports: list[protocols.T_Report] = []
+        written_dependencies: list[protocols.WrittenVirtualDependency[protocols.T_Report]] = []
         for written in report_factory.deploy_scribes(self.virtual_dependencies):
             report_factory.report_installer.write_report(
                 virtual_import_path=written.virtual_import_path,
@@ -43,6 +45,7 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
                 content=written.content,
                 scratch_root=scratch_root,
             )
+            written_dependencies.append(written)
             reports.append(written.report)
 
         report_factory.report_installer.install_reports(
@@ -50,7 +53,13 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
             destination=destination,
             virtual_namespace=virtual_namespace,
         )
-        return report_factory.report_combiner_maker(reports=reports).combine(version="__version__")
+        version = report_factory.determine_version(
+            destination=destination,
+            virtual_namespace=virtual_namespace,
+            project_version=self.project_version,
+            written_dependencies=written_dependencies,
+        )
+        return report_factory.report_combiner_maker(reports=reports).combine(version=version)
 
 
 if TYPE_CHECKING:

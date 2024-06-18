@@ -103,6 +103,10 @@ class TestEnd2End:
             virtual_deps_destination=destination,
         )
 
+        assert (
+            report.version
+            == "__virtual__|installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:917076629"
+        )
         assert report.report == make_report(
             concrete_annotations={
                 "django.contrib.admin.models.LogEntry": "__virtual__.mod_2456226428.Concrete__LogEntry",

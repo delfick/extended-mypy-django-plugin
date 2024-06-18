@@ -349,6 +349,8 @@ class ReportInstaller:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
+    hasher: protocols.Hasher
+
     report_installer: protocols.ReportInstaller
     report_combiner_maker: protocols.ReportCombinerMaker[protocols.T_Report]
     report_maker: protocols.ReportMaker[protocols.T_Report]
@@ -364,6 +366,22 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
                 virtual_dependency=virtual_dependency,
                 all_virtual_dependencies=virtual_dependencies,
             )
+
+    def determine_version(
+        self,
+        *,
+        destination: pathlib.Path,
+        virtual_namespace: protocols.ImportPath,
+        project_version: str,
+        written_dependencies: Sequence[protocols.WrittenVirtualDependency[protocols.T_Report]],
+    ) -> str:
+        virtual_dep_hash = self.hasher(
+            *(
+                f"{written.virtual_import_path}:{written.summary_hash}".encode()
+                for written in written_dependencies
+            )
+        )
+        return f"{virtual_namespace}|{project_version}|written_deps:{virtual_dep_hash}"
 
 
 def make_report_factory(
@@ -382,6 +400,7 @@ def make_report_factory(
         ).write()
 
     return ReportFactory(
+        hasher=hasher,
         report_maker=Report,
         report_scribe=report_scribe,
         report_installer=ReportInstaller(
