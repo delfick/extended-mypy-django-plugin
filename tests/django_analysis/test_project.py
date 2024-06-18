@@ -132,8 +132,8 @@ class TestProject:
                 env_vars={"DJANGO_SETTINGS_MODULE": "djangoexample.settings"},
             )
 
-            with project.instantiate_django() as loaded_project:
-                discovered_project = loaded_project.perform_discovery()
+            loaded_project = project.load_project()
+            discovered_project = loaded_project.perform_discovery()
 
             assert loaded_project.root_dir == root_dir
             assert loaded_project.env_vars == project.env_vars

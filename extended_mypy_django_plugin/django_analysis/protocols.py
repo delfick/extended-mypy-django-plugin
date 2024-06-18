@@ -122,8 +122,7 @@ class Project(Protocol):
         for a django instantiation.
         """
 
-    @contextlib.contextmanager
-    def instantiate_django(self) -> Iterator[Loaded[Self]]:
+    def load_project(self) -> Loaded[Self]:
         """
         Do necessary work to load Django into memory
 
