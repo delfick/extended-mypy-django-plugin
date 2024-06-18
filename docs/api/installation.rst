@@ -23,6 +23,10 @@ Enabling this plugin in a project is adding either to ``mypy.ini``:
     # This is used when running in daemon mode to know if the daemon needs to be restarted
     django_settings_module = $MYPY_CONFIG_FILE_DIR/path/to/script.py
 
+    # Path to where the the project is defined. Will default to the directory this config
+    # file is found in and by default is added to sys.path before django is setup
+    project_root = $MYPY_CONFIG_FILE_DIR
+
 Or to ``pyproject.toml``:
 
 .. code-block:: toml
@@ -34,6 +38,7 @@ Or to ``pyproject.toml``:
     [tool.django-stubs]
     # See comments in mypy.ini example above
     scratch_path = "$MYPY_CONFIG_FILE_DIR/path/for/virtual_dependencies"
+    project_root = "$MYPY_CONFIG_FILE_DIR"
     django_settings_module = "$MYPY_CONFIG_FILE_DIR/path/to/script.py"
 
 .. note:: This project adds a mandatory setting ``scratch_path`` that
