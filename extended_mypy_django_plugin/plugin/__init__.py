@@ -3,15 +3,15 @@ from ._plugin import ExtendedMypyStubs
 from ._virtual_dependencies import (
     CombinedReportProtocol,
     DefaultVirtualDependencyHandler,
-    Report,
+    ReportProtocol,
     T_Report,
     VirtualDependencyHandlerProtocol,
 )
 
 __all__ = [
-    "Report",
     "T_Report",
     "ExtraOptions",
+    "ReportProtocol",
     "ExtendedMypyStubs",
     "CombinedReportProtocol",
     "DefaultVirtualDependencyHandler",

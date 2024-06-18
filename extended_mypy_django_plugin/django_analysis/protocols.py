@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from django.db.models.fields.related import ForeignObjectRel
 
 T_Project = TypeVar("T_Project", bound="P_Project")
-T_Report = TypeVar("T_Report", bound="P_Report")
-T_CO_Report = TypeVar("T_CO_Report", bound="P_Report", covariant=True)
 T_VirtualDependency = TypeVar("T_VirtualDependency", bound="P_VirtualDependency")
 T_CO_VirtualDependency = TypeVar(
     "T_CO_VirtualDependency", bound="P_VirtualDependency", covariant=True
@@ -24,6 +22,14 @@ T_CO_VirtualDependency = TypeVar(
 T_COT_VirtualDependency = TypeVar(
     "T_COT_VirtualDependency", bound="P_VirtualDependency", contravariant=True
 )
+
+# The difference between Report and ReportUse is that the Report has an api used to build the report
+# And ReportUse has no defined api to begin with, and is up to the thing using the report to define
+# The api it wants. For this plugin that is defined in extended_mypy_django_plugin._virtual_dependencies
+T_Report = TypeVar("T_Report", bound="P_Report")
+T_CO_Report = TypeVar("T_CO_Report", bound="P_Report", covariant=True)
+T_CO_ReportUse = TypeVar("T_CO_ReportUse", covariant=True)
+
 
 ImportPath = NewType("ImportPath", str)
 FieldsMap = Mapping[str, "Field"]
@@ -471,7 +477,7 @@ class Report(Protocol):
         """
 
 
-class CombinedReport(Protocol[T_CO_Report]):
+class CombinedReport(Protocol[T_CO_ReportUse]):
     @property
     def version(self) -> str:
         """
@@ -480,7 +486,7 @@ class CombinedReport(Protocol[T_CO_Report]):
         """
 
     @property
-    def report(self) -> T_CO_Report:
+    def report(self) -> T_CO_ReportUse:
         """
         The final combined report
         """
@@ -624,7 +630,7 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
         """
 
 
-class VirtualDependencyHandler(Protocol[T_CO_Report]):
+class VirtualDependencyHandler(Protocol[T_CO_ReportUse]):
     """
     This is the interface required by the mypy plugin to create virtual dependencies and get a report
     of the information held by those virtual dependencies
@@ -636,7 +642,7 @@ class VirtualDependencyHandler(Protocol[T_CO_Report]):
         project_root: pathlib.Path,
         django_settings_module: str,
         virtual_deps_destination: pathlib.Path,
-    ) -> CombinedReport[T_CO_Report]: ...
+    ) -> CombinedReport[T_CO_ReportUse]: ...
 
 
 if TYPE_CHECKING:

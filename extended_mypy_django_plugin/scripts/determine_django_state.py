@@ -8,7 +8,7 @@ import re
 import sys
 
 from extended_mypy_django_plugin.entry import PluginProvider
-from extended_mypy_django_plugin.plugin import ExtraOptions, Report
+from extended_mypy_django_plugin.plugin import ExtraOptions, ReportProtocol
 
 
 def make_parser() -> argparse.ArgumentParser:
@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> None:
     if (extra_options.scratch_path / "__assume_django_state_unchanged__").exists():
         sys.exit(2)
 
-    plugin_provider: PluginProvider[Report] | None = None
+    plugin_provider: PluginProvider[ReportProtocol] | None = None
 
     for plugin in args.mypy_plugin:
         found = load_plugin(plugin, args.config_file)
