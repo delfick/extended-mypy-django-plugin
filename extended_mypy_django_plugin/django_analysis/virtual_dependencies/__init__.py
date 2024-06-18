@@ -1,5 +1,6 @@
 from .dependency import VirtualDependency, VirtualDependencySummary
 from .folder import VirtualDependencyGenerator, VirtualDependencyInstaller
+from .handler import VirtualDependencyHandler
 from .namer import VirtualDependencyNamer
 from .report import (
     Report,
@@ -21,6 +22,7 @@ __all__ = [
     "make_report_factory",
     "VirtualDependencyNamer",
     "VirtualDependencyScribe",
+    "VirtualDependencyHandler",
     "VirtualDependency",
     "VirtualDependencySummary",
     "VirtualDependencyGenerator",

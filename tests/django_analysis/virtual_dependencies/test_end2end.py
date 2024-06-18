@@ -1,13 +1,13 @@
 import functools
 import os
 import pathlib
+from collections.abc import Callable
 
 import pytest
 
 from extended_mypy_django_plugin.django_analysis import (
     ImportPath,
     Project,
-    adler32_hash,
     protocols,
     virtual_dependencies,
 )
@@ -45,37 +45,62 @@ class TestEnd2End:
     ) -> None:
         count: int = 0
 
-        def make_differentiator() -> str:
-            nonlocal count
-            count += 1
-            return f"__differentiated__{count}"
+        class VirtualDependencyHandler(
+            virtual_dependencies.VirtualDependencyHandler[
+                Project,
+                virtual_dependencies.VirtualDependency[Project],
+                virtual_dependencies.Report,
+            ]
+        ):
+            @classmethod
+            def discover_project(
+                cls, *, project_root: pathlib.Path, django_settings_module: str
+            ) -> protocols.Discovered[Project]:
+                return discovered_django_example
 
-        virtual_dependency_namer = virtual_dependencies.VirtualDependencyNamer(
-            namespace=ImportPath("__virtual__"), hasher=adler32_hash
-        )
+            def interface_differentiator(self) -> str:
+                nonlocal count
+                count += 1
+                return f"__differentiated__{count}"
 
-        virtual_dependency_maker = functools.partial(
-            virtual_dependencies.VirtualDependency[Project].create,
-            virtual_dependency_namer=virtual_dependency_namer,
-            installed_apps_hash="__installed_apps_hash__",
-            make_differentiator=make_differentiator,
-        )
+            def get_virtual_namespace(self) -> protocols.ImportPath:
+                return ImportPath("__virtual__")
 
-        all_virtual_dependencies = virtual_dependencies.VirtualDependencyGenerator(
-            virtual_dependency_maker=virtual_dependency_maker
-        )(discovered_project=discovered_django_example)
+            def hash_installed_apps(self) -> str:
+                return "__installed_apps_hash__"
 
-        installer = virtual_dependencies.VirtualDependencyInstaller[
-            virtual_dependencies.VirtualDependency[Project], virtual_dependencies.Report
-        ](virtual_dependencies=all_virtual_dependencies)
+            def make_report_factory(
+                self,
+            ) -> protocols.ReportFactory[
+                virtual_dependencies.VirtualDependency[Project], virtual_dependencies.Report
+            ]:
+                return virtual_dependencies.make_report_factory(hasher=self.hasher)
 
-        scratch_root = tmp_path_factory.mktemp("scratch")
+            def virtual_dependency_maker(
+                self,
+                *,
+                installed_apps_hash: str,
+                virtual_dependency_namer: protocols.VirtualDependencyNamer,
+                make_differentiator: Callable[[], str],
+            ) -> protocols.VirtualDependencyMaker[
+                Project, virtual_dependencies.VirtualDependency[Project]
+            ]:
+                return functools.partial(
+                    virtual_dependencies.VirtualDependency.create,
+                    discovered_project=self.discovered,
+                    virtual_dependency_namer=virtual_dependency_namer,
+                    installed_apps_hash=installed_apps_hash,
+                    make_differentiator=make_differentiator,
+                )
+
         destination = tmp_path_factory.mktemp("destination")
-        report = installer(
-            scratch_root=scratch_root,
-            destination=destination,
-            virtual_namespace=virtual_dependency_namer.namespace,
-            report_factory=virtual_dependencies.make_report_factory(hasher=adler32_hash),
+
+        report = VirtualDependencyHandler.create_report(
+            project_root=discovered_django_example.loaded_project.root_dir,
+            django_settings_module=discovered_django_example.loaded_project.env_vars[
+                "DJANGO_SETTINGS_MODULE"
+            ],
+            virtual_deps_destination=destination,
         )
 
         assert report == make_report(
