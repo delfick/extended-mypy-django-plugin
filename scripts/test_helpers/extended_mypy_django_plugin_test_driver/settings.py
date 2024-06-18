@@ -8,3 +8,4 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.sites",
 ]
+SECRET_KEY = "secret"
