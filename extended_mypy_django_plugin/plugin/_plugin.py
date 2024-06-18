@@ -2,7 +2,7 @@ import enum
 import functools
 import sys
 from collections.abc import Callable
-from typing import Generic
+from typing import Generic, TypeVar
 
 from mypy.checker import TypeChecker
 from mypy.nodes import MypyFile, SymbolNode, SymbolTableNode, TypeInfo
@@ -29,11 +29,16 @@ from mypy_django_plugin.transformers.managers import (
 from typing_extensions import assert_never
 
 from . import _config, _dependencies, _hook, _known_annotations, _reports, _store, actions
+from ._virtual_dependencies import Report, T_Report, VirtualDependencyHandlerProtocol
+
+# Can't re-use the same type var in an embedded class
+# So we make another type var that we can substitute T_Report into
+T2_Report = TypeVar("T2_Report", bound=Report)
 
 
 class Hook(
-    Generic[_hook.T_Ctx, _hook.T_Ret],
-    _hook.Hook["ExtendedMypyStubs", _hook.T_Ctx, _hook.T_Ret],
+    Generic[T_Report, _hook.T_Ctx, _hook.T_Ret],
+    _hook.Hook["ExtendedMypyStubs[T_Report]", _hook.T_Ctx, _hook.T_Ret],
 ):
     store: _store.Store
 
@@ -41,7 +46,7 @@ class Hook(
         self.store = self.plugin.store
 
 
-class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
+class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     """
     The ``ExtendedMypyStubs`` mypy plugin extends the
     ``mypy_django_plugin.main.NewSemanalDjangoPlugin`` found in the active python
@@ -60,10 +65,21 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
     .. autoattribute:: get_attribute_hook
     """
 
-    def __init__(self, options: Options, mypy_version_tuple: tuple[int, int]) -> None:
+    def __init__(
+        self,
+        options: Options,
+        mypy_version_tuple: tuple[int, int],
+        virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
+    ) -> None:
         self.extra_options = _config.ExtraOptions.from_config(options.config_file)
         self.mypy_version_tuple = mypy_version_tuple
         self.running_in_daemon: bool = "dmypy" in sys.argv[0]
+
+        self.virtual_dependency_report = virtual_dependency_handler(
+            project_root=self.extra_options.project_root,
+            django_settings_module=self.extra_options.django_settings_module,
+            virtual_deps_destination=self.extra_options.scratch_path,
+        )
 
         super().__init__(options)
 
@@ -173,7 +189,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
         return results
 
     @_hook.hook
-    class get_dynamic_class_hook(Hook[DynamicClassDefContext, None]):
+    class get_dynamic_class_hook(Hook[T_Report, DynamicClassDefContext, None]):
         """
         This is used to find special methods on the ``Concrete`` class and do appropriate actions.
 
@@ -221,7 +237,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
                 assert_never(self.method_name)
 
     @_hook.hook
-    class get_type_analyze_hook(Hook[AnalyzeTypeContext, MypyType]):
+    class get_type_analyze_hook(Hook[T_Report, AnalyzeTypeContext, MypyType]):
         """
         Resolve classes annotated with ``Concrete`` or ``DefaultQuerySet``.
         """
@@ -244,7 +260,7 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
             return type_analyzer.analyze(ctx, self.annotation)
 
     @_hook.hook
-    class get_attribute_hook(Hook[AttributeContext, MypyType]):
+    class get_attribute_hook(Hook[T_Report, AttributeContext, MypyType]):
         """
         An implementation of the change found in
         https://github.com/typeddjango/django-stubs/pull/2027
@@ -262,7 +278,9 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
                 ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance
             )
 
-    class _get_method_or_function_hook(Hook[MethodContext | FunctionContext, MypyType]):
+    class _get_method_or_function_hook(
+        Generic[T2_Report], Hook[T2_Report, MethodContext | FunctionContext, MypyType]
+    ):
         runner: Callable[[MethodContext | FunctionContext], MypyType | None]
 
         def extra_init(self) -> None:
@@ -294,15 +312,15 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
             return ctx.default_return_type
 
     @_hook.hook
-    class get_method_hook(_get_method_or_function_hook):
+    class get_method_hook(_get_method_or_function_hook[T_Report]):
         pass
 
     @_hook.hook
-    class get_function_hook(_get_method_or_function_hook):
+    class get_function_hook(_get_method_or_function_hook[T_Report]):
         pass
 
     class _get_method_or_function_signature_hook(
-        Hook[MethodSigContext | FunctionSigContext, FunctionLike]
+        Generic[T2_Report], Hook[T2_Report, MethodSigContext | FunctionSigContext, FunctionLike]
     ):
         def extra_init(self) -> None:
             super().extra_init()
@@ -329,9 +347,9 @@ class ExtendedMypyStubs(main.NewSemanalDjangoPlugin):
             return ctx.default_signature
 
     @_hook.hook
-    class get_method_signature_hook(_get_method_or_function_signature_hook):
+    class get_method_signature_hook(_get_method_or_function_signature_hook[T_Report]):
         pass
 
     @_hook.hook
-    class get_function_signature_hook(_get_method_or_function_signature_hook):
+    class get_function_signature_hook(_get_method_or_function_signature_hook[T_Report]):
         pass

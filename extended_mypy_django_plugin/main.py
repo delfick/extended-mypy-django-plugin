@@ -1,4 +1,9 @@
 from .entry import PluginProvider
-from .plugin import ExtendedMypyStubs
+from .plugin import DefaultVirtualDependencyHandler, ExtendedMypyStubs
 
-plugin = PluginProvider(ExtendedMypyStubs, locals())
+
+class VirtualDependencyHandler(DefaultVirtualDependencyHandler):
+    pass
+
+
+plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create, locals())
