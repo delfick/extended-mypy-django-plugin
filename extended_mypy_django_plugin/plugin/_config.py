@@ -8,6 +8,8 @@ from collections.abc import Mapping
 from mypy_django_plugin import config as django_stubs_config
 from typing_extensions import Self
 
+from ..django_analysis import ImportPath, protocols
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -25,9 +27,18 @@ class ExtraOptions:
     determine_django_state_script (optional)
         A script that can be run in a subprocess to determine the state of the django project.
         This is used when run in daemon mode to determine if the daemon needs to be restarted
+
+    project_root
+        This defaults to the folder the config is found in. It should be the path to the root of
+        the project. This value will be added to sys.path before Django is loaded
+
+    django_settings_module
+        The option used to set DJANGO_SETTINGS_MODULE when loading django
     """
 
     scratch_path: pathlib.Path
+    project_root: pathlib.Path
+    django_settings_module: protocols.ImportPath
     determine_django_state_script: pathlib.Path | None
 
     @classmethod
@@ -45,6 +56,16 @@ class ExtraOptions:
         """
         scratch_path = _sanitize_path(filepath, options, "scratch_path", required=True)
         assert scratch_path is not None
+
+        project_root = _sanitize_path(filepath, options, "project_root")
+        if project_root is None:
+            project_root = filepath.parent
+
+        django_settings_module_value = _sanitize_str(
+            filepath, options, "django_settings_module", required=True
+        )
+        assert django_settings_module_value is not None
+        django_settings_module = ImportPath(django_settings_module_value)
 
         determine_django_state_script = _sanitize_path(
             filepath, options, "determine_django_state_script"
@@ -65,7 +86,10 @@ class ExtraOptions:
                 raise ValueError(f"{error_prefix} is not executable")
 
         return cls(
-            scratch_path=scratch_path, determine_django_state_script=determine_django_state_script
+            scratch_path=scratch_path,
+            determine_django_state_script=determine_django_state_script,
+            project_root=project_root,
+            django_settings_module=django_settings_module,
         )
 
     def for_report(self) -> dict[str, str]:
@@ -74,6 +98,8 @@ class ExtraOptions:
         """
         return {
             "scratch_path": str(self.scratch_path),
+            "project_root": str(self.project_root),
+            "django_settings_module": self.django_settings_module,
             "determine_django_state_script": str(self.determine_django_state_script),
         }
 
@@ -120,17 +146,17 @@ def _parse_ini_config(filepath: pathlib.Path) -> Mapping[str, object]:
     return dict(parser.items("mypy.plugins.django-stubs"))
 
 
-def _sanitize_path(
+def _sanitize_str(
     config_path: pathlib.Path,
     options: Mapping[str, object],
     option: str,
     *,
     required: bool = False,
-) -> pathlib.Path | None:
+) -> str | None:
     if not isinstance(value := options.get(option), str):
         if required:
             raise ValueError(
-                f"Please specify '{option}' in the django-stubs section of your mypy configuration ({config_path}) as a string path"
+                f"Please specify '{option}' in the django-stubs section of your mypy configuration ({config_path})"
             )
         else:
             return None
@@ -140,4 +166,17 @@ def _sanitize_path(
     while value and value.endswith('"'):
         value = value[:-1]
 
+    return value
+
+
+def _sanitize_path(
+    config_path: pathlib.Path,
+    options: Mapping[str, object],
+    option: str,
+    *,
+    required: bool = False,
+) -> pathlib.Path | None:
+    value = _sanitize_str(config_path, options, option, required=required)
+    if value is None:
+        return None
     return pathlib.Path(value.replace("$MYPY_CONFIG_FILE_DIR", str(config_path.parent)))
