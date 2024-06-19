@@ -26,7 +26,7 @@ from mypy.plugin import (
 )
 from mypy.semanal import SemanticAnalyzer
 from mypy.typeanal import TypeAnalyser
-from mypy.types import FunctionLike, Instance
+from mypy.types import FunctionLike
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
 from mypy_django_plugin.transformers.managers import (
@@ -35,7 +35,7 @@ from mypy_django_plugin.transformers.managers import (
 )
 from typing_extensions import assert_never
 
-from . import _config, _dependencies, _hook, _known_annotations, _reports, _store, actions
+from . import _config, _hook, _known_annotations, _reports, _store, actions
 from ._virtual_dependencies import (
     CombinedReportProtocol,
     ReportProtocol,
@@ -109,22 +109,16 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         )
 
         self.store = _store.Store(
+            report=self.report,
+            installed_apps=self.django_context.settings.INSTALLED_APPS,
             get_model_class_by_fullname=self.django_context.get_model_class_by_fullname,
+            get_model_related_fields=self.django_context.get_model_related_fields,
+            get_field_related_model_cls=self.django_context.get_field_related_model_cls,
             lookup_info=self._lookup_info,
             lookup_fully_qualified=self.lookup_fully_qualified,
             django_context_model_modules=self.django_context.model_modules,
-            is_installed_model=self._is_installed_model,
+            is_installed_model=self.virtual_dependency_report.report.is_model_installed,
             known_concrete_models=self.report.known_concrete_models,
-        )
-
-        self.dependencies = _dependencies.Dependencies(
-            model_modules=self.store.model_modules,
-            report_names_getter=self.report.report_names_getter(
-                installed_apps=self.django_context.settings.INSTALLED_APPS,
-                model_modules=self.store.model_modules,
-                get_model_related_fields=self.django_context.get_model_related_fields,
-                get_field_related_model_cls=self.django_context.get_field_related_model_cls,
-            ),
         )
 
     def _make_resolver(
@@ -136,9 +130,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             plugin_lookup_info=self._lookup_info,
             ctx=ctx,
         )
-
-    def _is_installed_model(self, instance: Instance) -> bool:
-        return self.dependencies.is_model_known(instance.type.fullname)
 
     def _lookup_info(self, fullname: str) -> TypeInfo | None:
         sym = self.lookup_fully_qualified(fullname)
