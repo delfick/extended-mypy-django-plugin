@@ -7,17 +7,9 @@ mod = "djangoexample.exampleapp.models"
 summary = "__virtual__.mod_3347844205::djangoexample.exampleapp.models::installed_apps=__installed_apps_hash__::significant=2358377148"
 
 if TYPE_CHECKING:
-    import django.db.models.QuerySet
-    import djangoexample.exampleapp.models.Child1
-    import djangoexample.exampleapp.models.Child2
-    import djangoexample.exampleapp.models.Child2QuerySet
-    import djangoexample.exampleapp.models.Child3
-    import djangoexample.exampleapp.models.Child4
-    import djangoexample.exampleapp.models.Child4QuerySet
-    import djangoexample.exampleapp.models.Parent
-    import djangoexample.exampleapp.models.Parent2
-    import djangoexample.exampleapp2.models.ChildOther
-    import djangoexample.exampleapp2.models.ChildOther2
+    import django.db.models
+    import djangoexample.exampleapp.models
+    import djangoexample.exampleapp2.models
     ConcreteQuerySet__Child1 = django.db.models.QuerySet[djangoexample.exampleapp.models.Child1]
     ConcreteQuerySet__Child2 = djangoexample.exampleapp.models.Child2QuerySet
     ConcreteQuerySet__Child3 = django.db.models.QuerySet[djangoexample.exampleapp.models.Child3]

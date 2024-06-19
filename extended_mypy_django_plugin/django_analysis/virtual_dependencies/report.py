@@ -243,8 +243,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 concrete_models=concrete,
             )
 
+        sorted_added_imported_modules = sorted(
+            {".".join(imp.split(".")[:-1]) for imp in added_imports}
+        )
+
         extra_lines = [
-            *(f"    import {import_path}" for import_path in sorted(added_imports)),
+            *(f"    import {import_path}" for import_path in sorted_added_imported_modules),
             *(f"    {line}" for line in sorted(annotations)),
         ]
 

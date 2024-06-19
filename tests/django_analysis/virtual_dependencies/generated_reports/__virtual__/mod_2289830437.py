@@ -7,12 +7,8 @@ mod = "django.contrib.auth.models"
 summary = "__virtual__.mod_2289830437::django.contrib.auth.models::installed_apps=__installed_apps_hash__::significant=1922836542"
 
 if TYPE_CHECKING:
-    import django.contrib.auth.models.AbstractUser
-    import django.contrib.auth.models.Group
-    import django.contrib.auth.models.Permission
-    import django.contrib.auth.models.PermissionsMixin
-    import django.contrib.auth.models.User
-    import django.db.models.QuerySet
+    import django.contrib.auth.models
+    import django.db.models
     ConcreteQuerySet__AbstractUser = django.db.models.QuerySet[django.contrib.auth.models.User]
     ConcreteQuerySet__Group = django.db.models.QuerySet[django.contrib.auth.models.Group]
     ConcreteQuerySet__Permission = django.db.models.QuerySet[django.contrib.auth.models.Permission]
