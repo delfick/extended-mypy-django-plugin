@@ -1,6 +1,19 @@
+import functools
 from collections.abc import Iterator, Sequence
 from typing import Protocol
 
+from mypy.nodes import TypeInfo
+from mypy.plugin import (
+    AnalyzeTypeContext,
+    AttributeContext,
+    DynamicClassDefContext,
+    FunctionContext,
+    FunctionSigContext,
+    MethodContext,
+    MethodSigContext,
+)
+from mypy.semanal import SemanticAnalyzer
+from mypy.typeanal import TypeAnalyser
 from mypy.types import (
     AnyType,
     Instance,
@@ -13,9 +26,9 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.types import Type as MypyType
-from typing_extensions import assert_never
+from typing_extensions import Self, assert_never
 
-from .. import _known_annotations, _store
+from .. import _known_annotations
 
 
 class FailFunc(Protocol):
@@ -30,24 +43,152 @@ class TypeAnalyze(Protocol):
     def __call__(self, typ: MypyType, /) -> MypyType: ...
 
 
+class LookupInfo(Protocol):
+    def __call__(self, fullname: str) -> TypeInfo | None: ...
+
+
+class LookupInstanceFunction(Protocol):
+    def __call__(self, fullname: str) -> Instance | None: ...
+
+
 class NamedTypeOrNone(Protocol):
     def __call__(self, fullname: str, args: list[MypyType] | None = None) -> Instance | None: ...
 
 
+class ConcreteChildrenTypesRetriever(Protocol):
+    def __call__(
+        self,
+        parent: TypeInfo,
+        lookup_info: LookupInfo,
+        lookup_instance: LookupInstanceFunction,
+    ) -> Sequence[Instance]: ...
+
+
+class QuerysetRealiser(Protocol):
+    def __call__(
+        self, type_var: Instance | UnionType, lookup_info: LookupInfo
+    ) -> Iterator[Instance]: ...
+
+
+ValidContextForAnnotationResolver = (
+    DynamicClassDefContext
+    | AnalyzeTypeContext
+    | AttributeContext
+    | MethodContext
+    | MethodSigContext
+    | FunctionContext
+    | FunctionSigContext
+)
+
+
 class AnnotationResolver:
+    @classmethod
+    def create(
+        cls,
+        *,
+        retrieve_concrete_children_types: ConcreteChildrenTypesRetriever,
+        realise_querysets: QuerysetRealiser,
+        plugin_lookup_info: LookupInfo,
+        ctx: ValidContextForAnnotationResolver,
+    ) -> Self:
+        def sem_defer(sem_api: SemanticAnalyzer) -> bool:
+            if sem_api.final_iteration:
+                return True
+            else:
+                sem_api.defer()
+                return False
+
+        def sem_lookup_info(sem_api: SemanticAnalyzer, fullname: str) -> TypeInfo | None:
+            instance = sem_api.named_type_or_none(fullname)
+            if instance:
+                return instance.type
+
+            return plugin_lookup_info(fullname)
+
+        def checker_named_type_or_none(
+            fullname: str, args: list[MypyType] | None = None
+        ) -> Instance | None:
+            node = plugin_lookup_info(fullname)
+            if not isinstance(node, TypeInfo):
+                return None
+            if args:
+                return Instance(node, args)
+            return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+
+        fail: FailFunc
+        defer: DeferFunc
+        lookup_info: LookupInfo
+        named_type_or_none: NamedTypeOrNone
+
+        match ctx:
+            case DynamicClassDefContext(api=api):
+                assert isinstance(api, SemanticAnalyzer)
+                sem_api = api
+                defer = functools.partial(sem_defer, sem_api)
+                fail = lambda msg: sem_api.fail(msg, ctx.call)
+                lookup_info = functools.partial(sem_lookup_info, sem_api)
+                named_type_or_none = sem_api.named_type_or_none
+            case AnalyzeTypeContext(api=api):
+                assert isinstance(api, TypeAnalyser)
+                assert isinstance(api.api, SemanticAnalyzer)
+                sem_api = api.api
+                defer = functools.partial(sem_defer, sem_api)
+                fail = lambda msg: sem_api.fail(msg, ctx.context)
+                lookup_info = functools.partial(sem_lookup_info, sem_api)
+                named_type_or_none = sem_api.named_type_or_none
+            case MethodContext(api=api):
+                defer = lambda: True
+                fail = lambda msg: api.fail(msg, ctx.context)
+                lookup_info = plugin_lookup_info
+                named_type_or_none = checker_named_type_or_none
+            case FunctionContext(api=api):
+                defer = lambda: True
+                fail = lambda msg: api.fail(msg, ctx.context)
+                lookup_info = plugin_lookup_info
+                named_type_or_none = checker_named_type_or_none
+            case MethodSigContext(api=api):
+                defer = lambda: True
+                fail = lambda msg: api.fail(msg, ctx.context)
+                lookup_info = plugin_lookup_info
+                named_type_or_none = checker_named_type_or_none
+            case FunctionSigContext(api=api):
+                defer = lambda: True
+                fail = lambda msg: api.fail(msg, ctx.context)
+                lookup_info = plugin_lookup_info
+                named_type_or_none = checker_named_type_or_none
+            case AttributeContext(api=api):
+                defer = lambda: True
+                fail = lambda msg: api.fail(msg, ctx.context)
+                lookup_info = plugin_lookup_info
+                named_type_or_none = checker_named_type_or_none
+            case _:
+                assert_never(ctx)
+
+        return cls(
+            retrieve_concrete_children_types=retrieve_concrete_children_types,
+            realise_querysets=realise_querysets,
+            defer=defer,
+            fail=fail,
+            lookup_info=lookup_info,
+            named_type_or_none=named_type_or_none,
+        )
+
     def __init__(
         self,
-        store: _store.Store,
+        *,
+        realise_querysets: QuerysetRealiser,
+        retrieve_concrete_children_types: ConcreteChildrenTypesRetriever,
         fail: FailFunc,
         defer: DeferFunc,
-        lookup_info: _store.LookupInfo,
+        lookup_info: LookupInfo,
         named_type_or_none: NamedTypeOrNone,
     ) -> None:
-        self._store = store
         self._fail = fail
         self._defer = defer
         self._named_type_or_none = named_type_or_none
-        self._lookup_info = lookup_info
+        self.lookup_info = lookup_info
+        self.realise_querysets = realise_querysets
+        self.retrieve_concrete_children_types = retrieve_concrete_children_types
 
     def _flatten_union(self, typ: ProperType) -> Iterator[ProperType]:
         if isinstance(typ, UnionType):
@@ -96,8 +237,8 @@ class AnnotationResolver:
 
         for item in all_instances:
             concrete.extend(
-                self._store.retrieve_concrete_children_types(
-                    item.type, self._lookup_info, self._named_type_or_none
+                self.retrieve_concrete_children_types(
+                    item.type, self.lookup_info, self._named_type_or_none
                 )
             )
 
@@ -173,15 +314,5 @@ class AnnotationResolver:
         if concrete is None:
             return None
 
-        try:
-            querysets = tuple(
-                self._store.realise_querysets(UnionType(concrete), self._lookup_info)
-            )
-        except _store.RestartDmypy as err:
-            self._fail(f"You probably need to restart dmypy: {err}")
-            return AnyType(TypeOfAny.from_error)
-        except _store.UnionMustBeOfTypes:
-            self._fail("Union must be of instances of models")
-            return None
-        else:
-            return self._make_union(is_type, querysets)
+        querysets = tuple(self.realise_querysets(UnionType(concrete), self.lookup_info))
+        return self._make_union(is_type, querysets)

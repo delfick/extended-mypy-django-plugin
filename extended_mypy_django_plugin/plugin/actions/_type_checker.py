@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from collections.abc import Iterator, MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
 from typing import Final, Protocol
 
 from mypy.checker import TypeChecker
@@ -40,7 +40,7 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 from typing_extensions import Self
 
-from .. import _known_annotations, _store
+from .. import _known_annotations
 from . import _annotation_resolver
 
 
@@ -125,7 +125,7 @@ class BasicTypeInfo:
     item: ProperType
     finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
-    lookup_info: _store.LookupInfo
+    resolver: _annotation_resolver.AnnotationResolver
     concrete_annotation: _known_annotations.KnownAnnotations | None
     unwrapped_type_guard: ProperType | None
 
@@ -135,7 +135,7 @@ class BasicTypeInfo:
         func: CallableType,
         fail: FailFunc,
         finder: Finder,
-        lookup_info: _store.LookupInfo,
+        resolver: _annotation_resolver.AnnotationResolver,
         item: MypyType | None = None,
     ) -> Self:
         is_type: bool = False
@@ -185,7 +185,7 @@ class BasicTypeInfo:
             is_type=is_type,
             is_guard=is_guard,
             type_vars=type_vars,
-            lookup_info=lookup_info,
+            resolver=resolver,
             concrete_annotation=concrete_annotation,
             unwrapped_type_guard=unwrapped_type_guard,
         )
@@ -196,7 +196,7 @@ class BasicTypeInfo:
             fail=self.fail,
             item=item,
             finder=self.finder,
-            lookup_info=self.lookup_info,
+            resolver=self.resolver,
         )
 
     @property
@@ -342,26 +342,11 @@ class BasicTypeInfo:
 
 
 class TypeChecking:
-    def __init__(self, store: _store.Store, *, api: TypeChecker) -> None:
+    def __init__(
+        self, *, resolver: _annotation_resolver.AnnotationResolver, api: TypeChecker
+    ) -> None:
         self.api = api
-        self.store = store
-
-    def _named_type_or_none(
-        self, fullname: str, args: list[MypyType] | None = None
-    ) -> Instance | None:
-        node = self.lookup_info(fullname)
-        if not isinstance(node, TypeInfo):
-            return None
-        if args:
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
-
-    def _named_type(self, fullname: str, args: list[MypyType] | None = None) -> Instance:
-        node = self.lookup_info(fullname)
-        assert isinstance(node, TypeInfo)
-        if args:
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+        self.resolver = resolver
 
     def _get_info(self, context: Context) -> BasicTypeInfo | None:
         found: ProperType | None = None
@@ -390,7 +375,7 @@ class TypeChecking:
             func=func,
             fail=lambda msg: self.api.fail(msg, context),
             finder=Finder(_api=self.api),
-            lookup_info=self.lookup_info,
+            resolver=self.resolver,
         )
 
     def check_typeguard(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
@@ -424,15 +409,7 @@ class TypeChecking:
 
         type_vars_map = info.map_type_vars(ctx)
 
-        resolver = _annotation_resolver.AnnotationResolver(
-            self.store,
-            defer=lambda: True,
-            fail=lambda msg: ctx.api.fail(msg, ctx.context),
-            lookup_info=self.lookup_info,
-            named_type_or_none=self._named_type_or_none,
-        )
-
-        result = info.transform(self, ctx.context, type_vars_map, resolver=resolver)
+        result = info.transform(self, ctx.context, type_vars_map, resolver=self.resolver)
         if isinstance(result, UnionType) and len(result.items) == 1:
             return result.items[0]
         else:
@@ -494,18 +471,18 @@ class TypeChecking:
             )
             return AnyType(TypeOfAny.from_error)
 
-    def lookup_info(self, fullname: str) -> TypeInfo | None:
-        return self.store.plugin_lookup_info(fullname)
-
 
 class _SharedConcreteAnnotationLogic(abc.ABC):
     def __init__(
         self,
-        store: _store.Store,
+        make_resolver: Callable[
+            [MethodContext | FunctionContext | MethodSigContext | FunctionSigContext],
+            _annotation_resolver.AnnotationResolver,
+        ],
         fullname: str,
         get_symbolnode_for_fullname: GetSymbolNode,
     ) -> None:
-        self.store = store
+        self.make_resolver = make_resolver
         self.fullname = fullname
         self.get_symbolnode_for_fullname = get_symbolnode_for_fullname
 
@@ -554,7 +531,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
     ) -> TypeChecking:
         assert isinstance(ctx.api, TypeChecker)
 
-        return TypeChecking(self.store, api=ctx.api)
+        return TypeChecking(resolver=self.make_resolver(ctx), api=ctx.api)
 
 
 class SharedModifyReturnTypeLogic(_SharedConcreteAnnotationLogic):
