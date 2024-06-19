@@ -31,6 +31,10 @@ class CombinedReport(Generic[protocols.T_Report]):
     write_empty_virtual_dep: protocols.EmptyVirtualDepWriter
 
     def ensure_virtual_dependency(self, *, module_import_path: str) -> None:
+        if module_import_path.startswith("django."):
+            # Don't create empty virtual deps for django dependencies
+            return
+
         # This is a heuristic that should be accurate enough to catch modules that contain models
         # Though it may miss some models and it may include modules that aren't related to django models
         if ".models." not in module_import_path and not module_import_path.endswith(".models"):
