@@ -2,7 +2,7 @@ import dataclasses
 import functools
 import pathlib
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import pytest
 
@@ -33,11 +33,13 @@ class TestVirtualDependencyGenerator:
             ) -> Iterator[str]:
                 yield f"__significant__{module.import_path}__"
 
+        virtual_dependency_namer = virtual_dependencies.VirtualDependencyNamer(
+            namespace=ImportPath("__virtual__"), hasher=adler32_hash
+        )
+
         virtual_dependency_maker = functools.partial(
             CustomVirtualDependency.create,
-            virtual_dependency_namer=virtual_dependencies.VirtualDependencyNamer(
-                namespace=ImportPath("__virtual__"), hasher=adler32_hash
-            ),
+            virtual_dependency_namer=virtual_dependency_namer,
             installed_apps_hash=installed_apps_hash,
             make_differentiator=lambda: "__differentiated__",
         )
@@ -353,7 +355,13 @@ class TestVirtualDependencyInstaller:
         destination = tmp_path_factory.mktemp("destination")
 
         installed: list[tuple[pathlib.Path, pathlib.Path, protocols.ImportPath]] = []
-        written: dict[tuple[pathlib.Path, protocols.ImportPath], tuple[str, str | None]] = {}
+        written: dict[
+            tuple[pathlib.Path, protocols.ImportPath], tuple[str, str | Literal[False] | None]
+        ] = {}
+
+        virtual_dependency_namer = virtual_dependencies.VirtualDependencyNamer(
+            namespace=ImportPath("__virtual__"), hasher=adler32_hash
+        )
 
         class Dep(virtual_dependencies.VirtualDependency[Project]):
             pass
@@ -388,12 +396,16 @@ class TestVirtualDependencyInstaller:
         class ReportCombiner:
             reports: Sequence[Report]
 
-            def combine(self, *, version: str) -> protocols.CombinedReport[Report]:
+            def combine(
+                self, *, version: str, write_empty_virtual_dep: protocols.EmptyVirtualDepWriter
+            ) -> protocols.CombinedReport[Report]:
                 final = Report(combined=True)
                 for report in self.reports:
                     final.modules |= report.modules
 
-                return virtual_dependencies.CombinedReport(version=version, report=final)
+                return virtual_dependencies.CombinedReport(
+                    version=version, report=final, write_empty_virtual_dep=write_empty_virtual_dep
+                )
 
         @dataclasses.dataclass
         class ReportInstaller:
@@ -401,13 +413,17 @@ class TestVirtualDependencyInstaller:
                 self,
                 *,
                 scratch_root: pathlib.Path,
-                summary_hash: str | None,
+                summary_hash: str | Literal[False] | None,
                 virtual_import_path: protocols.ImportPath,
                 content: str,
-            ) -> None:
+            ) -> bool:
                 key = (scratch_root, virtual_import_path)
-                assert key not in written
+                exists = any(v == virtual_import_path for _, v in written)
+                if exists and summary_hash is False:
+                    return False
+                assert not exists
                 written[key] = (content, summary_hash)
+                return True
 
             def install_reports(
                 self,
@@ -440,6 +456,11 @@ class TestVirtualDependencyInstaller:
                         virtual_import_path=virtual_dependency.summary.virtual_import_path,
                     )
 
+            def make_empty_virtual_dependency_content(
+                self, *, module_import_path: protocols.ImportPath
+            ) -> str:
+                return "empty"
+
             def determine_version(
                 self,
                 *,
@@ -464,13 +485,16 @@ class TestVirtualDependencyInstaller:
 
         installer = virtual_dependencies.VirtualDependencyInstaller[Dep, Report](
             project_version="__project_version__",
+            virtual_dependency_namer=virtual_dependency_namer,
             virtual_dependencies={
-                ImportPath("M1"): Dep(
-                    module=Module(installed=True, import_path=ImportPath("M1"), defined_models={}),
+                ImportPath("M1.models"): Dep(
+                    module=Module(
+                        installed=True, import_path=ImportPath("M1.models"), defined_models={}
+                    ),
                     interface_differentiator="__differentiated__",
                     summary=virtual_dependencies.VirtualDependencySummary(
                         virtual_namespace=ImportPath("__virtual__"),
-                        virtual_import_path=ImportPath("__virtual__.M1"),
+                        virtual_import_path=ImportPath("__virtual__.mod_239797041"),
                         module_import_path=ImportPath("M1"),
                         installed_apps_hash="__hashed_installed_apps__",
                         significant_info=["__significant__django.contrib.admin.models__"],
@@ -503,19 +527,53 @@ class TestVirtualDependencyInstaller:
             report_factory=ReportFactory(),
         )
 
-        assert report == virtual_dependencies.CombinedReport(
-            version="__version__",
-            report=Report(
-                combined=True,
-                modules={
-                    (ImportPath("M1"), ImportPath("__virtual__.M1")),
-                    (ImportPath("M2"), ImportPath("__virtual__.M2")),
-                },
-            ),
+        assert report.version == "__version__"
+        assert report.report == Report(
+            combined=True,
+            modules={
+                (ImportPath("M1"), ImportPath("__virtual__.mod_239797041")),
+                (ImportPath("M2"), ImportPath("__virtual__.M2")),
+            },
         )
 
         assert written == {
-            (scratch_root, ImportPath("__virtual__.M1")): ("CONTENT__M1", "SUMMARY__M1"),
+            (scratch_root, ImportPath("__virtual__.mod_239797041")): (
+                "CONTENT__M1",
+                "SUMMARY__M1",
+            ),
             (scratch_root, ImportPath("__virtual__.M2")): ("CONTENT__M2", "SUMMARY__M2"),
         }
         assert installed == [(scratch_root, destination, ImportPath("__virtual__"))]
+
+        report.ensure_virtual_dependency(module_import_path="E1.models")
+        assert (
+            ImportPath("E1.models"),
+            ImportPath("__virtual__.mod_235078441"),
+        ) in report.report.modules
+        assert written == {
+            (scratch_root, ImportPath("__virtual__.mod_239797041")): (
+                "CONTENT__M1",
+                "SUMMARY__M1",
+            ),
+            (scratch_root, ImportPath("__virtual__.M2")): ("CONTENT__M2", "SUMMARY__M2"),
+            # The empty dep is written directly to the final destination
+            # cause it happens at mypy time
+            (destination, ImportPath("__virtual__.mod_235078441")): ("empty", False),
+        }
+
+        # Existing modules are not overridden
+        report.ensure_virtual_dependency(module_import_path="M1.models")
+        assert written == {
+            # We want the content for M1 to have not been changed in destination
+            (scratch_root, ImportPath("__virtual__.mod_239797041")): (
+                "CONTENT__M1",
+                "SUMMARY__M1",
+            ),
+            (scratch_root, ImportPath("__virtual__.M2")): ("CONTENT__M2", "SUMMARY__M2"),
+            (destination, ImportPath("__virtual__.mod_235078441")): ("empty", False),
+        }
+        assert report.report.modules == {
+            (ImportPath("M1"), ImportPath("__virtual__.mod_239797041")),
+            (ImportPath("M2"), ImportPath("__virtual__.M2")),
+            (ImportPath("E1.models"), ImportPath("__virtual__.mod_235078441")),
+        }

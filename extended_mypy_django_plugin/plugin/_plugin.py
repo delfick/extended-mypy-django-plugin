@@ -195,6 +195,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         file_import = file.fullname
         full_imports: set[str] = set()
 
+        self.virtual_dependency_report.ensure_virtual_dependency(module_import_path=file.fullname)
+
         for imp in file.imports:
             if isinstance(imp, ImportFrom | ImportAll):
                 if imp.relative:

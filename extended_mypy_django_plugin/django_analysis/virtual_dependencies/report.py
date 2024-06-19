@@ -10,7 +10,7 @@ import re
 import shutil
 import textwrap
 from collections.abc import Iterator, MutableMapping, MutableSet, Sequence, Set
-from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Literal, Protocol, TypeVar, cast
 
 from .. import protocols
 from ..discovery import ImportPath
@@ -28,6 +28,23 @@ regexes = {
 class CombinedReport(Generic[protocols.T_Report]):
     version: str
     report: protocols.T_Report
+    write_empty_virtual_dep: protocols.EmptyVirtualDepWriter
+
+    def ensure_virtual_dependency(self, *, module_import_path: str) -> None:
+        # This is a heuristic that should be accurate enough to catch modules that contain models
+        # Though it may miss some models and it may include modules that aren't related to django models
+        if ".models." not in module_import_path and not module_import_path.endswith(".models"):
+            return
+
+        # An empty virtual dep is only written if there is no virtual dep to begin with
+        virtual_import_path = self.write_empty_virtual_dep(
+            module_import_path=protocols.ImportPath(module_import_path)
+        )
+        if virtual_import_path:
+            self.report.register_module(
+                module_import_path=protocols.ImportPath(module_import_path),
+                virtual_import_path=virtual_import_path,
+            )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -187,6 +204,18 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     virtual_dependency: protocols.T_VirtualDependency
     all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
 
+    @classmethod
+    def make_empty_virtual_dependency_content(
+        cls, *, module_import_path: protocols.ImportPath
+    ) -> str:
+        return (
+            textwrap.dedent(f"""
+        mod = "{module_import_path}"
+        summary = "||not_installed||"
+        """).strip()
+            + "\n"
+        )
+
     def write(self) -> WrittenVirtualDependency[protocols.T_Report]:
         report = self.report_maker()
         summary_hash = self._get_summary_hash()
@@ -340,7 +369,9 @@ class ReportCombiner(Generic[T_Report]):
     reports: Sequence[T_Report]
     report_maker: protocols.ReportMaker[T_Report]
 
-    def combine(self, *, version: str) -> protocols.CombinedReport[T_Report]:
+    def combine(
+        self, *, version: str, write_empty_virtual_dep: protocols.EmptyVirtualDepWriter
+    ) -> protocols.CombinedReport[T_Report]:
         final = self.report_maker()
         for report in self.reports:
             final.concrete_annotations.update(report.concrete_annotations)
@@ -350,7 +381,9 @@ class ReportCombiner(Generic[T_Report]):
             for path, related in report.related_import_paths.items():
                 final.related_import_paths[path] |= related
 
-        return CombinedReport(version=version, report=final)
+        return CombinedReport(
+            version=version, report=final, write_empty_virtual_dep=write_empty_virtual_dep
+        )
 
 
 class ReportSummaryGetter(Protocol):
@@ -367,25 +400,32 @@ class ReportSummaryGetter(Protocol):
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ReportInstaller:
-    _written: dict[pathlib.Path, str | None] = dataclasses.field(init=False, default_factory=dict)
+    _written: dict[pathlib.Path, str | Literal[False] | None] = dataclasses.field(
+        init=False, default_factory=dict
+    )
     _get_report_summary: ReportSummaryGetter
 
     def write_report(
         self,
         *,
         scratch_root: pathlib.Path,
-        summary_hash: str | None,
+        summary_hash: str | Literal[False] | None,
         virtual_import_path: protocols.ImportPath,
         content: str,
-    ) -> None:
+    ) -> bool:
         location = scratch_root / f"{virtual_import_path.replace('.', os.sep)}.py"
         if not location.is_relative_to(scratch_root):
             raise RuntimeError(
                 f"Virtual dependency ends up being outside of the scratch root: {virtual_import_path}"
             )
+
+        if location.exists() and summary_hash is False:
+            return False
+
         location.parent.mkdir(parents=True, exist_ok=True)
         location.write_text(content)
         self._written[location] = summary_hash
+        return True
 
     def install_reports(
         self,
@@ -433,6 +473,7 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
     report_installer: protocols.ReportInstaller
     report_combiner_maker: protocols.ReportCombinerMaker[protocols.T_Report]
     report_maker: protocols.ReportMaker[protocols.T_Report]
+    make_empty_virtual_dependency_content: protocols.MakeEmptyVirtualDepContent
     report_scribe: protocols.VirtualDependencyScribe[
         protocols.T_VirtualDependency, protocols.T_Report
     ]
@@ -486,6 +527,7 @@ def make_report_factory(
             _get_report_summary=VirtualDependencyScribe.get_report_summary
         ),
         report_combiner_maker=functools.partial(ReportCombiner, report_maker=Report),
+        make_empty_virtual_dependency_content=VirtualDependencyScribe.make_empty_virtual_dependency_content,
     )
 
 
@@ -506,6 +548,9 @@ if TYPE_CHECKING:
         WrittenVirtualDependency[protocols.P_Report], None
     )
     _RI: protocols.P_ReportInstaller = cast(ReportInstaller, None)
+    _MEVDC: protocols.MakeEmptyVirtualDepContent = (
+        VirtualDependencyScribe.make_empty_virtual_dependency_content
+    )
 
     _CRC: protocols.ReportCombiner[C_Report] = cast(C_ReportCombiner, None)
     _CRCC: protocols.CombinedReport[C_Report] = cast(C_CombinedReport, None)
