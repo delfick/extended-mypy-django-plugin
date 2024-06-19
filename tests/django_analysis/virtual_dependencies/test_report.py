@@ -439,3 +439,145 @@ class TestBuildingReport:
                 ImportPath("mixins"): {ImportPath("other.models")},
             },
         )
+
+    def test_additional_deps(self) -> None:
+        report = virtual_dependencies.Report(
+            report_import_path={
+                ImportPath(k): ImportPath(v)
+                for k, v in {
+                    "one.two": "v_one_two",
+                    "three.four": "v_three_four",
+                    "five.six": "v_five_six",
+                    "six.seven": "v_six_seven",
+                    "eight.nine": "v_eight_nine",
+                    "twelve.thirteen": "v_twelve_thirteen",
+                    "another.one": "v_another_one",
+                    "more": "v_more",
+                }.items()
+            },
+            related_import_paths={
+                ImportPath("one.two"): {
+                    ImportPath("five.six"),
+                    ImportPath("ten.eleven"),
+                    ImportPath("three.four"),
+                },
+                ImportPath("three.four"): {
+                    ImportPath("one.two"),
+                },
+                ImportPath("five.six"): {
+                    ImportPath("six.seven"),
+                    ImportPath("one.two"),
+                },
+                ImportPath("eight.nine"): {
+                    ImportPath("twelve.thirteen"),
+                },
+                ImportPath("another.one"): {
+                    ImportPath("more"),
+                },
+            },
+        )
+
+        # File name startswith django., it is effectively ignored
+        super_deps = [(10, "one.two", -1), (10, "two", -1)]
+        assert (
+            report.additional_deps(
+                file_import_path="django.db.models", imports=set(), super_deps=super_deps
+            )
+            is super_deps
+        )
+
+        # Expansion depends on super_deps and imports
+        assert (
+            report.additional_deps(file_import_path="some.place", imports=set(), super_deps=[])
+            == []
+        )
+        assert sorted(
+            report.additional_deps(
+                file_import_path="some.place",
+                imports={"eight.nine", "typing.Protocol"},
+                super_deps=[],
+            )
+        ) == sorted([(10, "v_eight_nine", -1), (10, "v_twelve_thirteen", -1)])
+        # So imports and super_deps both expand, but super_deps remain in the output
+        assert sorted(
+            report.additional_deps(
+                file_import_path="some.place",
+                imports=set(),
+                super_deps=[(10, "eight.nine", -1), (10, "typing.Protocol", 13)],
+            )
+        ) == sorted(
+            [
+                (10, "eight.nine", -1),
+                (10, "v_eight_nine", -1),
+                (10, "v_twelve_thirteen", -1),
+                (10, "typing.Protocol", 13),
+            ]
+        )
+
+        # Infinite loops don't happen. In second and third layer here we get one.two again
+        # one.two -> five.six,ten.eleven,three.four -> six.seven
+        assert sorted(
+            report.additional_deps(
+                file_import_path="some.place",
+                imports={"one.two"},
+                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+            )
+        ) == sorted(
+            [
+                (10, "v_one_two", -1),
+                (10, "v_five_six", -1),
+                (10, "v_six_seven", -1),
+                (10, "v_three_four", -1),
+                (10, "hello.there", -1),
+                (10, "typing.Protocol", 13),
+            ]
+        )
+
+        # Also add from the file import itself
+        assert sorted(
+            report.additional_deps(
+                file_import_path="another.one",
+                imports={"one.two"},
+                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+            )
+        ) == sorted(
+            [
+                (10, "v_another_one", -1),
+                (10, "v_more", -1),
+                (10, "v_one_two", -1),
+                (10, "v_five_six", -1),
+                (10, "v_six_seven", -1),
+                (10, "v_three_four", -1),
+                (10, "hello.there", -1),
+                (10, "typing.Protocol", 13),
+            ]
+        )
+
+        # Also find when we have objects from a reported module
+        assert sorted(
+            report.additional_deps(
+                file_import_path="another.one",
+                imports={"one.two.MyModel"},
+                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+            )
+        ) == sorted(
+            [
+                (10, "v_another_one", -1),
+                (10, "v_more", -1),
+                (10, "v_one_two", -1),
+                (10, "v_five_six", -1),
+                (10, "v_six_seven", -1),
+                (10, "v_three_four", -1),
+                (10, "hello.there", -1),
+                (10, "typing.Protocol", 13),
+            ]
+        )
+
+        # Also virtual_deps themselves don't add extra
+        assert sorted(
+            report.additional_deps(
+                file_import_path="v_another_one",
+                imports={"one.two.MyModel"},
+                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+            )
+        ) == sorted([(10, "hello.there", -1), (10, "typing.Protocol", 13)])

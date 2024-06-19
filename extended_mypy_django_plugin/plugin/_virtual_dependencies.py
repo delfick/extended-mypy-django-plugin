@@ -1,6 +1,6 @@
 import abc
 import functools
-from collections.abc import Callable
+from collections.abc import Callable, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 from ..django_analysis import project, protocols, virtual_dependencies
@@ -13,7 +13,21 @@ from ..django_analysis.protocols import (
 
 
 class ReportProtocol(Protocol):
-    pass
+    def additional_deps(
+        self,
+        *,
+        file_import_path: str,
+        imports: Set[str],
+        super_deps: Sequence[tuple[int, str, int]],
+    ) -> Sequence[tuple[int, str, int]]:
+        """
+        This is used to add to the result for the get_additional_deps mypy hook.
+
+        It takes the import path for the file being looked at, any additional deps that have already
+        been determined for the file, and the imports the file contains as a list of full imports.
+
+        It must return the full set of additional deps the mypy plugin should use for this file
+        """
 
 
 T_Report = TypeVar("T_Report", bound=ReportProtocol)
