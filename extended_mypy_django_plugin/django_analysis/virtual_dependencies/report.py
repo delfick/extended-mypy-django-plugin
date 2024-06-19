@@ -9,7 +9,7 @@ import pathlib
 import re
 import shutil
 import textwrap
-from collections.abc import Iterator, MutableMapping, MutableSet, Sequence
+from collections.abc import Iterator, MutableMapping, MutableSet, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, cast
 
 from .. import protocols
@@ -95,6 +95,81 @@ class Report:
                 if ns != module_import_path:
                     self.related_import_paths[module_import_path].add(ns)
                     self.related_import_paths[ns].add(module_import_path)
+
+    def additional_deps(
+        self,
+        *,
+        file_import_path: str,
+        imports: Set[str],
+        super_deps: Sequence[tuple[int, str, int]],
+    ) -> Sequence[tuple[int, str, int]]:
+        if file_import_path.startswith("django."):
+            # Don't add additional deps to django itself
+            return super_deps
+
+        report_names = set(self.report_import_path.values())
+        if file_import_path in report_names:
+            # Don't add additional deps to our virtual imports
+            # if things they depend on change, then the virtual dep also changes already
+            return super_deps
+
+        deps = set(super_deps)
+        final = set(deps)
+        mods = {name for _, name, _ in deps}
+
+        # We want to make sure that our deps include imports from known modules so that when we expand
+        # In the next section, we take into account dependencies of the imports as well
+        for full in imports:
+            if full == file_import_path:
+                continue
+
+            if full in self.report_import_path:
+                if full not in mods:
+                    mods.add(full)
+                    deps.add((10, full, -1))
+                continue
+
+            for mod in self.report_import_path:
+                if full.startswith(f"{mod}."):
+                    if mod not in mods:
+                        mods.add(mod)
+                        deps.add((10, mod, -1))
+                    break
+
+        # and take into account this file itself!
+        if file_import_path not in mods:
+            mods.add(file_import_path)
+            deps.add((10, file_import_path, -1))
+
+        # Keep expanding the deps until it doesn't add any more
+        while self._expand_additional_deps(deps):
+            pass
+
+        # Only keep the virtual dependencies we added
+        for _, added, _ in deps - final:
+            if added in report_names:
+                final.add((10, added, -1))
+
+        return list(final)
+
+    def _expand_additional_deps(self, deps: MutableSet[tuple[int, str, int]]) -> bool:
+        changed: bool = False
+
+        mods = {mod for _, mod, _ in deps}
+
+        for _, mod_s, _ in list(deps):
+            mod = protocols.ImportPath(mod_s)
+            report_name = self.report_import_path.get(mod)
+            if report_name and report_name not in mods:
+                changed = True
+                mods.add(report_name)
+                deps.add((10, report_name, -1))
+                if mod in self.related_import_paths:
+                    for related in self.related_import_paths[mod]:
+                        mods.add(related)
+                        deps.add((10, related, -1))
+
+        return changed
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

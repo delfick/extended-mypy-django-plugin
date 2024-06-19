@@ -4,7 +4,15 @@ from collections.abc import Callable
 from typing import Generic, TypeVar
 
 from mypy.checker import TypeChecker
-from mypy.nodes import MypyFile, SymbolNode, SymbolTableNode, TypeInfo
+from mypy.nodes import (
+    Import,
+    ImportAll,
+    ImportFrom,
+    MypyFile,
+    SymbolNode,
+    SymbolTableNode,
+    TypeInfo,
+)
 from mypy.options import Options
 from mypy.plugin import (
     AnalyzeTypeContext,
@@ -184,10 +192,35 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         We use a generated "report" to re-analyze a file if a new dependency
         is discovered after this file has been processed.
         """
-        results = self.dependencies.for_file(
-            file.fullname, imports=file.imports, super_deps=super().get_additional_deps(file)
+        file_import = file.fullname
+        full_imports: set[str] = set()
+
+        for imp in file.imports:
+            if isinstance(imp, ImportFrom | ImportAll):
+                if imp.relative:
+                    prefix_base = ".".join(file_import.split(".")[: -imp.relative])
+                    prefix = f"{prefix_base}.{imp.id}"
+                else:
+                    prefix = imp.id
+
+                if isinstance(imp, ImportAll):
+                    # This is the best we can do unfortunately
+                    full_imports.add(prefix)
+                else:
+                    for name, _ in imp.names:
+                        full_imports.add(f"{prefix}.{name}")
+
+            elif isinstance(imp, Import):
+                for name, _ in imp.ids:
+                    full_imports.add(name)
+
+        return list(
+            self.virtual_dependency_report.report.additional_deps(
+                file_import_path=file_import,
+                imports=full_imports,
+                super_deps=super().get_additional_deps(file),
+            )
         )
-        return results
 
     @_hook.hook
     class get_dynamic_class_hook(Hook[T_Report, DynamicClassDefContext, None]):
