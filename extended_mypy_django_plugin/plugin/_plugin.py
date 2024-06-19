@@ -3,7 +3,6 @@ import functools
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
-from mypy.checker import TypeChecker
 from mypy.nodes import (
     Import,
     ImportAll,
@@ -24,8 +23,6 @@ from mypy.plugin import (
     MethodSigContext,
     ReportConfigContext,
 )
-from mypy.semanal import SemanticAnalyzer
-from mypy.typeanal import TypeAnalyser
 from mypy.types import FunctionLike
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
@@ -121,10 +118,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             known_concrete_models=self.report.known_concrete_models,
         )
 
-    def _make_resolver(
-        self, ctx: actions.ValidContextForAnnotationResolver
-    ) -> actions.AnnotationResolver:
-        return actions.AnnotationResolver.create(
+    def _make_resolver(self, ctx: actions.ValidContextForAnnotationResolver) -> actions.Resolver:
+        return actions.make_resolver(
             retrieve_concrete_children_types=self.store.retrieve_concrete_children_types,
             realise_querysets=self.store.realise_querysets,
             plugin_lookup_info=self._lookup_info,
@@ -260,8 +255,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return bool(info and info.has_base(_known_annotations.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
-            assert isinstance(ctx.api, SemanticAnalyzer)
-
             sem_analyzing = actions.SemAnalyzing(
                 resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )
@@ -290,11 +283,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return True
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            assert isinstance(ctx.api, TypeAnalyser)
-            assert isinstance(ctx.api.api, SemanticAnalyzer)
-
             type_analyzer = actions.TypeAnalyzer(
-                resolver=self.plugin._make_resolver(ctx), api=ctx.api, sem_api=ctx.api.api
+                resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )
             return type_analyzer.analyze(ctx, self.annotation)
 
@@ -309,8 +299,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return self.super_hook is resolve_manager_method
 
         def run(self, ctx: AttributeContext) -> MypyType:
-            assert isinstance(ctx.api, TypeChecker)
-
             type_checking = actions.TypeChecking(
                 resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )

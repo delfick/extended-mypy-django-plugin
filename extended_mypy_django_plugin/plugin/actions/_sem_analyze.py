@@ -6,20 +6,20 @@ from mypy.nodes import (
     StrExpr,
     SymbolTableNode,
     TypeInfo,
-    TypeVarExpr,
     Var,
 )
-from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext
+from mypy.plugin import (
+    AnalyzeTypeContext,
+    DynamicClassDefContext,
+    SemanticAnalyzerPluginInterface,
+    TypeAnalyzerPluginInterface,
+)
 from mypy.semanal import SemanticAnalyzer
-from mypy.typeanal import TypeAnalyser
 from mypy.types import (
-    AnyType,
     CallableType,
     Instance,
-    TypeOfAny,
     TypeType,
     TypeVarType,
-    UnboundType,
     UnionType,
     get_proper_type,
 )
@@ -33,47 +33,21 @@ from . import _annotation_resolver
 
 class TypeAnalyzer:
     def __init__(
-        self,
-        resolver: _annotation_resolver.AnnotationResolver,
-        api: TypeAnalyser,
-        sem_api: SemanticAnalyzer,
+        self, resolver: _annotation_resolver.Resolver, api: TypeAnalyzerPluginInterface
     ) -> None:
         self.api = api
-        self.sem_api = sem_api
         self.resolver = resolver
 
     def analyze(
         self, ctx: AnalyzeTypeContext, annotation: _known_annotations.KnownAnnotations
     ) -> MypyType:
-        def defer() -> bool:
-            if self.sem_api.final_iteration:
-                return True
-            else:
-                self.sem_api.defer()
-                return False
-
         type_arg, rewrap = self.resolver.find_type_arg(ctx.type, self.api.analyze_type)
         if type_arg is None:
             return ctx.type
 
         if rewrap:
-            info = self.resolver.lookup_info(annotation.value)
-            if info is None:
-                self.api.fail(f"Couldn't find information for {annotation.value}", ctx.context)
-                return ctx.type
-
-            if isinstance(type_arg, TypeType) and isinstance(type_arg.item, TypeVarType):
-                if type_arg.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                    return ctx.type
-            elif isinstance(type_arg, TypeVarType):
-                if type_arg.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                    return ctx.type
-
-            return UnboundType(
-                "__ConcreteWithTypeVar__",
-                [Instance(info, [type_arg])],
-                line=ctx.context.line,
-                column=ctx.context.column,
+            return self.resolver.rewrap_type_var(
+                type_arg=type_arg, annotation=annotation, default=ctx.type
             )
 
         resolved = self.resolver.resolve(annotation, type_arg)
@@ -85,8 +59,10 @@ class TypeAnalyzer:
 
 class SemAnalyzing:
     def __init__(
-        self, *, resolver: _annotation_resolver.AnnotationResolver, api: SemanticAnalyzer
+        self, *, resolver: _annotation_resolver.Resolver, api: SemanticAnalyzerPluginInterface
     ) -> None:
+        # We need much more than is on the interface unfortunately
+        assert isinstance(api, SemanticAnalyzer)
         self.api = api
         self.resolver = resolver
 
@@ -153,13 +129,6 @@ class SemAnalyzing:
                 )
                 return None
 
-        def defer() -> bool:
-            if self.api.final_iteration:
-                return True
-            else:
-                self.api.defer()
-                return False
-
         concrete = self.resolver.resolve(
             _known_annotations.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
@@ -224,19 +193,11 @@ class SemAnalyzing:
             )
             return
 
-        object_type = self.api.named_type("builtins.object")
-        values = self.resolver.retrieve_concrete_children_types(
-            parent.node, self.resolver.lookup_info, self.api.named_type_or_none
-        )
-        if not values:
-            self.api.fail(f"No concrete children found for {parent.node.fullname}", ctx.call)
-
-        type_var_expr = TypeVarExpr(
+        type_var_expr = self.resolver.type_var_expr_for(
+            model=parent.node,
             name=name,
             fullname=f"{self.api.cur_mod_id}.{name}",
-            values=list(values),
-            upper_bound=object_type,
-            default=AnyType(TypeOfAny.from_omitted_generics),
+            object_type=self.api.named_type("builtins.object"),
         )
 
         module = self.api.modules[self.api.cur_mod_id]

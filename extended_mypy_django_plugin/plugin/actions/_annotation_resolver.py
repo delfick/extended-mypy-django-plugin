@@ -2,7 +2,7 @@ import functools
 from collections.abc import Iterator, Sequence
 from typing import Protocol
 
-from mypy.nodes import TypeInfo
+from mypy.nodes import Context, TypeInfo, TypeVarExpr
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
@@ -81,6 +81,31 @@ ValidContextForAnnotationResolver = (
 )
 
 
+class Resolver(Protocol):
+    @property
+    def fail(self) -> FailFunc: ...
+
+    def resolve(
+        self, annotation: _known_annotations.KnownAnnotations, type_arg: ProperType
+    ) -> Instance | TypeType | UnionType | AnyType | None: ...
+
+    def find_type_arg(
+        self, unbound_type: UnboundType, analyze_type: TypeAnalyze
+    ) -> tuple[ProperType | None, bool]: ...
+
+    def rewrap_type_var(
+        self,
+        *,
+        annotation: _known_annotations.KnownAnnotations,
+        type_arg: ProperType,
+        default: MypyType,
+    ) -> MypyType: ...
+
+    def type_var_expr_for(
+        self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
+    ) -> TypeVarExpr: ...
+
+
 class AnnotationResolver:
     @classmethod
     def create(
@@ -117,54 +142,63 @@ class AnnotationResolver:
 
         fail: FailFunc
         defer: DeferFunc
+        context: Context
         lookup_info: LookupInfo
         named_type_or_none: NamedTypeOrNone
 
         match ctx:
             case DynamicClassDefContext(api=api):
                 assert isinstance(api, SemanticAnalyzer)
+                context = ctx.call
                 sem_api = api
                 defer = functools.partial(sem_defer, sem_api)
-                fail = lambda msg: sem_api.fail(msg, ctx.call)
+                fail = lambda msg: sem_api.fail(msg, context)
                 lookup_info = functools.partial(sem_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case AnalyzeTypeContext(api=api):
                 assert isinstance(api, TypeAnalyser)
                 assert isinstance(api.api, SemanticAnalyzer)
+                context = ctx.context
                 sem_api = api.api
                 defer = functools.partial(sem_defer, sem_api)
-                fail = lambda msg: sem_api.fail(msg, ctx.context)
+                fail = lambda msg: sem_api.fail(msg, context)
                 lookup_info = functools.partial(sem_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case MethodContext(api=api):
+                context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, ctx.context)
+                fail = lambda msg: api.fail(msg, context)
                 lookup_info = plugin_lookup_info
                 named_type_or_none = checker_named_type_or_none
             case FunctionContext(api=api):
+                context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, ctx.context)
+                fail = lambda msg: api.fail(msg, context)
                 lookup_info = plugin_lookup_info
                 named_type_or_none = checker_named_type_or_none
             case MethodSigContext(api=api):
+                context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, ctx.context)
+                fail = lambda msg: api.fail(msg, context)
                 lookup_info = plugin_lookup_info
                 named_type_or_none = checker_named_type_or_none
             case FunctionSigContext(api=api):
+                context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, ctx.context)
+                fail = lambda msg: api.fail(msg, context)
                 lookup_info = plugin_lookup_info
                 named_type_or_none = checker_named_type_or_none
             case AttributeContext(api=api):
+                context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, ctx.context)
+                fail = lambda msg: api.fail(msg, context)
                 lookup_info = plugin_lookup_info
                 named_type_or_none = checker_named_type_or_none
             case _:
                 assert_never(ctx)
 
         return cls(
+            context=context,
             retrieve_concrete_children_types=retrieve_concrete_children_types,
             realise_querysets=realise_querysets,
             defer=defer,
@@ -176,6 +210,7 @@ class AnnotationResolver:
     def __init__(
         self,
         *,
+        context: Context,
         realise_querysets: QuerysetRealiser,
         retrieve_concrete_children_types: ConcreteChildrenTypesRetriever,
         fail: FailFunc,
@@ -183,9 +218,10 @@ class AnnotationResolver:
         lookup_info: LookupInfo,
         named_type_or_none: NamedTypeOrNone,
     ) -> None:
-        self._fail = fail
         self._defer = defer
         self._named_type_or_none = named_type_or_none
+        self.fail = fail
+        self.context = context
         self.lookup_info = lookup_info
         self.realise_querysets = realise_querysets
         self.retrieve_concrete_children_types = retrieve_concrete_children_types
@@ -208,7 +244,7 @@ class AnnotationResolver:
             found = type_arg.item
 
         if isinstance(found, AnyType):
-            self._fail("Tried to use concrete annotations on a typing.Any")
+            self.fail("Tried to use concrete annotations on a typing.Any")
             return False, None
 
         if not isinstance(found, Instance | UnionType):
@@ -222,7 +258,7 @@ class AnnotationResolver:
         not_all_instances: bool = False
         for item in all_types:
             if not isinstance(item, Instance):
-                self._fail(
+                self.fail(
                     f"Expected to operate on specific classes, got a {item.__class__.__name__}: {item}"
                 )
                 not_all_instances = True
@@ -244,7 +280,7 @@ class AnnotationResolver:
 
         if not concrete:
             if not self._defer():
-                self._fail(f"No concrete models found for {names}")
+                self.fail(f"No concrete models found for {names}")
             return False, None
 
         return is_type, tuple(concrete)
@@ -279,12 +315,55 @@ class AnnotationResolver:
     ) -> tuple[ProperType | None, bool]:
         args = unbound_type.args
         if len(args := unbound_type.args) != 1:
-            self._fail("Concrete annotations must contain exactly one argument")
+            self.fail("Concrete annotations must contain exactly one argument")
             return None, False
 
         type_arg = get_proper_type(analyze_type(args[0]))
         needs_rewrap = self._has_typevars(type_arg)
         return type_arg, needs_rewrap
+
+    def type_var_expr_for(
+        self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
+    ) -> TypeVarExpr:
+        values = self.retrieve_concrete_children_types(
+            model, self.lookup_info, self._named_type_or_none
+        )
+        if not values:
+            self.fail(f"No concrete children found for {model.fullname}")
+
+        return TypeVarExpr(
+            name=name,
+            fullname=fullname,
+            values=list(values),
+            upper_bound=object_type,
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+
+    def rewrap_type_var(
+        self,
+        *,
+        annotation: _known_annotations.KnownAnnotations,
+        type_arg: ProperType,
+        default: MypyType,
+    ) -> MypyType:
+        info = self.lookup_info(annotation.value)
+        if info is None:
+            self.fail(f"Couldn't find information for {annotation.value}")
+            return default
+
+        if isinstance(type_arg, TypeType) and isinstance(type_arg.item, TypeVarType):
+            if type_arg.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                return default
+        elif isinstance(type_arg, TypeVarType):
+            if type_arg.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                return default
+
+        return UnboundType(
+            "__ConcreteWithTypeVar__",
+            [Instance(info, [type_arg])],
+            line=self.context.line,
+            column=self.context.column,
+        )
 
     def _has_typevars(self, type_arg: ProperType) -> bool:
         if isinstance(type_arg, TypeType):
@@ -316,3 +395,6 @@ class AnnotationResolver:
 
         querysets = tuple(self.realise_querysets(UnionType(concrete), self.lookup_info))
         return self._make_union(is_type, querysets)
+
+
+make_resolver = AnnotationResolver.create
