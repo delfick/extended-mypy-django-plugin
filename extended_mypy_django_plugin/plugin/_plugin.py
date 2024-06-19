@@ -220,6 +220,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             self.virtual_dependency_report.report.additional_deps(
                 file_import_path=file_import,
                 imports=full_imports,
+                django_settings_module=self.extra_options.django_settings_module,
                 super_deps=super().get_additional_deps(file),
             )
         )

@@ -19,12 +19,14 @@ class ReportProtocol(Protocol):
         file_import_path: str,
         imports: Set[str],
         super_deps: Sequence[tuple[int, str, int]],
+        django_settings_module: str,
     ) -> Sequence[tuple[int, str, int]]:
         """
         This is used to add to the result for the get_additional_deps mypy hook.
 
         It takes the import path for the file being looked at, any additional deps that have already
-        been determined for the file, and the imports the file contains as a list of full imports.
+        been determined for the file, the imports the file contains as a list of full imports,
+        and the import path of the django settings module.
 
         It must return the full set of additional deps the mypy plugin should use for this file
         """
