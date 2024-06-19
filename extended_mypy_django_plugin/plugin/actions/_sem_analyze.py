@@ -27,22 +27,20 @@ from mypy.types import (
     Type as MypyType,
 )
 
-from .. import _known_annotations, _store
+from .. import _known_annotations
 from . import _annotation_resolver
 
 
 class TypeAnalyzer:
-    def __init__(self, store: _store.Store, api: TypeAnalyser, sem_api: SemanticAnalyzer) -> None:
+    def __init__(
+        self,
+        resolver: _annotation_resolver.AnnotationResolver,
+        api: TypeAnalyser,
+        sem_api: SemanticAnalyzer,
+    ) -> None:
         self.api = api
-        self.store = store
         self.sem_api = sem_api
-
-    def _lookup_info(self, fullname: str) -> TypeInfo | None:
-        instance = self.sem_api.named_type_or_none(fullname)
-        if instance:
-            return instance.type
-
-        return self.store.plugin_lookup_info(fullname)
+        self.resolver = resolver
 
     def analyze(
         self, ctx: AnalyzeTypeContext, annotation: _known_annotations.KnownAnnotations
@@ -54,20 +52,12 @@ class TypeAnalyzer:
                 self.sem_api.defer()
                 return False
 
-        resolver = _annotation_resolver.AnnotationResolver(
-            self.store,
-            defer=defer,
-            fail=lambda msg: self.api.fail(msg, ctx.context),
-            lookup_info=self._lookup_info,
-            named_type_or_none=self.sem_api.named_type_or_none,
-        )
-
-        type_arg, rewrap = resolver.find_type_arg(ctx.type, self.api.analyze_type)
+        type_arg, rewrap = self.resolver.find_type_arg(ctx.type, self.api.analyze_type)
         if type_arg is None:
             return ctx.type
 
         if rewrap:
-            info = self._lookup_info(annotation.value)
+            info = self.resolver.lookup_info(annotation.value)
             if info is None:
                 self.api.fail(f"Couldn't find information for {annotation.value}", ctx.context)
                 return ctx.type
@@ -86,7 +76,7 @@ class TypeAnalyzer:
                 column=ctx.context.column,
             )
 
-        resolved = resolver.resolve(annotation, type_arg)
+        resolved = self.resolver.resolve(annotation, type_arg)
         if resolved is None:
             return ctx.type
         else:
@@ -94,16 +84,11 @@ class TypeAnalyzer:
 
 
 class SemAnalyzing:
-    def __init__(self, store: _store.Store, *, api: SemanticAnalyzer) -> None:
+    def __init__(
+        self, *, resolver: _annotation_resolver.AnnotationResolver, api: SemanticAnalyzer
+    ) -> None:
         self.api = api
-        self.store = store
-
-    def _lookup_info(self, fullname: str) -> TypeInfo | None:
-        instance = self.api.named_type_or_none(fullname)
-        if instance:
-            return instance.type
-
-        return self.store.plugin_lookup_info(fullname)
+        self.resolver = resolver
 
     def transform_cast_as_concrete(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 1:
@@ -175,15 +160,7 @@ class SemAnalyzing:
                 self.api.defer()
                 return False
 
-        resolver = _annotation_resolver.AnnotationResolver(
-            self.store,
-            defer=defer,
-            fail=lambda msg: self.api.fail(msg, ctx.call),
-            lookup_info=self._lookup_info,
-            named_type_or_none=self.api.named_type_or_none,
-        )
-
-        concrete = resolver.resolve(
+        concrete = self.resolver.resolve(
             _known_annotations.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
@@ -248,8 +225,8 @@ class SemAnalyzing:
             return
 
         object_type = self.api.named_type("builtins.object")
-        values = self.store.retrieve_concrete_children_types(
-            parent.node, self._lookup_info, self.api.named_type_or_none
+        values = self.resolver.retrieve_concrete_children_types(
+            parent.node, self.resolver.lookup_info, self.api.named_type_or_none
         )
         if not values:
             self.api.fail(f"No concrete children found for {parent.node.fullname}", ctx.call)

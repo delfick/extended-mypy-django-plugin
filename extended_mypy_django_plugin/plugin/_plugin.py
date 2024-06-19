@@ -52,10 +52,7 @@ class Hook(
     Generic[T_Report, _hook.T_Ctx, _hook.T_Ret],
     _hook.Hook["ExtendedMypyStubs[T_Report]", _hook.T_Ctx, _hook.T_Ret],
 ):
-    store: _store.Store
-
-    def extra_init(self) -> None:
-        self.store = self.plugin.store
+    pass
 
 
 class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
@@ -130,6 +127,16 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             ),
         )
 
+    def _make_resolver(
+        self, ctx: actions.ValidContextForAnnotationResolver
+    ) -> actions.AnnotationResolver:
+        return actions.AnnotationResolver.create(
+            retrieve_concrete_children_types=self.store.retrieve_concrete_children_types,
+            realise_querysets=self.store.realise_querysets,
+            plugin_lookup_info=self._lookup_info,
+            ctx=ctx,
+        )
+
     def _is_installed_model(self, instance: Instance) -> bool:
         return self.dependencies.is_model_known(instance.type.fullname)
 
@@ -143,7 +150,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     def _get_symbolnode_for_fullname(
         self, fullname: str, is_function: bool
     ) -> SymbolNode | SymbolTableNode | None:
-        sym = self.store.plugin_lookup_fully_qualified(fullname)
+        sym = self.lookup_fully_qualified(fullname)
         if sym and sym.node:
             return sym.node
 
@@ -264,7 +271,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def run(self, ctx: DynamicClassDefContext) -> None:
             assert isinstance(ctx.api, SemanticAnalyzer)
 
-            sem_analyzing = actions.SemAnalyzing(self.store, api=ctx.api)
+            sem_analyzing = actions.SemAnalyzing(
+                resolver=self.plugin._make_resolver(ctx), api=ctx.api
+            )
 
             if self.method_name is self.KnownConcreteMethods.type_var:
                 return sem_analyzing.transform_type_var_classmethod(ctx)
@@ -293,7 +302,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             assert isinstance(ctx.api, TypeAnalyser)
             assert isinstance(ctx.api.api, SemanticAnalyzer)
 
-            type_analyzer = actions.TypeAnalyzer(self.store, ctx.api, ctx.api.api)
+            type_analyzer = actions.TypeAnalyzer(
+                resolver=self.plugin._make_resolver(ctx), api=ctx.api, sem_api=ctx.api.api
+            )
             return type_analyzer.analyze(ctx, self.annotation)
 
     @_hook.hook
@@ -309,7 +320,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def run(self, ctx: AttributeContext) -> MypyType:
             assert isinstance(ctx.api, TypeChecker)
 
-            type_checking = actions.TypeChecking(self.store, api=ctx.api)
+            type_checking = actions.TypeChecking(
+                resolver=self.plugin._make_resolver(ctx), api=ctx.api
+            )
 
             return type_checking.extended_get_attribute_resolve_manager_method(
                 ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance
@@ -323,7 +336,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = actions.SharedModifyReturnTypeLogic(
-                self.store,
+                make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(
                     self.plugin._get_symbolnode_for_fullname,
@@ -362,7 +375,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = actions.SharedCheckTypeGuardsLogic(
-                self.store,
+                make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(
                     self.plugin._get_symbolnode_for_fullname,
