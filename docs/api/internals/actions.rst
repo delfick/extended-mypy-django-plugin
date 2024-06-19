@@ -27,10 +27,6 @@ There is a class for each of these Interfaces:
 
 .. autoclass:: extended_mypy_django_plugin.plugin.actions._type_checker.TypeChecking
 
-And a third class for resolving annotations:
-
-.. autoclass:: extended_mypy_django_plugin.plugin.actions._annotation_resolver.AnnotationResolver
-
 The specifics of what they do in this plugin has yet to be documented. More
 information of the structure of a mypy plugin is best done by reading the mypy
 source code.

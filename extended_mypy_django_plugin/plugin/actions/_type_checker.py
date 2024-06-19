@@ -9,6 +9,7 @@ from mypy.nodes import (
     CallExpr,
     Context,
     Decorator,
+    Expression,
     IndexExpr,
     MemberExpr,
     RefExpr,
@@ -19,6 +20,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import (
     AttributeContext,
+    CheckerPluginInterface,
     FunctionContext,
     FunctionSigContext,
     MethodContext,
@@ -44,10 +46,6 @@ from .. import _known_annotations
 from . import _annotation_resolver
 
 
-class FailFunc(Protocol):
-    def __call__(self, message: str) -> None: ...
-
-
 class ResolveManagerMethodFromInstance(Protocol):
     def __call__(
         self, instance: Instance, method_name: str, ctx: AttributeContext
@@ -66,7 +64,7 @@ _TypeVarMap = MutableMapping[TypeVarType | str, Instance | TypeType | UnionType]
 
 @dataclasses.dataclass
 class Finder:
-    _api: TypeChecker
+    _api: CheckerPluginInterface
 
     def find_type_vars(
         self, item: MypyType, _chain: list[ProperType] | None = None
@@ -117,7 +115,6 @@ class Finder:
 @dataclasses.dataclass
 class BasicTypeInfo:
     func: CallableType
-    fail: FailFunc
 
     is_type: bool
     is_guard: bool
@@ -125,7 +122,7 @@ class BasicTypeInfo:
     item: ProperType
     finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
-    resolver: _annotation_resolver.AnnotationResolver
+    resolver: _annotation_resolver.Resolver
     concrete_annotation: _known_annotations.KnownAnnotations | None
     unwrapped_type_guard: ProperType | None
 
@@ -133,9 +130,8 @@ class BasicTypeInfo:
     def create(
         cls,
         func: CallableType,
-        fail: FailFunc,
         finder: Finder,
-        resolver: _annotation_resolver.AnnotationResolver,
+        resolver: _annotation_resolver.Resolver,
         item: MypyType | None = None,
     ) -> Self:
         is_type: bool = False
@@ -179,7 +175,6 @@ class BasicTypeInfo:
 
         return cls(
             func=func,
-            fail=fail,
             item=get_proper_type(item),
             finder=finder,
             is_type=is_type,
@@ -193,7 +188,6 @@ class BasicTypeInfo:
     def _clone_with_item(self, item: MypyType) -> Self:
         return self.create(
             func=self.func,
-            fail=self.fail,
             item=item,
             finder=self.finder,
             resolver=self.resolver,
@@ -281,7 +275,9 @@ class BasicTypeInfo:
                 if len(choices) == 1:
                     result[type_var] = choices[0]
                 else:
-                    self.fail(f"Failed to find an argument that matched the type var {type_var}")
+                    self.resolver.fail(
+                        f"Failed to find an argument that matched the type var {type_var}"
+                    )
 
             if found is not None:
                 if is_type:
@@ -294,7 +290,6 @@ class BasicTypeInfo:
         type_checking: "TypeChecking",
         context: Context,
         type_vars_map: _TypeVarMap,
-        resolver: _annotation_resolver.AnnotationResolver,
     ) -> Instance | TypeType | UnionType | AnyType | None:
         if self.concrete_annotation is None:
             found: Instance | TypeType | UnionType
@@ -307,10 +302,12 @@ class BasicTypeInfo:
                 elif self.item.name == "Self" and TYPING_SELF in type_vars_map:
                     found = type_vars_map[TYPING_SELF]
                 else:
-                    self.fail(f"Failed to work out type for type var {self.item}")
+                    self.resolver.fail(f"Failed to work out type for type var {self.item}")
                     return AnyType(TypeOfAny.from_error)
             elif not isinstance(self.item, TypeType | Instance):
-                self.fail(f"Got an unexpected item in the concrete annotation, {self.item}")
+                self.resolver.fail(
+                    f"Got an unexpected item in the concrete annotation, {self.item}"
+                )
                 return AnyType(TypeOfAny.from_error)
             else:
                 found = self.item
@@ -322,7 +319,7 @@ class BasicTypeInfo:
 
         models: list[Instance | TypeType] = []
         for child in self.items():
-            nxt = child.transform(type_checking, context, type_vars_map, resolver=resolver)
+            nxt = child.transform(type_checking, context, type_vars_map)
             if nxt is None or isinstance(nxt, AnyType | UnionType):
                 # Children in self.items() should never return UnionType from transform
                 return nxt
@@ -338,22 +335,32 @@ class BasicTypeInfo:
         else:
             arg = UnionType(tuple(models))
 
-        return resolver.resolve(self.concrete_annotation, arg)
+        return self.resolver.resolve(self.concrete_annotation, arg)
 
 
 class TypeChecking:
     def __init__(
-        self, *, resolver: _annotation_resolver.AnnotationResolver, api: TypeChecker
+        self, *, resolver: _annotation_resolver.Resolver, api: CheckerPluginInterface
     ) -> None:
         self.api = api
         self.resolver = resolver
 
+    def get_expression_type(
+        self, node: Expression, type_context: MypyType | None = None
+    ) -> MypyType:
+        # We can remove the assert and switch to self.api.get_expression_type
+        # when we don't have to support mypy 1.4
+        assert isinstance(self.api, TypeChecker)
+        self.expr_checker = self.api.expr_checker
+        return self.expr_checker.accept(node, type_context=type_context)
+
     def _get_info(self, context: Context) -> BasicTypeInfo | None:
         found: ProperType | None = None
+
         if isinstance(context, CallExpr):
-            found = get_proper_type(self.api.expr_checker.accept(context.callee))
+            found = get_proper_type(self.get_expression_type(context.callee))
         elif isinstance(context, IndexExpr):
-            found = get_proper_type(self.api.expr_checker.accept(context.base))
+            found = get_proper_type(self.get_expression_type(context.base))
             if isinstance(found, Instance) and found.args:
                 found = get_proper_type(found.args[-1])
 
@@ -373,7 +380,6 @@ class TypeChecking:
 
         return BasicTypeInfo.create(
             func=func,
-            fail=lambda msg: self.api.fail(msg, context),
             finder=Finder(_api=self.api),
             resolver=self.resolver,
         )
@@ -409,7 +415,7 @@ class TypeChecking:
 
         type_vars_map = info.map_type_vars(ctx)
 
-        result = info.transform(self, ctx.context, type_vars_map, resolver=self.resolver)
+        result = info.transform(self, ctx.context, type_vars_map)
         if isinstance(result, UnionType) and len(result.items) == 1:
             return result.items[0]
         else:
@@ -477,7 +483,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
         self,
         make_resolver: Callable[
             [MethodContext | FunctionContext | MethodSigContext | FunctionSigContext],
-            _annotation_resolver.AnnotationResolver,
+            _annotation_resolver.Resolver,
         ],
         fullname: str,
         get_symbolnode_for_fullname: GetSymbolNode,
@@ -529,8 +535,6 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
     def _type_checking(
         self, ctx: MethodContext | FunctionContext | MethodSigContext | FunctionSigContext
     ) -> TypeChecking:
-        assert isinstance(ctx.api, TypeChecker)
-
         return TypeChecking(resolver=self.make_resolver(ctx), api=ctx.api)
 
 
