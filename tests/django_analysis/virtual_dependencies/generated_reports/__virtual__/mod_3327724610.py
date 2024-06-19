@@ -7,14 +7,8 @@ mod = "djangoexample.relations1.models"
 summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=448140218"
 
 if TYPE_CHECKING:
-    import django.db.models.QuerySet
-    import djangoexample.relations1.models.Abstract
-    import djangoexample.relations1.models.Child1
-    import djangoexample.relations1.models.Child1QuerySet
-    import djangoexample.relations1.models.Child2
-    import djangoexample.relations1.models.Concrete1
-    import djangoexample.relations1.models.Concrete1QuerySet
-    import djangoexample.relations1.models.Concrete2
+    import django.db.models
+    import djangoexample.relations1.models
     ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child2] | djangoexample.relations1.models.Child1QuerySet
     ConcreteQuerySet__Child1 = djangoexample.relations1.models.Child1QuerySet
     ConcreteQuerySet__Child2 = django.db.models.QuerySet[djangoexample.relations1.models.Child2]
