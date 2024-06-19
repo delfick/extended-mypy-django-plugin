@@ -1,4 +1,6 @@
 import dataclasses
+import functools
+import os
 import pathlib
 from typing import TYPE_CHECKING, Generic, cast
 
@@ -27,6 +29,7 @@ class VirtualDependencyGenerator(Generic[protocols.T_Project, protocols.T_Virtua
 class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
     project_version: str
     virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
+    virtual_dependency_namer: protocols.VirtualDependencyNamer
 
     def __call__(
         self,
@@ -59,7 +62,39 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
             project_version=self.project_version,
             written_dependencies=written_dependencies,
         )
-        return report_factory.report_combiner_maker(reports=reports).combine(version=version)
+        return report_factory.report_combiner_maker(reports=reports).combine(
+            version=version,
+            write_empty_virtual_dep=functools.partial(
+                self.write_empty_virtual_dep,
+                destination=destination,
+                report_factory=report_factory,
+            ),
+        )
+
+    def write_empty_virtual_dep(
+        self,
+        *,
+        module_import_path: protocols.ImportPath,
+        destination: pathlib.Path,
+        report_factory: protocols.ReportFactory[protocols.T_VirtualDependency, protocols.T_Report],
+    ) -> protocols.ImportPath | None:
+        virtual_import_path = self.virtual_dependency_namer(module_import_path)
+        location = destination / f'{virtual_import_path.replace(".", os.sep)}.py'
+        if location.exists():
+            return None
+
+        content = report_factory.make_empty_virtual_dependency_content(
+            module_import_path=module_import_path
+        )
+        if report_factory.report_installer.write_report(
+            scratch_root=destination,
+            virtual_import_path=virtual_import_path,
+            content=content,
+            summary_hash=False,
+        ):
+            return virtual_import_path
+        else:
+            return None
 
 
 if TYPE_CHECKING:

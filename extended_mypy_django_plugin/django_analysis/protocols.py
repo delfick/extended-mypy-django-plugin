@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import pathlib
 from collections.abc import Hashable, Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, NewType, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NewType, Protocol, TypeVar, Union
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
@@ -491,6 +491,15 @@ class CombinedReport(Protocol[T_CO_ReportUse]):
         The final combined report
         """
 
+    def ensure_virtual_dependency(self, *, module_import_path: str) -> None:
+        """
+        Ensure this module has a virtual dependency if it should have one
+
+        This is important because if a module contains models but isn't installed then when it is
+        added to settings.INSTALLED_APPS without any changes, then we can't retrospectively give it
+        a virtual dependency in get_additional_deps
+        """
+
 
 class ReportMaker(Protocol[T_CO_Report]):
     """
@@ -542,6 +551,26 @@ class VirtualDependencyScribe(Protocol[T_COT_VirtualDependency, T_CO_Report]):
     ) -> WrittenVirtualDependency[T_CO_Report]: ...
 
 
+class MakeEmptyVirtualDepContent(Protocol):
+    """
+    Used to make the content that would go into a virtual dependency for an uninstalled module
+    """
+
+    def __call__(self, *, module_import_path: ImportPath) -> str: ...
+
+
+class EmptyVirtualDepWriter(Protocol):
+    """
+    Used to generate the on disk representation of a virtual dependency for a module that has
+    been determined as an uninstalled module with django models in it.
+
+    It should return the import path for the created virtual import, or None if there was an
+    existing virtual dependency or none was made
+    """
+
+    def __call__(self, *, module_import_path: ImportPath) -> ImportPath | None: ...
+
+
 class ReportInstaller(Protocol):
     """
     Used to write reports to the file system
@@ -553,10 +582,14 @@ class ReportInstaller(Protocol):
         scratch_root: pathlib.Path,
         virtual_import_path: ImportPath,
         content: str,
-        summary_hash: str | None,
-    ) -> None:
+        summary_hash: str | Literal[False] | None,
+    ) -> bool:
         """
         Write a single report to the scratch path
+
+        If summary_hash is False, then only write if the virtual dep doesn't already exist
+
+        Return whether a report was written
         """
 
     def install_reports(
@@ -585,7 +618,9 @@ class ReportCombiner(Protocol[T_CO_Report]):
         The reports to combine
         """
 
-    def combine(self, *, version: str) -> CombinedReport[T_CO_Report]:
+    def combine(
+        self, *, version: str, write_empty_virtual_dep: EmptyVirtualDepWriter
+    ) -> CombinedReport[T_CO_Report]:
         """
         Return a single report that represents all the provided reports as one
         """
@@ -612,6 +647,9 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
 
     @property
     def report_combiner_maker(self) -> ReportCombinerMaker[T_Report]: ...
+
+    @property
+    def make_empty_virtual_dependency_content(self) -> MakeEmptyVirtualDepContent: ...
 
     def deploy_scribes(
         self, virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency]
@@ -667,6 +705,9 @@ if TYPE_CHECKING:
     P_ReportInstaller = ReportInstaller
     P_ReportCombiner = ReportCombiner[P_Report]
     P_ReportCombinerMaker = ReportCombinerMaker[P_Report]
+
+    P_EmptyVirtualDepWriter = EmptyVirtualDepWriter
+    P_MakeEmptyVirtualDepContent = MakeEmptyVirtualDepContent
 
     P_VirtualDependencyMaker = VirtualDependencyMaker[P_Project, P_VirtualDependency]
     P_VirtualDependencyNamer = VirtualDependencyNamer

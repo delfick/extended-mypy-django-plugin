@@ -60,9 +60,14 @@ class TestCombiningReports:
             },
         )
 
+        def write_empty_virtual_dep(
+            *, module_import_path: protocols.ImportPath
+        ) -> protocols.ImportPath | None:
+            raise NotImplementedError()
+
         final_report = virtual_dependencies.ReportCombiner(
             report_maker=virtual_dependencies.Report, reports=(report1, report2, report3)
-        ).combine(version="__version__")
+        ).combine(version="__version__", write_empty_virtual_dep=write_empty_virtual_dep)
 
         assert final_report.version == "__version__"
         assert final_report.report == virtual_dependencies.Report(
@@ -93,6 +98,112 @@ class TestCombiningReports:
                 ImportPath("M3"): {ImportPath("VM3")},
             },
         )
+
+    def test_it_can_ensure_empty_vritual_deps(self) -> None:
+        written: list[tuple[protocols.ImportPath, str | None]] = []
+        report1 = virtual_dependencies.Report(
+            concrete_annotations={
+                ImportPath("P1"): ImportPath("CP1"),
+                ImportPath("C1"): ImportPath("CC1"),
+            },
+            concrete_querysets={
+                ImportPath("P1"): ImportPath("CP1QS"),
+                ImportPath("C1"): ImportPath("CC1QS"),
+            },
+            report_import_path={
+                ImportPath("M1"): ImportPath("VM1"),
+            },
+            related_import_paths={
+                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
+            },
+        )
+        report2 = virtual_dependencies.Report(
+            concrete_annotations={
+                ImportPath("C2"): ImportPath("CC2"),
+            },
+            concrete_querysets={
+                ImportPath("C2"): ImportPath("C2QS"),
+            },
+            report_import_path={
+                ImportPath("M2"): ImportPath("VM2"),
+            },
+            related_import_paths={
+                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
+            },
+        )
+
+        def write_empty_virtual_dep(
+            *, module_import_path: protocols.ImportPath
+        ) -> protocols.ImportPath | None:
+            if module_import_path == ImportPath("E1"):
+                # This doesn't happen cause ".models." not in the path
+                raise RuntimeError("Shouldn't get this far")
+            elif module_import_path == ImportPath("E1.models"):
+                written.append((module_import_path, "end models"))
+                return ImportPath("VE1.models")
+            elif module_import_path == ImportPath("E1.models.things"):
+                written.append((module_import_path, "inside models"))
+                return ImportPath("VE1.models.things")
+            else:
+                written.append((module_import_path, None))
+                return None
+
+        final_report = virtual_dependencies.ReportCombiner(
+            report_maker=virtual_dependencies.Report, reports=(report1, report2)
+        ).combine(version="__version__", write_empty_virtual_dep=write_empty_virtual_dep)
+
+        assert final_report.version == "__version__"
+        expected = virtual_dependencies.Report(
+            concrete_annotations={
+                ImportPath("P1"): ImportPath("CP1"),
+                ImportPath("C1"): ImportPath("CC1"),
+                ImportPath("C2"): ImportPath("CC2"),
+            },
+            concrete_querysets={
+                ImportPath("P1"): ImportPath("CP1QS"),
+                ImportPath("C1"): ImportPath("CC1QS"),
+                ImportPath("C2"): ImportPath("C2QS"),
+            },
+            report_import_path={
+                ImportPath("M1"): ImportPath("VM1"),
+                ImportPath("M2"): ImportPath("VM2"),
+            },
+            related_import_paths={
+                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
+                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
+            },
+        )
+        assert final_report.report == expected
+
+        assert written == []
+
+        # Can get content, but doesn't pass our naming heuristic
+        final_report.ensure_virtual_dependency(module_import_path=ImportPath("E1"))
+        assert written == []
+        assert final_report.report == expected
+
+        # passes naming heuristic of ending in .models
+        final_report.ensure_virtual_dependency(module_import_path=(e2 := ImportPath("E1.models")))
+        assert written == [(e2, "end models")]
+        assert final_report.report != expected
+        expected.report_import_path[e2] = ImportPath("VE1.models")
+        assert final_report.report == expected
+
+        # passes naming heuristic of containing .models.
+        final_report.ensure_virtual_dependency(
+            module_import_path=(e3 := ImportPath("E1.models.things"))
+        )
+        assert written == [(e2, "end models"), (e3, "inside models")]
+        assert final_report.report != expected
+        expected.report_import_path[e3] = ImportPath("VE1.models.things")
+        assert final_report.report == expected
+
+        # Passes heuristics but doesn't return a name
+        final_report.ensure_virtual_dependency(
+            module_import_path=(e4 := ImportPath("E2.models.ignoreme"))
+        )
+        assert written == [(e2, "end models"), (e3, "inside models"), (e4, None)]
+        assert final_report.report == expected
 
 
 class TestBuildingReport:

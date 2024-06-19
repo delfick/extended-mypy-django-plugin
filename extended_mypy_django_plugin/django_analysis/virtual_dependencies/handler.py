@@ -64,7 +64,9 @@ class VirtualDependencyHandler(
             f"installed_apps:{installed_apps_hash}|settings_types:{settings_types_hash}"
         )
         virtual_dependency_installer = self.make_virtual_dependency_installer(
-            project_version=project_version, all_virtual_dependencies=all_virtual_dependencies
+            virtual_dependency_namer=virtual_dependency_namer,
+            project_version=project_version,
+            all_virtual_dependencies=all_virtual_dependencies,
         )
 
         with tempfile.TemporaryDirectory() as scratch_root:
@@ -99,10 +101,13 @@ class VirtualDependencyHandler(
         self,
         *,
         project_version: str,
+        virtual_dependency_namer: protocols.VirtualDependencyNamer,
         all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency],
     ) -> protocols.VirtualDependencyInstaller[protocols.T_VirtualDependency, protocols.T_Report]:
         return VirtualDependencyInstaller(
-            project_version=project_version, virtual_dependencies=all_virtual_dependencies
+            virtual_dependency_namer=virtual_dependency_namer,
+            project_version=project_version,
+            virtual_dependencies=all_virtual_dependencies,
         )
 
     @classmethod

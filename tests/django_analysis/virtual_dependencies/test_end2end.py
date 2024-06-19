@@ -95,13 +95,14 @@ class TestEnd2End:
 
         destination = tmp_path_factory.mktemp("destination")
 
-        report = VirtualDependencyHandler.create_report(
+        handler = VirtualDependencyHandler.create(
             project_root=discovered_django_example.loaded_project.root_dir,
             django_settings_module=discovered_django_example.loaded_project.env_vars[
                 "DJANGO_SETTINGS_MODULE"
             ],
-            virtual_deps_destination=destination,
         )
+
+        report = handler.make_report(virtual_deps_destination=destination)
 
         assert (
             report.version
@@ -216,3 +217,18 @@ class TestEnd2End:
                     result[location.relative_to(path)] = location.read_text()
 
         assert found == expected
+
+        location = destination / handler.get_virtual_namespace() / "mod_3734901629.py"
+        assert not location.exists()
+        report.ensure_virtual_dependency(
+            module_import_path="djangoexample.not_installed_with_concrete.models"
+        )
+        assert (
+            location.read_text()
+            == 'mod = "djangoexample.not_installed_with_concrete.models"\nsummary = "||not_installed||"\n'
+        )
+
+        assert (
+            virtual_dependencies.VirtualDependencyScribe.get_report_summary(location)
+            == "||not_installed||"
+        )
