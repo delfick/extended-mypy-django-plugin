@@ -6,7 +6,7 @@ from django.db import models
 from mypy.nodes import SymbolTableNode, TypeInfo
 from mypy.types import Instance, UnionType, get_proper_type
 
-from ._reports import ModelModules
+from ._reports import FieldRelatedModelClsGetter, ModelModules, ModelRelatedFieldsGetter, Reports
 
 MODEL_CLASS_FULLNAME = "django.db.models.base.Model"
 
@@ -40,7 +40,7 @@ class GetModelClassByFullname(Protocol):
 
 
 class IsInstalledModel(Protocol):
-    def __call__(self, instance: Instance) -> bool: ...
+    def __call__(self, *, import_path: str) -> bool: ...
 
 
 class KnownConcreteModelsGetter(Protocol):
@@ -60,6 +60,10 @@ class Store:
 
     def __init__(
         self,
+        report: Reports,
+        installed_apps: list[str],
+        get_model_related_fields: ModelRelatedFieldsGetter,
+        get_field_related_model_cls: FieldRelatedModelClsGetter,
         get_model_class_by_fullname: GetModelClassByFullname,
         lookup_info: LookupInfo,
         lookup_fully_qualified: LookupNode,
@@ -76,6 +80,14 @@ class Store:
         self.plugin_lookup_fully_qualified = lookup_fully_qualified
 
         self.model_modules = self._determine_model_modules()
+
+        # Still need to generate the old reports until this store has been removed
+        report.report_names_getter(
+            installed_apps=installed_apps,
+            model_modules=self.model_modules,
+            get_model_related_fields=get_model_related_fields,
+            get_field_related_model_cls=get_field_related_model_cls,
+        )
 
     def retrieve_concrete_children_types(
         self,
@@ -94,7 +106,7 @@ class Store:
         )
         for info in concrete_type_infos:
             instance = lookup_instance(info.fullname)
-            if instance and self._is_installed_model(instance):
+            if instance and self._is_installed_model(import_path=instance.type.fullname):
                 values.append(instance)
 
         return values

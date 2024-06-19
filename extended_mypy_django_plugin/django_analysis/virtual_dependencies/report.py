@@ -74,6 +74,12 @@ class Report:
     ) -> None:
         self.report_import_path[module_import_path] = virtual_import_path
 
+    def is_model_installed(self, *, import_path: str) -> bool:
+        """
+        Used to determine if a model is installed in this django project
+        """
+        return protocols.ImportPath(import_path) in self.concrete_annotations
+
     def register_model(
         self,
         *,

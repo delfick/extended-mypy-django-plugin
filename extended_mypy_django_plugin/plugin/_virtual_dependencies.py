@@ -31,6 +31,11 @@ class ReportProtocol(Protocol):
         It must return the full set of additional deps the mypy plugin should use for this file
         """
 
+    def is_model_installed(self, *, import_path: str) -> bool:
+        """
+        Used to determine if a model is installed in this django project
+        """
+
 
 T_Report = TypeVar("T_Report", bound=ReportProtocol)
 
