@@ -592,29 +592,38 @@ class TestBuildingReport:
         super_deps = [(10, "one.two", -1), (10, "two", -1)]
         assert (
             report.additional_deps(
-                file_import_path="django.db.models", imports=set(), super_deps=super_deps
+                file_import_path="django.db.models",
+                imports=set(),
+                super_deps=super_deps,
+                django_settings_module="my.settings",
             )
             is super_deps
         )
 
         # Expansion depends on super_deps and imports
-        assert (
-            report.additional_deps(file_import_path="some.place", imports=set(), super_deps=[])
-            == []
-        )
+        assert report.additional_deps(
+            file_import_path="some.place",
+            imports=set(),
+            super_deps=[],
+            django_settings_module="my.settings",
+        ) == [(10, "my.settings", -1)]
         assert sorted(
             report.additional_deps(
                 file_import_path="some.place",
                 imports={"eight.nine", "typing.Protocol"},
                 super_deps=[],
+                django_settings_module="my.settings",
             )
-        ) == sorted([(10, "v_eight_nine", -1), (10, "v_twelve_thirteen", -1)])
+        ) == sorted(
+            [(10, "v_eight_nine", -1), (10, "v_twelve_thirteen", -1), (10, "my.settings", -1)]
+        )
         # So imports and super_deps both expand, but super_deps remain in the output
         assert sorted(
             report.additional_deps(
                 file_import_path="some.place",
                 imports=set(),
                 super_deps=[(10, "eight.nine", -1), (10, "typing.Protocol", 13)],
+                django_settings_module="my.settings",
             )
         ) == sorted(
             [
@@ -622,6 +631,7 @@ class TestBuildingReport:
                 (10, "v_eight_nine", -1),
                 (10, "v_twelve_thirteen", -1),
                 (10, "typing.Protocol", 13),
+                (10, "my.settings", -1),
             ]
         )
 
@@ -632,6 +642,7 @@ class TestBuildingReport:
                 file_import_path="some.place",
                 imports={"one.two"},
                 super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+                django_settings_module="my.settings",
             )
         ) == sorted(
             [
@@ -641,6 +652,7 @@ class TestBuildingReport:
                 (10, "v_three_four", -1),
                 (10, "hello.there", -1),
                 (10, "typing.Protocol", 13),
+                (10, "my.settings", -1),
             ]
         )
 
@@ -650,6 +662,7 @@ class TestBuildingReport:
                 file_import_path="another.one",
                 imports={"one.two"},
                 super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+                django_settings_module="my.settings",
             )
         ) == sorted(
             [
@@ -661,6 +674,7 @@ class TestBuildingReport:
                 (10, "v_three_four", -1),
                 (10, "hello.there", -1),
                 (10, "typing.Protocol", 13),
+                (10, "my.settings", -1),
             ]
         )
 
@@ -670,6 +684,7 @@ class TestBuildingReport:
                 file_import_path="another.one",
                 imports={"one.two.MyModel"},
                 super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+                django_settings_module="my.settings",
             )
         ) == sorted(
             [
@@ -681,6 +696,7 @@ class TestBuildingReport:
                 (10, "v_three_four", -1),
                 (10, "hello.there", -1),
                 (10, "typing.Protocol", 13),
+                (10, "my.settings", -1),
             ]
         )
 
@@ -690,5 +706,6 @@ class TestBuildingReport:
                 file_import_path="v_another_one",
                 imports={"one.two.MyModel"},
                 super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
+                django_settings_module="my.settings",
             )
         ) == sorted([(10, "hello.there", -1), (10, "typing.Protocol", 13)])

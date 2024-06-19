@@ -119,6 +119,7 @@ class Report:
         file_import_path: str,
         imports: Set[str],
         super_deps: Sequence[tuple[int, str, int]],
+        django_settings_module: str,
     ) -> Sequence[tuple[int, str, int]]:
         if file_import_path.startswith("django."):
             # Don't add additional deps to django itself
@@ -166,6 +167,15 @@ class Report:
         for _, added, _ in deps - final:
             if added in report_names:
                 final.add((10, added, -1))
+
+        if (
+            file_import_path != django_settings_module
+            and (settings_dep := (10, django_settings_module, -1)) not in final
+        ):
+            # Make anything reliant on models also reliant on the settings module
+            # Given we depend on changes to that module rather than changes to django.conf.settings
+            # And dmypy treats changes to real files different than changes to virtual deps
+            final.add(settings_dep)
 
         return list(final)
 
