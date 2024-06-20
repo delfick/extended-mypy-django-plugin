@@ -1,69 +1,27 @@
 import abc
 import functools
-from collections.abc import Callable, Mapping, Sequence, Set
-from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
+import pathlib
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Generic
 
-from ..django_analysis import project, protocols, virtual_dependencies
-from ..django_analysis.protocols import (
-    CombinedReport as CombinedReportProtocol,
-)
-from ..django_analysis.protocols import (
-    VirtualDependencyHandler as VirtualDependencyHandlerProtocol,
-)
+from ..django_analysis import Project, discovery, project, virtual_dependencies
+from ..django_analysis import protocols as d_protocols
+from . import protocols as p_protocols
 
 
-class ReportProtocol(Protocol):
-    def additional_deps(
-        self,
-        *,
-        file_import_path: str,
-        imports: Set[str],
-        super_deps: Sequence[tuple[int, str, int]],
-        django_settings_module: str,
-    ) -> Sequence[tuple[int, str, int]]:
-        """
-        This is used to add to the result for the get_additional_deps mypy hook.
-
-        It takes the import path for the file being looked at, any additional deps that have already
-        been determined for the file, the imports the file contains as a list of full imports,
-        and the import path of the django settings module.
-
-        It must return the full set of additional deps the mypy plugin should use for this file
-        """
-
-    def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
-        """
-        Given import paths to some models, return a map of those models to a type alias
-        with the concrete models for that model
-
-        If concrete models cannot be found for a model it's entry will be given as None
-        """
-
-    def get_queryset_aliases(self, *models: str) -> Mapping[str, str | None]:
-        """
-        Given import paths to some models, return a map of those models to a type alias
-        with the concrete querysets for that model
-
-        If concrete querysets cannot be found for a model it's entry will be given as None
-        """
-
-
-T_Report = TypeVar("T_Report", bound=ReportProtocol)
-
-
-class DefaultVirtualDependencyHandler(
-    Generic[protocols.T_Project],
+class VirtualDependencyHandlerBase(
+    Generic[d_protocols.T_Project],
     virtual_dependencies.VirtualDependencyHandler[
-        protocols.T_Project,
-        virtual_dependencies.VirtualDependency[protocols.T_Project],
+        d_protocols.T_Project,
+        virtual_dependencies.VirtualDependency[d_protocols.T_Project],
         virtual_dependencies.Report,
     ],
     abc.ABC,
 ):
     def make_report_factory(
         self,
-    ) -> protocols.ReportFactory[
-        virtual_dependencies.VirtualDependency[protocols.T_Project], virtual_dependencies.Report
+    ) -> d_protocols.ReportFactory[
+        virtual_dependencies.VirtualDependency[d_protocols.T_Project], virtual_dependencies.Report
     ]:
         return virtual_dependencies.make_report_factory(hasher=self.hasher)
 
@@ -71,10 +29,10 @@ class DefaultVirtualDependencyHandler(
         self,
         *,
         installed_apps_hash: str,
-        virtual_dependency_namer: protocols.VirtualDependencyNamer,
+        virtual_dependency_namer: d_protocols.VirtualDependencyNamer,
         make_differentiator: Callable[[], str],
-    ) -> protocols.VirtualDependencyMaker[
-        protocols.T_Project, virtual_dependencies.VirtualDependency[protocols.T_Project]
+    ) -> d_protocols.VirtualDependencyMaker[
+        d_protocols.T_Project, virtual_dependencies.VirtualDependency[d_protocols.T_Project]
     ]:
         return functools.partial(
             virtual_dependencies.VirtualDependency.create,
@@ -85,20 +43,30 @@ class DefaultVirtualDependencyHandler(
         )
 
 
-__all__ = [
-    "VirtualDependencyHandlerProtocol",
-    "CombinedReportProtocol",
-    "ReportProtocol",
-    "DefaultVirtualDependencyHandler",
-    "T_Report",
-]
+class VirtualDependencyHandler(VirtualDependencyHandlerBase[Project]):
+    @classmethod
+    def discover_project(
+        cls, *, project_root: pathlib.Path, django_settings_module: str
+    ) -> d_protocols.Discovered[Project]:
+        return (
+            Project(
+                root_dir=project_root,
+                additional_sys_path=[str(project_root)],
+                env_vars={"DJANGO_SETTINGS_MODULE": django_settings_module},
+                discovery=discovery.Discovery(),
+            )
+            .load_project()
+            .perform_discovery()
+        )
+
 
 if TYPE_CHECKING:
-    C_VirtualDependencyHandler = DefaultVirtualDependencyHandler[project.C_Project]
+    P_VirtualDependencyHandler = VirtualDependencyHandlerBase[project.C_Project]
+    C_VirtualDependencyHandler = VirtualDependencyHandler
 
-    _DVDH: VirtualDependencyHandlerProtocol[virtual_dependencies.Report] = (
-        DefaultVirtualDependencyHandler[protocols.P_Project].create_report
-    )
-    _CDVDH: VirtualDependencyHandlerProtocol[virtual_dependencies.Report] = (
+    _DVDH: p_protocols.P_VirtualDependencyHandler = VirtualDependencyHandlerBase[
+        d_protocols.P_Project
+    ].create_report
+    _CDVDH: p_protocols.VirtualDependencyHandler[virtual_dependencies.Report] = (
         C_VirtualDependencyHandler.create_report
     )

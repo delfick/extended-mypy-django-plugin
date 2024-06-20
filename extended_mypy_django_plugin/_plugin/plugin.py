@@ -32,17 +32,12 @@ from mypy_django_plugin.transformers.managers import (
 )
 from typing_extensions import assert_never
 
-from . import actions, config, hook, known_annotations
-from .virtual_dependencies import (
-    CombinedReportProtocol,
-    ReportProtocol,
-    T_Report,
-    VirtualDependencyHandlerProtocol,
-)
+from . import actions, config, hook, protocols
 
 # Can't re-use the same type var in an embedded class
 # So we make another type var that we can substitute T_Report into
-T2_Report = TypeVar("T2_Report", bound=ReportProtocol)
+T_Report = TypeVar("T_Report", bound=protocols.Report)
+T2_Report = TypeVar("T2_Report", bound=protocols.Report)
 
 
 class Hook(
@@ -76,8 +71,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         cls,
         *,
         extra_options: config.ExtraOptions,
-        virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
-    ) -> CombinedReportProtocol[T_Report]:
+        virtual_dependency_handler: protocols.VirtualDependencyHandler[protocols.T_Report],
+    ) -> protocols.CombinedReport[protocols.T_Report]:
         return virtual_dependency_handler(
             project_root=extra_options.project_root,
             django_settings_module=extra_options.django_settings_module,
@@ -88,7 +83,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         self,
         options: Options,
         mypy_version_tuple: tuple[int, int],
-        virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
+        virtual_dependency_handler: protocols.VirtualDependencyHandler[T_Report],
     ) -> None:
         self.options = options
         self.extra_options = config.ExtraOptions.from_config(options.config_file)
@@ -235,7 +230,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return False
             else:
                 info = self.plugin._get_typeinfo_or_none(class_name)
-                return bool(info and info.has_base(known_annotations.KnownClasses.CONCRETE.value))
+                return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
             sem_analyzing = actions.SemAnalyzing(
@@ -255,11 +250,11 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         Resolve classes annotated with ``Concrete`` or ``DefaultQuerySet``.
         """
 
-        annotation: known_annotations.KnownAnnotations
+        annotation: protocols.KnownAnnotations
 
         def choose(self) -> bool:
             try:
-                self.annotation = known_annotations.KnownAnnotations(self.fullname)
+                self.annotation = protocols.KnownAnnotations(self.fullname)
             except ValueError:
                 return False
             else:

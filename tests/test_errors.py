@@ -87,11 +87,10 @@ class TestErrors:
             import pathlib
 
             from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
-            from extended_mypy_django_plugin.entry import PluginProvider
-            from extended_mypy_django_plugin.plugin import DefaultVirtualDependencyHandler, ExtendedMypyStubs
+            from extended_mypy_django_plugin.plugin import PluginProvider, VirtualDependencyHandler, ExtendedMypyStubs
 
 
-            class VirtualDependencyHandler(DefaultVirtualDependencyHandler[Project]):
+            class VirtualDependencyHandler(VirtualDependencyHandler):
                 @classmethod
                 def discover_project(
                     cls, *, project_root: pathlib.Path, django_settings_module: str
@@ -128,7 +127,7 @@ class TestErrors:
             
             Daemon crashed!
             Traceback (most recent call last):
-            File "*extended_mypy_django_plugin/_plugin/_plugin.py", line *, in make_virtual_dependency_report
+            File "*extended_mypy_django_plugin/_plugin/plugin.py", line *, in make_virtual_dependency_report
             File "{plugin_provider}", line *, in discover_project
             ValueError: Computer says no
             """,

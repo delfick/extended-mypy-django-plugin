@@ -9,11 +9,10 @@ from typing import Generic
 from mypy.options import Options
 from mypy.plugin import Plugin as MypyPlugin
 
-from .plugin import ExtendedMypyStubs
-from .virtual_dependencies import T_Report, VirtualDependencyHandlerProtocol
+from . import plugin, protocols
 
 
-class PluginProvider(Generic[T_Report]):
+class PluginProvider(Generic[protocols.T_Report]):
     """
     This can be used to provide both a mypy plugin as well as a __version__ that changes
     when mypy needs to do a full restart.
@@ -30,13 +29,13 @@ class PluginProvider(Generic[T_Report]):
 
     def __init__(
         self,
-        plugin_cls: type[ExtendedMypyStubs[T_Report]],
-        virtual_dependency_handler: VirtualDependencyHandlerProtocol[T_Report],
+        plugin_cls: type[plugin.ExtendedMypyStubs[protocols.T_Report]],
+        virtual_dependency_handler: protocols.VirtualDependencyHandler[protocols.T_Report],
         locals: MutableMapping[str, object],
         /,
     ) -> None:
         self.locals = locals
-        self.instance: ExtendedMypyStubs[T_Report] | None = None
+        self.instance: plugin.ExtendedMypyStubs[protocols.T_Report] | None = None
         self.virtual_dependency_handler = virtual_dependency_handler
         self.plugin_cls = plugin_cls
 
@@ -58,7 +57,9 @@ class PluginProvider(Generic[T_Report]):
         provider = self
         major, minor, _ = version.split(".", 2)
 
-        def __init__(instance: ExtendedMypyStubs[T_Report], options: Options) -> None:
+        def __init__(
+            instance: plugin.ExtendedMypyStubs[protocols.T_Report], options: Options
+        ) -> None:
             super(instance.__class__, instance).__init__(
                 options,
                 mypy_version_tuple=(int(major), int(minor)),  # type: ignore[call-arg]

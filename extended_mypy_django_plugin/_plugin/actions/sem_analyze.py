@@ -27,7 +27,7 @@ from mypy.types import (
     Type as MypyType,
 )
 
-from .. import known_annotations
+from .. import protocols
 from . import annotation_resolver
 
 
@@ -38,9 +38,7 @@ class TypeAnalyzer:
         self.api = api
         self.resolver = resolver
 
-    def analyze(
-        self, ctx: AnalyzeTypeContext, annotation: known_annotations.KnownAnnotations
-    ) -> MypyType:
+    def analyze(self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations) -> MypyType:
         type_arg, rewrap = self.resolver.find_type_arg(ctx.type, self.api.analyze_type)
         if type_arg is None:
             return ctx.type
@@ -130,7 +128,7 @@ class SemAnalyzing:
                 return None
 
         concrete = self.resolver.resolve(
-            known_annotations.KnownAnnotations.CONCRETE,
+            protocols.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
         if not concrete:
