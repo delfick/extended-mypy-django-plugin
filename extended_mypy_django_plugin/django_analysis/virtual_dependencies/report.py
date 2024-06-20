@@ -527,7 +527,7 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
 
 
 def make_report_factory(
-    *, hasher: protocols.Hasher
+    *, hasher: protocols.Hasher, report_maker: protocols.ReportMaker[Report]
 ) -> protocols.ReportFactory[protocols.T_VirtualDependency, Report]:
     def report_scribe(
         *,
@@ -543,12 +543,12 @@ def make_report_factory(
 
     return ReportFactory(
         hasher=hasher,
-        report_maker=Report,
+        report_maker=report_maker,
         report_scribe=report_scribe,
         report_installer=ReportInstaller(
             _get_report_summary=VirtualDependencyScribe.get_report_summary
         ),
-        report_combiner_maker=functools.partial(ReportCombiner, report_maker=Report),
+        report_combiner_maker=functools.partial(ReportCombiner, report_maker=report_maker),
         make_empty_virtual_dependency_content=VirtualDependencyScribe.make_empty_virtual_dependency_content,
     )
 

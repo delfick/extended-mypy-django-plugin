@@ -20,12 +20,17 @@ class VirtualDependencyHandlerBase(
     ],
     abc.ABC,
 ):
+    def get_report_maker(self) -> d_protocols.ReportMaker[virtual_dependencies.Report]:
+        return virtual_dependencies.Report
+
     def make_report_factory(
         self,
     ) -> d_protocols.ReportFactory[
         virtual_dependencies.VirtualDependency[d_protocols.T_Project], virtual_dependencies.Report
     ]:
-        return virtual_dependencies.make_report_factory(hasher=self.hasher)
+        return virtual_dependencies.make_report_factory(
+            hasher=self.hasher, report_maker=self.get_report_maker()
+        )
 
     def virtual_dependency_maker(
         self,
