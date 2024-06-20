@@ -28,7 +28,7 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 from typing_extensions import Self, assert_never
 
-from .. import protocols
+from . import protocols
 
 
 class ShouldDefer(Exception):

@@ -32,7 +32,7 @@ from mypy_django_plugin.transformers.managers import (
 )
 from typing_extensions import assert_never
 
-from . import actions, config, hook, protocols
+from . import annotation_resolver, config, hook, protocols, sem_analyze, type_checker
 
 # Can't re-use the same type var in an embedded class
 # So we make another type var that we can substitute T_Report into
@@ -98,7 +98,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     def _make_resolver(
         self, ctx: protocols.ValidContextForAnnotationResolver
     ) -> protocols.Resolver:
-        return actions.make_resolver(
+        return annotation_resolver.make_resolver(
             get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
             get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,
             plugin_lookup_info=self._lookup_info,
@@ -235,7 +235,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
-            sem_analyzing = actions.SemAnalyzing(
+            sem_analyzing = sem_analyze.SemAnalyzing(
                 resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )
 
@@ -263,7 +263,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return True
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            type_analyzer = actions.TypeAnalyzer(
+            type_analyzer = sem_analyze.TypeAnalyzer(
                 resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )
             return type_analyzer.analyze(ctx, self.annotation)
@@ -279,7 +279,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return self.super_hook is resolve_manager_method
 
         def run(self, ctx: AttributeContext) -> MypyType:
-            type_checking = actions.TypeChecking(
+            type_checking = type_checker.TypeChecking(
                 resolver=self.plugin._make_resolver(ctx), api=ctx.api
             )
 
@@ -294,7 +294,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def extra_init(self) -> None:
             super().extra_init()
-            self.shared_logic = actions.SharedModifyReturnTypeLogic(
+            self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
                 make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(
@@ -333,7 +333,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     ):
         def extra_init(self) -> None:
             super().extra_init()
-            self.shared_logic = actions.SharedCheckTypeGuardsLogic(
+            self.shared_logic = type_checker.SharedCheckTypeGuardsLogic(
                 make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
                 get_symbolnode_for_fullname=functools.partial(

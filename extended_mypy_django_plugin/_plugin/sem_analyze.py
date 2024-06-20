@@ -23,11 +23,9 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.types import (
-    Type as MypyType,
-)
+from mypy.types import Type as MypyType
 
-from .. import protocols
+from . import protocols
 
 
 class TypeAnalyzer:
