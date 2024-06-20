@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Generic, cast
 from .. import protocols
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class NaiveSettingsTypesDiscovery(Generic[protocols.T_Project]):
     """
     The default implementation is a little naive and is only able to rely on inspecting

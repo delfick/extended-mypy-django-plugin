@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import functools
 import pathlib
 from collections.abc import Callable
@@ -9,6 +10,7 @@ from ..django_analysis import protocols as d_protocols
 from . import protocols as p_protocols
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class VirtualDependencyHandlerBase(
     Generic[d_protocols.T_Project],
     virtual_dependencies.VirtualDependencyHandler[
@@ -43,6 +45,7 @@ class VirtualDependencyHandlerBase(
         )
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class VirtualDependencyHandler(VirtualDependencyHandlerBase[Project]):
     @classmethod
     def discover_project(
