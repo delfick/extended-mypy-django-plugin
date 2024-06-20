@@ -138,6 +138,16 @@ class LookupFullyQualified(Protocol):
     def __call__(self, fullname: str) -> SymbolTableNode | None: ...
 
 
+class ResolveManagerMethodFromInstance(Protocol):
+    """
+    Used to fold the fix from https://github.com/typeddjango/django-stubs/pull/2027 into the plugin
+    """
+
+    def __call__(
+        self, instance: Instance, method_name: str, ctx: AttributeContext
+    ) -> MypyType: ...
+
+
 class Resolver(Protocol):
     """
     Used to resolve concrete annotations
@@ -206,7 +216,6 @@ class ResolverMaker(Protocol):
         *,
         get_concrete_aliases: AliasGetter,
         get_queryset_aliases: AliasGetter,
-        plugin_lookup_info: LookupInfo,
         plugin_lookup_fully_qualified: LookupFullyQualified,
         ctx: ValidContextForAnnotationResolver,
     ) -> Resolver: ...

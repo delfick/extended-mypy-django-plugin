@@ -42,7 +42,6 @@ class AnnotationResolver:
         *,
         get_concrete_aliases: protocols.AliasGetter,
         get_queryset_aliases: protocols.AliasGetter,
-        plugin_lookup_info: protocols.LookupInfo,
         plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
         ctx: protocols.ValidContextForAnnotationResolver,
     ) -> Self:
@@ -53,18 +52,23 @@ class AnnotationResolver:
                 sem_api.defer()
                 return False
 
-        def sem_lookup_info(sem_api: SemanticAnalyzer, fullname: str) -> TypeInfo | None:
-            instance = sem_api.named_type_or_none(fullname)
-            if instance:
-                return instance.type
+        def _lookup_info(sem_api: SemanticAnalyzer | None, fullname: str) -> TypeInfo | None:
+            if sem_api is not None:
+                instance = sem_api.named_type_or_none(fullname)
+                if instance:
+                    return instance.type
 
-            return plugin_lookup_info(fullname)
+            sym = plugin_lookup_fully_qualified(fullname)
+            if not sym or not isinstance(node := sym.node, TypeInfo):
+                return None
+            else:
+                return node
 
         def checker_named_type_or_none(
             fullname: str, args: list[MypyType] | None = None
         ) -> Instance | None:
-            node = plugin_lookup_info(fullname)
-            if not isinstance(node, TypeInfo):
+            sym = plugin_lookup_fully_qualified(fullname)
+            if not sym or not isinstance(node := sym.node, TypeInfo):
                 return None
             if args:
                 return Instance(node, args)
@@ -100,7 +104,7 @@ class AnnotationResolver:
                 sem_api = api
                 defer = functools.partial(sem_defer, sem_api)
                 fail = lambda msg: sem_api.fail(msg, context)
-                lookup_info = functools.partial(sem_lookup_info, sem_api)
+                lookup_info = functools.partial(_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case AnalyzeTypeContext(api=api):
                 assert isinstance(api, TypeAnalyser)
@@ -109,37 +113,37 @@ class AnnotationResolver:
                 sem_api = api.api
                 defer = functools.partial(sem_defer, sem_api)
                 fail = lambda msg: sem_api.fail(msg, context)
-                lookup_info = functools.partial(sem_lookup_info, sem_api)
+                lookup_info = functools.partial(_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case MethodContext(api=api):
                 context = ctx.context
                 defer = lambda: True
                 fail = lambda msg: api.fail(msg, context)
-                lookup_info = plugin_lookup_info
+                lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case FunctionContext(api=api):
                 context = ctx.context
                 defer = lambda: True
                 fail = lambda msg: api.fail(msg, context)
-                lookup_info = plugin_lookup_info
+                lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case MethodSigContext(api=api):
                 context = ctx.context
                 defer = lambda: True
                 fail = lambda msg: api.fail(msg, context)
-                lookup_info = plugin_lookup_info
+                lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case FunctionSigContext(api=api):
                 context = ctx.context
                 defer = lambda: True
                 fail = lambda msg: api.fail(msg, context)
-                lookup_info = plugin_lookup_info
+                lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case AttributeContext(api=api):
                 context = ctx.context
                 defer = lambda: True
                 fail = lambda msg: api.fail(msg, context)
-                lookup_info = plugin_lookup_info
+                lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case _:
                 assert_never(ctx)
@@ -246,6 +250,18 @@ class AnnotationResolver:
         else:
             return UnionType(tuple(items))
 
+    def _has_typevars(self, type_arg: ProperType) -> bool:
+        if isinstance(type_arg, TypeType):
+            type_arg = type_arg.item
+
+        if isinstance(type_arg, TypeVarType):
+            return True
+
+        if not isinstance(type_arg, UnionType):
+            return False
+
+        return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
+
     def resolve(
         self, annotation: protocols.KnownAnnotations, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
@@ -312,18 +328,6 @@ class AnnotationResolver:
             line=self.context.line,
             column=self.context.column,
         )
-
-    def _has_typevars(self, type_arg: ProperType) -> bool:
-        if isinstance(type_arg, TypeType):
-            type_arg = type_arg.item
-
-        if isinstance(type_arg, TypeVarType):
-            return True
-
-        if not isinstance(type_arg, UnionType):
-            return False
-
-        return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
 
     def instances_from_aliases(
         self, get_aliases: protocols.AliasGetter, *models: str

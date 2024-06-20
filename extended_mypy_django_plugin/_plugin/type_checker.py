@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 from collections.abc import Callable, Iterator, MutableMapping
-from typing import Final, Protocol
+from typing import Final
 
 from mypy.checker import TypeChecker
 from mypy.nodes import (
@@ -12,6 +12,7 @@ from mypy.nodes import (
     Expression,
     IndexExpr,
     MemberExpr,
+    MypyFile,
     RefExpr,
     SymbolNode,
     SymbolTableNode,
@@ -43,17 +44,6 @@ from mypy.types import Type as MypyType
 from typing_extensions import Self
 
 from . import protocols
-
-
-class ResolveManagerMethodFromInstance(Protocol):
-    def __call__(
-        self, instance: Instance, method_name: str, ctx: AttributeContext
-    ) -> MypyType: ...
-
-
-class GetSymbolNode(Protocol):
-    def __call__(self, fullname: str) -> SymbolNode | SymbolTableNode | None: ...
-
 
 TYPING_SELF: Final[str] = "typing.Self"
 TYPING_EXTENSION_SELF: Final[str] = "typing_extensions.Self"
@@ -420,7 +410,7 @@ class TypeChecking:
         self,
         ctx: AttributeContext,
         *,
-        resolve_manager_method_from_instance: ResolveManagerMethodFromInstance,
+        resolve_manager_method_from_instance: protocols.ResolveManagerMethodFromInstance,
     ) -> MypyType:
         """
         Copied from django-stubs after https://github.com/typeddjango/django-stubs/pull/2027
@@ -481,11 +471,47 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
             protocols.Resolver,
         ],
         fullname: str,
-        get_symbolnode_for_fullname: GetSymbolNode,
+        plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
+        is_function: bool,
+        modules: dict[str, MypyFile] | None,
     ) -> None:
         self.make_resolver = make_resolver
         self.fullname = fullname
-        self.get_symbolnode_for_fullname = get_symbolnode_for_fullname
+        self._modules = modules
+        self._is_function = is_function
+        self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
+
+    def get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
+        sym = self._plugin_lookup_fully_qualified(fullname)
+        if sym and sym.node:
+            return sym.node
+
+        if self._is_function:
+            return None
+
+        if fullname.count(".") < 2:
+            return None
+
+        if self._modules is None:
+            return None
+
+        # We're on a class and couldn't find the sym, it's likely on a base class
+        module, class_name, method_name = fullname.rsplit(".", 2)
+
+        mod = self._modules.get(module)
+        if mod is None:
+            return None
+
+        class_node = mod.names.get(class_name)
+        if not class_node or not isinstance(class_node.node, TypeInfo):
+            return None
+
+        for parent in class_node.node.bases:
+            if isinstance(parent.type, TypeInfo):
+                if isinstance(found := parent.type.names.get(method_name), SymbolTableNode):
+                    return found
+
+        return None
 
     def _choose_with_concrete_annotation(self) -> bool:
         sym_node = self.get_symbolnode_for_fullname(self.fullname)
