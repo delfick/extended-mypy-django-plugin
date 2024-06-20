@@ -343,7 +343,7 @@ class AnnotationResolver:
         return self._make_union(is_type, concrete)
 
 
-make_resolver: protocols.ResolverMaker = AnnotationResolver.create
+make_resolver = AnnotationResolver.create
 
 if TYPE_CHECKING:
     _R: protocols.Resolver = cast(AnnotationResolver, None)

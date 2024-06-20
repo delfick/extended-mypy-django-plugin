@@ -211,14 +211,7 @@ class ResolverMaker(Protocol):
     This is used to create an instance of Resolver
     """
 
-    def __call__(
-        cls,
-        *,
-        get_concrete_aliases: AliasGetter,
-        get_queryset_aliases: AliasGetter,
-        plugin_lookup_fully_qualified: LookupFullyQualified,
-        ctx: ValidContextForAnnotationResolver,
-    ) -> Resolver: ...
+    def __call__(cls, *, ctx: ValidContextForAnnotationResolver) -> Resolver: ...
 
 
 if TYPE_CHECKING:
