@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from extended_mypy_django_plugin.django_analysis import ImportPath
-from extended_mypy_django_plugin.plugin import _config
+from extended_mypy_django_plugin.plugin import ExtraOptions
 
 
 class TestGetExtraOptions:
@@ -23,7 +23,7 @@ class TestGetExtraOptions:
         expected_scratch = tmp_path / ".mypy_django_scratch" / "main"
         assert not expected_scratch.exists()
 
-        assert _config.ExtraOptions.from_config(config) == _config.ExtraOptions(
+        assert ExtraOptions.from_config(config) == ExtraOptions(
             project_root=tmp_path / "project",
             django_settings_module=ImportPath("my.settings"),
             scratch_path=expected_scratch,
@@ -46,7 +46,7 @@ class TestGetExtraOptions:
         expected_scratch = tmp_path / ".mypy_django_scratch" / "main"
         assert not expected_scratch.exists()
 
-        assert _config.ExtraOptions.from_config(config) == _config.ExtraOptions(
+        assert ExtraOptions.from_config(config) == ExtraOptions(
             project_root=tmp_path / "project",
             scratch_path=expected_scratch,
             django_settings_module=ImportPath("my.settings"),
@@ -82,7 +82,7 @@ class TestGetExtraOptions:
                 ValueError,
                 match="Please specify 'django_settings_module' in the django-stubs section of your mypy configuration",
             ):
-                _config.ExtraOptions.from_config(config)
+                ExtraOptions.from_config(config)
 
     def test_complains_if_django_settings_module_is_not_valid(
         self, tmp_path: pathlib.Path
@@ -114,7 +114,7 @@ class TestGetExtraOptions:
                 ValueError,
                 match="Provided path was not a valid python import path: '-asdf'",
             ):
-                _config.ExtraOptions.from_config(config)
+                ExtraOptions.from_config(config)
 
     def test_complains_if_scratch_path_not_specified(self, tmp_path: pathlib.Path) -> None:
         versions = (
@@ -142,11 +142,11 @@ class TestGetExtraOptions:
                 ValueError,
                 match="Please specify 'scratch_path' in the django-stubs section of your mypy configuration",
             ):
-                _config.ExtraOptions.from_config(config)
+                ExtraOptions.from_config(config)
 
     def test_complains_if_config_file_is_none(self) -> None:
         with pytest.raises(SystemExit):
-            _config.ExtraOptions.from_config(None)
+            ExtraOptions.from_config(None)
 
     def test_complains_if_config_file_is_invalid_format(self, tmp_path: pathlib.Path) -> None:
         versions = (
@@ -173,7 +173,7 @@ class TestGetExtraOptions:
             config.write_text(textwrap.dedent(content))
 
             with pytest.raises(SystemExit):
-                _config.ExtraOptions.from_config(config)
+                ExtraOptions.from_config(config)
 
     def test_complains_if_config_file_is_missing_django_stubs_section(
         self, tmp_path: pathlib.Path
@@ -202,4 +202,4 @@ class TestGetExtraOptions:
             config.write_text(textwrap.dedent(content))
 
             with pytest.raises(SystemExit):
-                _config.ExtraOptions.from_config(config)
+                ExtraOptions.from_config(config)
