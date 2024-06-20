@@ -1,9 +1,9 @@
 import pathlib
 
-from ._plugin._config import ExtraOptions
-from ._plugin._entry import PluginProvider
-from ._plugin._plugin import ExtendedMypyStubs
-from ._plugin._virtual_dependencies import (
+from ._plugin.config import ExtraOptions
+from ._plugin.entry import PluginProvider
+from ._plugin.plugin import ExtendedMypyStubs
+from ._plugin.virtual_dependencies import (
     CombinedReportProtocol,
     DefaultVirtualDependencyHandler,
     ReportProtocol,

@@ -42,8 +42,8 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 from typing_extensions import Self
 
-from .. import _known_annotations
-from . import _annotation_resolver
+from .. import known_annotations
+from . import annotation_resolver
 
 
 class ResolveManagerMethodFromInstance(Protocol):
@@ -98,14 +98,12 @@ class Finder:
 
         return result, item
 
-    def determine_if_concrete(
-        self, item: ProperType
-    ) -> _known_annotations.KnownAnnotations | None:
-        concrete_annotation: _known_annotations.KnownAnnotations | None = None
+    def determine_if_concrete(self, item: ProperType) -> known_annotations.KnownAnnotations | None:
+        concrete_annotation: known_annotations.KnownAnnotations | None = None
 
         if isinstance(item, Instance):
             try:
-                concrete_annotation = _known_annotations.KnownAnnotations(item.type.fullname)
+                concrete_annotation = known_annotations.KnownAnnotations(item.type.fullname)
             except ValueError:
                 pass
 
@@ -122,8 +120,8 @@ class BasicTypeInfo:
     item: ProperType
     finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
-    resolver: _annotation_resolver.Resolver
-    concrete_annotation: _known_annotations.KnownAnnotations | None
+    resolver: annotation_resolver.Resolver
+    concrete_annotation: known_annotations.KnownAnnotations | None
     unwrapped_type_guard: ProperType | None
 
     @classmethod
@@ -131,7 +129,7 @@ class BasicTypeInfo:
         cls,
         func: CallableType,
         finder: Finder,
-        resolver: _annotation_resolver.Resolver,
+        resolver: annotation_resolver.Resolver,
         item: MypyType | None = None,
     ) -> Self:
         is_type: bool = False
@@ -340,7 +338,7 @@ class BasicTypeInfo:
 
 class TypeChecking:
     def __init__(
-        self, *, resolver: _annotation_resolver.Resolver, api: CheckerPluginInterface
+        self, *, resolver: annotation_resolver.Resolver, api: CheckerPluginInterface
     ) -> None:
         self.api = api
         self.resolver = resolver
@@ -483,7 +481,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
         self,
         make_resolver: Callable[
             [MethodContext | FunctionContext | MethodSigContext | FunctionSigContext],
-            _annotation_resolver.Resolver,
+            annotation_resolver.Resolver,
         ],
         fullname: str,
         get_symbolnode_for_fullname: GetSymbolNode,
@@ -524,7 +522,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
 
         if isinstance(ret_type, Instance):
             try:
-                _known_annotations.KnownAnnotations(ret_type.type.fullname)
+                known_annotations.KnownAnnotations(ret_type.type.fullname)
             except ValueError:
                 return False
             else:

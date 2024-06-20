@@ -9,8 +9,8 @@ from typing import Generic
 from mypy.options import Options
 from mypy.plugin import Plugin as MypyPlugin
 
-from ._plugin import ExtendedMypyStubs
-from ._virtual_dependencies import T_Report, VirtualDependencyHandlerProtocol
+from .plugin import ExtendedMypyStubs
+from .virtual_dependencies import T_Report, VirtualDependencyHandlerProtocol
 
 
 class PluginProvider(Generic[T_Report]):
