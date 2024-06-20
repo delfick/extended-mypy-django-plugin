@@ -91,6 +91,7 @@ class Project:
             assert settings.configured, "Settings are not configured"
 
             yield Loaded(
+                project=self,
                 root_dir=self.root_dir,
                 env_vars=self.env_vars,
                 settings=settings,
@@ -105,6 +106,7 @@ class Project:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Loaded(Generic[protocols.T_Project]):
+    project: protocols.T_Project
     root_dir: pathlib.Path
     env_vars: Mapping[str, str]
     settings: LazySettings
