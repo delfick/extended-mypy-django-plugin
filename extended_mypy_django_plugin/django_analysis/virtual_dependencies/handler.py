@@ -133,7 +133,7 @@ class VirtualDependencyHandler(
         return VirtualDependencyNamer(namespace=virtual_namespace, hasher=self.hasher)
 
     def get_virtual_namespace(self) -> protocols.ImportPath:
-        return discovery.ImportPath("__virtual_extended_mypy_django_plugin_deps__")
+        return discovery.ImportPath("__virtual_extended_mypy_django_plugin_report__")
 
     def get_virtual_dependencies(
         self,
