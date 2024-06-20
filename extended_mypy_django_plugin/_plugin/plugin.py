@@ -1,17 +1,8 @@
 import enum
-import functools
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
-from mypy.nodes import (
-    Import,
-    ImportAll,
-    ImportFrom,
-    MypyFile,
-    SymbolNode,
-    SymbolTableNode,
-    TypeInfo,
-)
+from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
 from mypy.options import Options
 from mypy.plugin import (
     AnalyzeTypeContext,
@@ -101,51 +92,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         return annotation_resolver.make_resolver(
             get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
             get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,
-            plugin_lookup_info=self._lookup_info,
             plugin_lookup_fully_qualified=self.lookup_fully_qualified,
             ctx=ctx,
         )
-
-    def _lookup_info(self, fullname: str) -> TypeInfo | None:
-        sym = self.lookup_fully_qualified(fullname)
-        if sym and isinstance(sym.node, TypeInfo):
-            return sym.node
-        else:
-            return None
-
-    def _get_symbolnode_for_fullname(
-        self, fullname: str, is_function: bool
-    ) -> SymbolNode | SymbolTableNode | None:
-        sym = self.lookup_fully_qualified(fullname)
-        if sym and sym.node:
-            return sym.node
-
-        if is_function:
-            return None
-
-        if fullname.count(".") < 2:
-            return None
-
-        if self._modules is None:
-            return None
-
-        # We're on a class and couldn't find the sym, it's likely on a base class
-        module, class_name, method_name = fullname.rsplit(".", 2)
-
-        mod = self._modules.get(module)
-        if mod is None:
-            return None
-
-        class_node = mod.names.get(class_name)
-        if not class_node or not isinstance(class_node.node, TypeInfo):
-            return None
-
-        for parent in class_node.node.bases:
-            if isinstance(parent.type, TypeInfo):
-                if isinstance(found := parent.type.names.get(method_name), SymbolTableNode):
-                    return found
-
-        return None
 
     def report_config_data(self, ctx: ReportConfigContext) -> dict[str, object]:
         """
@@ -297,10 +246,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
                 make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
-                get_symbolnode_for_fullname=functools.partial(
-                    self.plugin._get_symbolnode_for_fullname,
-                    is_function=self.__class__.__name__ == "get_function_hook",
-                ),
+                plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
+                is_function=self.__class__.__name__ == "get_function_hook",
+                modules=self.plugin._modules,
             )
 
         def choose(self) -> bool:
@@ -336,10 +284,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             self.shared_logic = type_checker.SharedCheckTypeGuardsLogic(
                 make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
                 fullname=self.fullname,
-                get_symbolnode_for_fullname=functools.partial(
-                    self.plugin._get_symbolnode_for_fullname,
-                    is_function=self.__class__.__name__ == "get_function_hook",
-                ),
+                plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
+                is_function=self.__class__.__name__ == "get_function_hook",
+                modules=self.plugin._modules,
             )
 
         def choose(self) -> bool:
