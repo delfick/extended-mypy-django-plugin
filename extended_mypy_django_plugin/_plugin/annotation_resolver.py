@@ -103,7 +103,7 @@ class AnnotationResolver:
                 context = ctx.call
                 sem_api = api
                 defer = functools.partial(sem_defer, sem_api)
-                fail = lambda msg: sem_api.fail(msg, context)
+                fail = functools.partial(sem_api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case AnalyzeTypeContext(api=api):
@@ -112,7 +112,7 @@ class AnnotationResolver:
                 context = ctx.context
                 sem_api = api.api
                 defer = functools.partial(sem_defer, sem_api)
-                fail = lambda msg: sem_api.fail(msg, context)
+                fail = functools.partial(sem_api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
             case (
@@ -124,7 +124,7 @@ class AnnotationResolver:
             ):
                 context = ctx.context
                 defer = lambda: True
-                fail = lambda msg: api.fail(msg, context)
+                fail = functools.partial(api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case _:
