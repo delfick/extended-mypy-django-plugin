@@ -74,7 +74,9 @@ class TestEnd2End:
             ) -> protocols.ReportFactory[
                 virtual_dependencies.VirtualDependency[Project], virtual_dependencies.Report
             ]:
-                return virtual_dependencies.make_report_factory(hasher=self.hasher)
+                return virtual_dependencies.make_report_factory(
+                    hasher=self.hasher, report_maker=virtual_dependencies.Report
+                )
 
             def virtual_dependency_maker(
                 self,
