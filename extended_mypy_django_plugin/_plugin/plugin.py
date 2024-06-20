@@ -96,6 +96,13 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         super().__init__(options)
 
+        self.extra_init()
+
+    def extra_init(self) -> None:
+        """
+        Place to add extra logic after __init__
+        """
+
     def report_config_data(self, ctx: ReportConfigContext) -> dict[str, object]:
         """
         Add our extra options to the report config data, so that mypy knows to clear the cache
