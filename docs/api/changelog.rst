@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.6.0:
 
-0.6.0 - TBD
+0.6.0 - 20 June 2024
     * The extra configuration now relies on the config using a ``$MYPY_CONFIG_FILE_DIR``
       marker rather than assuming the paths are relative to the configuration.
     * Removed the need to specify a script for determining django state
