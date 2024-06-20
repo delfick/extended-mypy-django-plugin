@@ -6,7 +6,7 @@ summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installe
 
 import django.db.models
 import djangoexample.relations1.models
-ConcreteQuerySet__Abstract = django.db.models.QuerySet[djangoexample.relations1.models.Child2] | djangoexample.relations1.models.Child1QuerySet
+ConcreteQuerySet__Abstract = djangoexample.relations1.models.Child1QuerySet | django.db.models.QuerySet[djangoexample.relations1.models.Child2]
 ConcreteQuerySet__Child1 = djangoexample.relations1.models.Child1QuerySet
 ConcreteQuerySet__Child2 = django.db.models.QuerySet[djangoexample.relations1.models.Child2]
 ConcreteQuerySet__Concrete1 = djangoexample.relations1.models.Concrete1QuerySet
