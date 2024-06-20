@@ -4,6 +4,7 @@ import collections
 import dataclasses
 import functools
 import importlib
+import operator
 import os
 import pathlib
 import re
@@ -333,17 +334,17 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         annotations: set[str] = set()
 
         for model, concrete in self.virtual_dependency.concrete_models.items():
-            querysets: set[str] = set()
+            querysets: list[str] = []
 
             added_imports.add(model)
-            for conc in concrete:
+            for conc in sorted(concrete, key=operator.attrgetter("import_path")):
                 added_imports.add(conc.import_path)
                 if conc.default_custom_queryset:
                     added_imports.add(conc.default_custom_queryset)
-                    querysets.add(conc.default_custom_queryset)
+                    querysets.append(conc.default_custom_queryset)
                 else:
                     added_imports.add(ImportPath("django.db.models.QuerySet"))
-                    querysets.add(f"django.db.models.QuerySet[{conc.import_path}]")
+                    querysets.append(f"django.db.models.QuerySet[{conc.import_path}]")
 
             ns, name = ImportPath.split(model)
             concrete_name = f"Concrete__{name}"
@@ -351,10 +352,10 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
 
             if concrete:
                 annotations.add(
-                    f"{concrete_name} = {' | '.join(sorted(conc.import_path for conc in concrete))}"
+                    f"{concrete_name} = {' | '.join(conc.import_path for conc in concrete)}"
                 )
             if querysets:
-                annotations.add(f"{queryset_name} = {' | '.join(sorted(querysets))}")
+                annotations.add(f"{queryset_name} = {' | '.join(querysets)}")
 
             report.register_model(
                 model_import_path=model,
