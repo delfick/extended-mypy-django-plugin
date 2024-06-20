@@ -173,6 +173,9 @@ class TestConcreteAnnotations:
                     ...
 
                 def make_instance(cls: type[T_Leader]) -> T_Leader:
+                    cls
+                    # ^ REVEAL ^ type[example.models.Follower1]
+                    # ^ REVEAL ^ type[example.models.Follower2]
                     return cls.new()
                 """,
             )
@@ -189,11 +192,12 @@ class TestConcreteAnnotations:
 
                 instance2 = make_instance(Follower2)
                 # ^ REVEAL ^ example.models.Follower2
+
+                model: type[Concrete[Leader]] = Follower1
+                # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
                 """,
                 # TODO: Make this possible
                 # would require generating overload variants on make_instance
-                # model: type[Concrete[Leader]] = Follower1
-                # # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
                 # instance3 = make_instance(model)
                 # # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
                 # """,
@@ -321,9 +325,11 @@ class TestConcreteAnnotations:
                     class Meta:
                         abstract = True
 
-                # TODO: the error is fixed in future commit
+                def thing() -> None:
+                    all_concrete: Concrete[Leader]
+                    # ^ REVEAL[leader-concrete-where-leader-defined] ^ Union[example.models.Follower1, example.models.Follower2]
+
                 T_Leader = Concrete.type_var("T_Leader", Leader)
-                # ^ ERROR(misc) ^ No concrete children found for example.models.Leader
 
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
@@ -356,6 +362,9 @@ class TestConcreteAnnotations:
                 from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
                 from extended_mypy_django_plugin import Concrete
 
+                all_concrete: Concrete[Leader]
+                # ^ REVEAL[all-concrete] ^ Union[example.models.Follower1, example.models.Follower2]
+
                 follower1 = Follower1.objects.create()
                 # ^ REVEAL ^ example.models.Follower1
 
@@ -373,6 +382,51 @@ class TestConcreteAnnotations:
                 qs5 = make_queryset(follower1)
                 # ^ REVEAL ^ example.models.Follower1QuerySet
                 """,
+            )
+
+        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.file(expected, "example2/__init__.py", "")
+
+            scenario.file(
+                expected,
+                "example2/apps.py",
+                """
+                from django.apps import AppConfig
+
+                class Config(AppConfig):
+                    name = "example2"
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example2/models.py",
+                """
+                from __future__ import annotations
+
+                from example.models import Leader
+
+                from django.db import models
+
+                class Follower3QuerySet(models.QuerySet["Follower3"]):
+                    ...
+
+                Follower3Manager = models.Manager.from_queryset(Follower3QuerySet)
+
+                class Follower3(Leader):
+                    objects = Follower3Manager()
+                """,
+            )
+
+            expected.daemon_should_restart()
+            expected.on("example/models.py").add_revealed_type(
+                "leader-concrete-where-leader-defined",
+                "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+            )
+            expected.on("main.py").add_revealed_type(
+                "all-concrete",
+                "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
             )
 
     def test_restarts_dmypy_if_names_of_known_settings_change(self, scenario: Scenario) -> None:
@@ -618,7 +672,7 @@ class TestConcreteAnnotations:
                 .add_error(
                     6,
                     "union-attr",
-                    'Item "Another" of "Child1 | Child2 | Child3 | Another | ChildOther" has no attribute "two"',
+                    'Item "Another" of "Child1 | Child2 | Child3 | ChildOther | Another" has no attribute "two"',
                 )
                 .add_error(
                     9, "misc", "Cannot resolve keyword 'two' into field. Choices are: id, one"

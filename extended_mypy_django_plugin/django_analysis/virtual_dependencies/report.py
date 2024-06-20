@@ -10,7 +10,7 @@ import pathlib
 import re
 import shutil
 import textwrap
-from collections.abc import Iterator, MutableMapping, MutableSet, Sequence, Set
+from collections.abc import Iterator, Mapping, MutableMapping, MutableSet, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Literal, Protocol, TypeVar, cast
 
 from .. import protocols
@@ -75,12 +75,6 @@ class Report:
     ) -> None:
         self.report_import_path[module_import_path] = virtual_import_path
 
-    def is_model_installed(self, *, import_path: str) -> bool:
-        """
-        Used to determine if a model is installed in this django project
-        """
-        return protocols.ImportPath(import_path) in self.concrete_annotations
-
     def register_model(
         self,
         *,
@@ -123,6 +117,18 @@ class Report:
                 if ns != module_import_path:
                     self.related_import_paths[module_import_path].add(ns)
                     self.related_import_paths[ns].add(module_import_path)
+
+    def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
+        result: dict[str, str | None] = {}
+        for model in sorted(models):
+            result[model] = self.concrete_annotations.get(protocols.ImportPath(model))
+        return result
+
+    def get_queryset_aliases(self, *models: str) -> Mapping[str, str | None]:
+        result: dict[str, str | None] = {}
+        for model in sorted(models):
+            result[model] = self.concrete_querysets.get(protocols.ImportPath(model))
+        return result
 
     def additional_deps(
         self,

@@ -32,7 +32,7 @@ from mypy_django_plugin.transformers.managers import (
 )
 from typing_extensions import assert_never
 
-from . import _config, _hook, _known_annotations, _reports, _store, actions
+from . import _config, _hook, _known_annotations, actions
 from ._virtual_dependencies import (
     CombinedReportProtocol,
     ReportProtocol,
@@ -100,29 +100,12 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         super().__init__(options)
 
-        self.report = _reports.Reports.create(
-            django_settings_module=self.plugin_config.django_settings_module,
-            scratch_path=self.extra_options.scratch_path,
-        )
-
-        self.store = _store.Store(
-            report=self.report,
-            installed_apps=self.django_context.settings.INSTALLED_APPS,
-            get_model_class_by_fullname=self.django_context.get_model_class_by_fullname,
-            get_model_related_fields=self.django_context.get_model_related_fields,
-            get_field_related_model_cls=self.django_context.get_field_related_model_cls,
-            lookup_info=self._lookup_info,
-            lookup_fully_qualified=self.lookup_fully_qualified,
-            django_context_model_modules=self.django_context.model_modules,
-            is_installed_model=self.virtual_dependency_report.report.is_model_installed,
-            known_concrete_models=self.report.known_concrete_models,
-        )
-
     def _make_resolver(self, ctx: actions.ValidContextForAnnotationResolver) -> actions.Resolver:
         return actions.make_resolver(
-            retrieve_concrete_children_types=self.store.retrieve_concrete_children_types,
-            realise_querysets=self.store.realise_querysets,
+            get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
+            get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,
             plugin_lookup_info=self._lookup_info,
+            plugin_lookup_fully_qualified=self.lookup_fully_qualified,
             ctx=ctx,
         )
 

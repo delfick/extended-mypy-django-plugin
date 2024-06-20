@@ -12,6 +12,8 @@ Changelog
     * The plugin provider now takes in an object that will be used to determine django state
       and this is used for both the plugin itself and for what the determine state script was
       doing.
+    * Fixed a bug where using a concrete annotation on a model where that model is defined would
+      mean that additional concrete models are not seen when they are added
 
 .. _release-0.5.5:
 
