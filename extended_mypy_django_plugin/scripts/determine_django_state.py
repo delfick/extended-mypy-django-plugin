@@ -13,7 +13,7 @@ from extended_mypy_django_plugin.plugin import ExtraOptions, PluginProvider, pro
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", help="The path to the mypy config file")
-    parser.add_argument("--mypy-plugin", help="The mypy plugins configured", nargs="+")
+    parser.add_argument("--mypy-plugin", action="append", help="The mypy plugins configured")
     parser.add_argument(
         "--version-file", help="File to write the version to", type=pathlib.Path, required=True
     )
