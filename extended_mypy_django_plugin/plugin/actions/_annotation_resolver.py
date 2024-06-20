@@ -1,8 +1,8 @@
 import functools
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Protocol
 
-from mypy.nodes import Context, TypeInfo, TypeVarExpr
+from mypy.nodes import Context, PlaceholderNode, SymbolTableNode, TypeAlias, TypeInfo, TypeVarExpr
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
@@ -55,19 +55,16 @@ class NamedTypeOrNone(Protocol):
     def __call__(self, fullname: str, args: list[MypyType] | None = None) -> Instance | None: ...
 
 
-class ConcreteChildrenTypesRetriever(Protocol):
-    def __call__(
-        self,
-        parent: TypeInfo,
-        lookup_info: LookupInfo,
-        lookup_instance: LookupInstanceFunction,
-    ) -> Sequence[Instance]: ...
+class AliasGetter(Protocol):
+    def __call__(self, *models: str) -> Mapping[str, str | None]: ...
 
 
-class QuerysetRealiser(Protocol):
-    def __call__(
-        self, type_var: Instance | UnionType, lookup_info: LookupInfo
-    ) -> Iterator[Instance]: ...
+class LookupAlias(Protocol):
+    def __call__(self, alias: str) -> Iterator[Instance]: ...
+
+
+class LookupFullyQualified(Protocol):
+    def __call__(self, fullname: str) -> SymbolTableNode | None: ...
 
 
 ValidContextForAnnotationResolver = (
@@ -79,6 +76,10 @@ ValidContextForAnnotationResolver = (
     | FunctionContext
     | FunctionSigContext
 )
+
+
+class ShouldDefer(Exception):
+    pass
 
 
 class Resolver(Protocol):
@@ -111,9 +112,10 @@ class AnnotationResolver:
     def create(
         cls,
         *,
-        retrieve_concrete_children_types: ConcreteChildrenTypesRetriever,
-        realise_querysets: QuerysetRealiser,
+        get_concrete_aliases: AliasGetter,
+        get_queryset_aliases: AliasGetter,
         plugin_lookup_info: LookupInfo,
+        plugin_lookup_fully_qualified: LookupFullyQualified,
         ctx: ValidContextForAnnotationResolver,
     ) -> Self:
         def sem_defer(sem_api: SemanticAnalyzer) -> bool:
@@ -139,6 +141,23 @@ class AnnotationResolver:
             if args:
                 return Instance(node, args)
             return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+
+        def lookup_alias(alias: str) -> Iterator[Instance]:
+            sym = plugin_lookup_fully_qualified(alias)
+            if sym and isinstance(sym.node, PlaceholderNode):
+                raise ShouldDefer()
+            assert sym and isinstance(sym.node, TypeAlias)
+            target = get_proper_type(sym.node.target)
+
+            if isinstance(target, Instance):
+                yield target
+            elif isinstance(target, UnionType):
+                for item in target.items:
+                    found = get_proper_type(item)
+                    assert isinstance(found, Instance)
+                    yield found
+            else:
+                raise AssertionError(f"Expected only instances or unions, got {target}")
 
         fail: FailFunc
         defer: DeferFunc
@@ -199,11 +218,12 @@ class AnnotationResolver:
 
         return cls(
             context=context,
-            retrieve_concrete_children_types=retrieve_concrete_children_types,
-            realise_querysets=realise_querysets,
+            get_concrete_aliases=get_concrete_aliases,
+            get_queryset_aliases=get_queryset_aliases,
             defer=defer,
             fail=fail,
             lookup_info=lookup_info,
+            lookup_alias=lookup_alias,
             named_type_or_none=named_type_or_none,
         )
 
@@ -211,10 +231,11 @@ class AnnotationResolver:
         self,
         *,
         context: Context,
-        realise_querysets: QuerysetRealiser,
-        retrieve_concrete_children_types: ConcreteChildrenTypesRetriever,
+        get_concrete_aliases: AliasGetter,
+        get_queryset_aliases: AliasGetter,
         fail: FailFunc,
         defer: DeferFunc,
+        lookup_alias: LookupAlias,
         lookup_info: LookupInfo,
         named_type_or_none: NamedTypeOrNone,
     ) -> None:
@@ -223,8 +244,9 @@ class AnnotationResolver:
         self.fail = fail
         self.context = context
         self.lookup_info = lookup_info
-        self.realise_querysets = realise_querysets
-        self.retrieve_concrete_children_types = retrieve_concrete_children_types
+        self.lookup_alias = lookup_alias
+        self.get_concrete_aliases = get_concrete_aliases
+        self.get_queryset_aliases = get_queryset_aliases
 
     def _flatten_union(self, typ: ProperType) -> Iterator[ProperType]:
         if isinstance(typ, UnionType):
@@ -234,7 +256,7 @@ class AnnotationResolver:
             yield typ
 
     def _analyze_first_type_arg(
-        self, type_arg: ProperType
+        self, type_arg: ProperType, get_aliases: AliasGetter
     ) -> tuple[bool, Sequence[Instance] | None]:
         is_type: bool = False
 
@@ -272,11 +294,7 @@ class AnnotationResolver:
         names = ", ".join([item.type.fullname for item in all_instances])
 
         for item in all_instances:
-            concrete.extend(
-                self.retrieve_concrete_children_types(
-                    item.type, self.lookup_info, self._named_type_or_none
-                )
-            )
+            concrete.extend(list(self.instances_from_aliases(get_aliases, item.type.fullname)))
 
         if not concrete:
             if not self._defer():
@@ -325,11 +343,13 @@ class AnnotationResolver:
     def type_var_expr_for(
         self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
     ) -> TypeVarExpr:
-        values = self.retrieve_concrete_children_types(
-            model, self.lookup_info, self._named_type_or_none
-        )
-        if not values:
-            self.fail(f"No concrete children found for {model.fullname}")
+        try:
+            values = list(self.instances_from_aliases(self.get_concrete_aliases, model.fullname))
+        except ShouldDefer:
+            values = []
+        else:
+            if not values:
+                self.fail(f"No concrete children found for {model.fullname}")
 
         return TypeVarExpr(
             name=name,
@@ -377,10 +397,21 @@ class AnnotationResolver:
 
         return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
 
+    def instances_from_aliases(self, get_aliases: AliasGetter, *models: str) -> Iterator[Instance]:
+        for model, alias in get_aliases(*models).items():
+            if alias is None:
+                self.fail(f"Failed to find concrete alias instance for '{model}'")
+                continue
+
+            try:
+                yield from self.lookup_alias(alias)
+            except AssertionError:
+                self.fail(f"Failed to create concrete alias instance for '{model}' ({alias})")
+
     def find_concrete_models(
         self, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
-        is_type, concrete = self._analyze_first_type_arg(type_arg)
+        is_type, concrete = self._analyze_first_type_arg(type_arg, self.get_concrete_aliases)
         if concrete is None:
             return None
 
@@ -389,12 +420,11 @@ class AnnotationResolver:
     def find_default_queryset(
         self, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
-        is_type, concrete = self._analyze_first_type_arg(type_arg)
+        is_type, concrete = self._analyze_first_type_arg(type_arg, self.get_queryset_aliases)
         if concrete is None:
             return None
 
-        querysets = tuple(self.realise_querysets(UnionType(concrete), self.lookup_info))
-        return self._make_union(is_type, querysets)
+        return self._make_union(is_type, concrete)
 
 
 make_resolver = AnnotationResolver.create

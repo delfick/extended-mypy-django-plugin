@@ -1,6 +1,6 @@
 import abc
 import functools
-from collections.abc import Callable, Sequence, Set
+from collections.abc import Callable, Mapping, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 from ..django_analysis import project, protocols, virtual_dependencies
@@ -31,9 +31,20 @@ class ReportProtocol(Protocol):
         It must return the full set of additional deps the mypy plugin should use for this file
         """
 
-    def is_model_installed(self, *, import_path: str) -> bool:
+    def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
         """
-        Used to determine if a model is installed in this django project
+        Given import paths to some models, return a map of those models to a type alias
+        with the concrete models for that model
+
+        If concrete models cannot be found for a model it's entry will be given as None
+        """
+
+    def get_queryset_aliases(self, *models: str) -> Mapping[str, str | None]:
+        """
+        Given import paths to some models, return a map of those models to a type alias
+        with the concrete querysets for that model
+
+        If concrete querysets cannot be found for a model it's entry will be given as None
         """
 
 
