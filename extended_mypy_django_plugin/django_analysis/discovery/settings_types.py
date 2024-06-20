@@ -18,15 +18,22 @@ class NaiveSettingsTypesDiscovery(Generic[protocols.T_Project]):
         settings = loaded_project.settings
 
         for name in dir(settings):
-            if name.startswith("_") or not name.isupper():
+            if not self.valid_setting_name(loaded_project=loaded_project, name=name):
                 continue
 
-            result[name] = self.type_from_setting(loaded_project, name, getattr(settings, name))
+            result[name] = self.type_from_setting(
+                loaded_project=loaded_project, name=name, value=getattr(settings, name)
+            )
 
         return result
 
+    def valid_setting_name(
+        self, *, loaded_project: protocols.Loaded[protocols.T_Project], name: str
+    ) -> bool:
+        return not name.startswith("_") and name.isupper()
+
     def type_from_setting(
-        self, loaded_project: protocols.Loaded[protocols.T_Project], name: str, value: object
+        self, *, loaded_project: protocols.Loaded[protocols.T_Project], name: str, value: object
     ) -> str:
         return str(type(value))
 
