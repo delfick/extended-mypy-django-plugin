@@ -27,19 +27,19 @@ from mypy.types import (
     Type as MypyType,
 )
 
-from .. import _known_annotations
-from . import _annotation_resolver
+from .. import known_annotations
+from . import annotation_resolver
 
 
 class TypeAnalyzer:
     def __init__(
-        self, resolver: _annotation_resolver.Resolver, api: TypeAnalyzerPluginInterface
+        self, resolver: annotation_resolver.Resolver, api: TypeAnalyzerPluginInterface
     ) -> None:
         self.api = api
         self.resolver = resolver
 
     def analyze(
-        self, ctx: AnalyzeTypeContext, annotation: _known_annotations.KnownAnnotations
+        self, ctx: AnalyzeTypeContext, annotation: known_annotations.KnownAnnotations
     ) -> MypyType:
         type_arg, rewrap = self.resolver.find_type_arg(ctx.type, self.api.analyze_type)
         if type_arg is None:
@@ -59,7 +59,7 @@ class TypeAnalyzer:
 
 class SemAnalyzing:
     def __init__(
-        self, *, resolver: _annotation_resolver.Resolver, api: SemanticAnalyzerPluginInterface
+        self, *, resolver: annotation_resolver.Resolver, api: SemanticAnalyzerPluginInterface
     ) -> None:
         # We need much more than is on the interface unfortunately
         assert isinstance(api, SemanticAnalyzer)
@@ -130,7 +130,7 @@ class SemAnalyzing:
                 return None
 
         concrete = self.resolver.resolve(
-            _known_annotations.KnownAnnotations.CONCRETE,
+            known_annotations.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
         if not concrete:
