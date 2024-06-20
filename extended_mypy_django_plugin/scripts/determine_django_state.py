@@ -7,8 +7,7 @@ import pathlib
 import re
 import sys
 
-from extended_mypy_django_plugin.entry import PluginProvider
-from extended_mypy_django_plugin.plugin import ExtraOptions, ReportProtocol
+from extended_mypy_django_plugin.plugin import ExtraOptions, PluginProvider, ReportProtocol
 
 
 def make_parser() -> argparse.ArgumentParser:
