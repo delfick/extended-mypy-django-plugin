@@ -1,4 +1,5 @@
 import enum
+import functools
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
@@ -46,6 +47,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
     It implements the following mypy plugin hooks:
 
+    .. automethod:: report_config_data
+
     .. automethod:: get_additional_deps
 
     .. autoattribute:: get_dynamic_class_hook
@@ -84,17 +87,14 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             extra_options=self.extra_options, virtual_dependency_handler=virtual_dependency_handler
         )
 
-        super().__init__(options)
-
-    def _make_resolver(
-        self, ctx: protocols.ValidContextForAnnotationResolver
-    ) -> protocols.Resolver:
-        return annotation_resolver.make_resolver(
+        self.make_resolver: protocols.ResolverMaker = functools.partial(
+            annotation_resolver.make_resolver,
             get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
             get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,
             plugin_lookup_fully_qualified=self.lookup_fully_qualified,
-            ctx=ctx,
         )
+
+        super().__init__(options)
 
     def report_config_data(self, ctx: ReportConfigContext) -> dict[str, object]:
         """
@@ -185,7 +185,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def run(self, ctx: DynamicClassDefContext) -> None:
             sem_analyzing = sem_analyze.SemAnalyzing(
-                resolver=self.plugin._make_resolver(ctx), api=ctx.api
+                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
             )
 
             if self.method_name is self.KnownConcreteMethods.type_var:
@@ -213,7 +213,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
             type_analyzer = sem_analyze.TypeAnalyzer(
-                resolver=self.plugin._make_resolver(ctx), api=ctx.api
+                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
             )
             return type_analyzer.analyze(ctx, self.annotation)
 
@@ -229,7 +229,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def run(self, ctx: AttributeContext) -> MypyType:
             type_checking = type_checker.TypeChecking(
-                resolver=self.plugin._make_resolver(ctx), api=ctx.api
+                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
             )
 
             return type_checking.extended_get_attribute_resolve_manager_method(
@@ -244,7 +244,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
-                make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
+                make_resolver=lambda ctx: self.plugin.make_resolver(ctx=ctx),
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
@@ -282,7 +282,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = type_checker.SharedCheckTypeGuardsLogic(
-                make_resolver=lambda ctx: self.plugin._make_resolver(ctx),
+                make_resolver=lambda ctx: self.plugin.make_resolver(ctx=ctx),
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
