@@ -128,7 +128,7 @@ class TestErrors:
             
             Daemon crashed!
             Traceback (most recent call last):
-            File "*extended_mypy_django_plugin/plugin/_plugin.py", line *, in make_virtual_dependency_report
+            File "*extended_mypy_django_plugin/_plugin/_plugin.py", line *, in make_virtual_dependency_report
             File "{plugin_provider}", line *, in discover_project
             ValueError: Computer says no
             """,
