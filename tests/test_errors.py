@@ -86,15 +86,15 @@ class TestErrors:
             textwrap.dedent("""
             import pathlib
 
-            from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
+            from extended_mypy_django_plugin.django_analysis import Project
             from extended_mypy_django_plugin.plugin import PluginProvider, VirtualDependencyHandler, ExtendedMypyStubs
 
 
             class VirtualDependencyHandler(VirtualDependencyHandler):
                 @classmethod
-                def discover_project(
+                def make_project(
                     cls, *, project_root: pathlib.Path, django_settings_module: str
-                ) -> protocols.Discovered[Project]:
+                ) -> Project:
                     raise ValueError("Computer says no")
 
 
@@ -128,7 +128,7 @@ class TestErrors:
             Daemon crashed!
             Traceback (most recent call last):
             File "*extended_mypy_django_plugin/_plugin/plugin.py", line *, in make_virtual_dependency_report
-            File "{plugin_provider}", line *, in discover_project
+            File "{plugin_provider}", line *, in make_project
             ValueError: Computer says no
             """,
         )
@@ -154,25 +154,25 @@ class TestErrors:
             textwrap.dedent(f"""
             import pathlib
 
-            from extended_mypy_django_plugin.django_analysis import Project, protocols
+            from extended_mypy_django_plugin.django_analysis import Project
             from extended_mypy_django_plugin.main import PluginProvider, VirtualDependencyHandler, ExtendedMypyStubs
 
 
             class VirtualDependencyHandler(VirtualDependencyHandler):
                 @classmethod
-                def discover_project(
+                def make_project(
                     cls, *, project_root: pathlib.Path, django_settings_module: str
-                ) -> protocols.Discovered[Project]:
+                ) -> Project:
                     if pathlib.Path("{marker}").exists():
                         pathlib.Path("{marker}").unlink()
-                        return super().discover_project(
+                        return super().make_project(
                             project_root=project_root,
                             django_settings_module=django_settings_module,
                         )
 
                     if pathlib.Path("{marker2}").exists():
                         pathlib.Path("{marker2}").unlink()
-                        return super().discover_project(
+                        return super().make_project(
                             project_root=project_root,
                             django_settings_module=django_settings_module,
                         )
@@ -223,7 +223,7 @@ class TestErrors:
                     > {command}
                     |
                     | Traceback (most recent call last):
-                    |   File "{plugin_provider}", line *, in discover_project
+                    |   File "{plugin_provider}", line *, in make_project
                     |     raise ValueError("Computer says no")
                     | ValueError: Computer says no
                     |

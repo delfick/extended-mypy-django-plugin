@@ -25,8 +25,12 @@ class VirtualDependencyHandler(
     def create(cls, *, project_root: pathlib.Path, django_settings_module: str) -> Self:
         return cls(
             hasher=cls.make_hasher(),
-            discovered=cls.discover_project(
-                project_root=project_root, django_settings_module=django_settings_module
+            discovered=(
+                cls.make_project(
+                    project_root=project_root, django_settings_module=django_settings_module
+                )
+                .load_project()
+                .perform_discovery()
             ),
         )
 
@@ -79,9 +83,9 @@ class VirtualDependencyHandler(
 
     @classmethod
     @abc.abstractmethod
-    def discover_project(
+    def make_project(
         cls, *, project_root: pathlib.Path, django_settings_module: str
-    ) -> protocols.Discovered[protocols.T_Project]: ...
+    ) -> protocols.T_Project: ...
 
     @abc.abstractmethod
     def make_report_factory(
