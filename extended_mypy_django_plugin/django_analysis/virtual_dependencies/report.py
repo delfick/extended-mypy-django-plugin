@@ -96,19 +96,16 @@ class Report:
         for concrete in concrete_models:
             ns, _ = ImportPath.split(concrete.import_path)
             if ns != module_import_path:
-                self.related_import_paths[module_import_path].add(ns)
                 self.related_import_paths[ns].add(module_import_path)
 
             if concrete.default_custom_queryset:
                 ns, _ = ImportPath.split(concrete.default_custom_queryset)
                 if ns != module_import_path:
-                    self.related_import_paths[module_import_path].add(ns)
                     self.related_import_paths[ns].add(module_import_path)
 
             for mro in concrete.models_in_mro:
                 ns, _ = ImportPath.split(mro)
                 if ns != module_import_path:
-                    self.related_import_paths[module_import_path].add(ns)
                     self.related_import_paths[ns].add(module_import_path)
 
     def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
