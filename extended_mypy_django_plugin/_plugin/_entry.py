@@ -9,7 +9,8 @@ from typing import Generic
 from mypy.options import Options
 from mypy.plugin import Plugin as MypyPlugin
 
-from .plugin import ExtendedMypyStubs, T_Report, VirtualDependencyHandlerProtocol
+from ._plugin import ExtendedMypyStubs
+from ._virtual_dependencies import T_Report, VirtualDependencyHandlerProtocol
 
 
 class PluginProvider(Generic[T_Report]):
@@ -20,9 +21,7 @@ class PluginProvider(Generic[T_Report]):
     Given either the extended_mypy_django_plugin.plugin.ExtendedMypyStubs class or a subclass
     of that, usage is::
 
-        from extended_mypy_django_plugin.plugin import ExtendedMypyStubs
-        from extended_mypy_django_plugin.entry import PluginProvider
-        from extended_mypy_django_plugin.main import VirtualDependencyHandler
+        from extended_mypy_django_plugin.plugin import ExtendedMypyStubs, PluginProvider, VirtualDependencyHandler
 
         plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
     """
