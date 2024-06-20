@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Generic, cast
 from .. import protocols
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class ConcreteModelsDiscovery(Generic[protocols.T_Project]):
     """
     The default implementation that determines the concrete models for each model.
