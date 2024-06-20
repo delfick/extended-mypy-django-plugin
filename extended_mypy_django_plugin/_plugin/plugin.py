@@ -95,7 +95,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         super().__init__(options)
 
-    def _make_resolver(self, ctx: actions.ValidContextForAnnotationResolver) -> actions.Resolver:
+    def _make_resolver(
+        self, ctx: protocols.ValidContextForAnnotationResolver
+    ) -> protocols.Resolver:
         return actions.make_resolver(
             get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
             get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,

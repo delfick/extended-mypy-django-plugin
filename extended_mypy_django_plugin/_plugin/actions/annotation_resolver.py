@@ -1,8 +1,8 @@
 import functools
-from collections.abc import Iterator, Mapping, Sequence
-from typing import Protocol
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, cast
 
-from mypy.nodes import Context, PlaceholderNode, SymbolTableNode, TypeAlias, TypeInfo, TypeVarExpr
+from mypy.nodes import Context, PlaceholderNode, TypeAlias, TypeInfo, TypeVarExpr
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
@@ -31,80 +31,8 @@ from typing_extensions import Self, assert_never
 from .. import protocols
 
 
-class FailFunc(Protocol):
-    def __call__(self, msg: str) -> None: ...
-
-
-class DeferFunc(Protocol):
-    def __call__(self) -> bool: ...
-
-
-class TypeAnalyze(Protocol):
-    def __call__(self, typ: MypyType, /) -> MypyType: ...
-
-
-class LookupInfo(Protocol):
-    def __call__(self, fullname: str) -> TypeInfo | None: ...
-
-
-class LookupInstanceFunction(Protocol):
-    def __call__(self, fullname: str) -> Instance | None: ...
-
-
-class NamedTypeOrNone(Protocol):
-    def __call__(self, fullname: str, args: list[MypyType] | None = None) -> Instance | None: ...
-
-
-class AliasGetter(Protocol):
-    def __call__(self, *models: str) -> Mapping[str, str | None]: ...
-
-
-class LookupAlias(Protocol):
-    def __call__(self, alias: str) -> Iterator[Instance]: ...
-
-
-class LookupFullyQualified(Protocol):
-    def __call__(self, fullname: str) -> SymbolTableNode | None: ...
-
-
-ValidContextForAnnotationResolver = (
-    DynamicClassDefContext
-    | AnalyzeTypeContext
-    | AttributeContext
-    | MethodContext
-    | MethodSigContext
-    | FunctionContext
-    | FunctionSigContext
-)
-
-
 class ShouldDefer(Exception):
     pass
-
-
-class Resolver(Protocol):
-    @property
-    def fail(self) -> FailFunc: ...
-
-    def resolve(
-        self, annotation: protocols.KnownAnnotations, type_arg: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | None: ...
-
-    def find_type_arg(
-        self, unbound_type: UnboundType, analyze_type: TypeAnalyze
-    ) -> tuple[ProperType | None, bool]: ...
-
-    def rewrap_type_var(
-        self,
-        *,
-        annotation: protocols.KnownAnnotations,
-        type_arg: ProperType,
-        default: MypyType,
-    ) -> MypyType: ...
-
-    def type_var_expr_for(
-        self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
-    ) -> TypeVarExpr: ...
 
 
 class AnnotationResolver:
@@ -112,11 +40,11 @@ class AnnotationResolver:
     def create(
         cls,
         *,
-        get_concrete_aliases: AliasGetter,
-        get_queryset_aliases: AliasGetter,
-        plugin_lookup_info: LookupInfo,
-        plugin_lookup_fully_qualified: LookupFullyQualified,
-        ctx: ValidContextForAnnotationResolver,
+        get_concrete_aliases: protocols.AliasGetter,
+        get_queryset_aliases: protocols.AliasGetter,
+        plugin_lookup_info: protocols.LookupInfo,
+        plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
+        ctx: protocols.ValidContextForAnnotationResolver,
     ) -> Self:
         def sem_defer(sem_api: SemanticAnalyzer) -> bool:
             if sem_api.final_iteration:
@@ -159,11 +87,11 @@ class AnnotationResolver:
             else:
                 raise AssertionError(f"Expected only instances or unions, got {target}")
 
-        fail: FailFunc
-        defer: DeferFunc
+        fail: protocols.FailFunc
+        defer: protocols.DeferFunc
         context: Context
-        lookup_info: LookupInfo
-        named_type_or_none: NamedTypeOrNone
+        lookup_info: protocols.LookupInfo
+        named_type_or_none: protocols.NamedTypeOrNone
 
         match ctx:
             case DynamicClassDefContext(api=api):
@@ -231,13 +159,13 @@ class AnnotationResolver:
         self,
         *,
         context: Context,
-        get_concrete_aliases: AliasGetter,
-        get_queryset_aliases: AliasGetter,
-        fail: FailFunc,
-        defer: DeferFunc,
-        lookup_alias: LookupAlias,
-        lookup_info: LookupInfo,
-        named_type_or_none: NamedTypeOrNone,
+        get_concrete_aliases: protocols.AliasGetter,
+        get_queryset_aliases: protocols.AliasGetter,
+        fail: protocols.FailFunc,
+        defer: protocols.DeferFunc,
+        lookup_alias: protocols.LookupAlias,
+        lookup_info: protocols.LookupInfo,
+        named_type_or_none: protocols.NamedTypeOrNone,
     ) -> None:
         self._defer = defer
         self._named_type_or_none = named_type_or_none
@@ -256,7 +184,7 @@ class AnnotationResolver:
             yield typ
 
     def _analyze_first_type_arg(
-        self, type_arg: ProperType, get_aliases: AliasGetter
+        self, type_arg: ProperType, get_aliases: protocols.AliasGetter
     ) -> tuple[bool, Sequence[Instance] | None]:
         is_type: bool = False
 
@@ -329,7 +257,7 @@ class AnnotationResolver:
             assert_never(annotation)
 
     def find_type_arg(
-        self, unbound_type: UnboundType, analyze_type: TypeAnalyze
+        self, unbound_type: UnboundType, analyze_type: protocols.TypeAnalyze
     ) -> tuple[ProperType | None, bool]:
         args = unbound_type.args
         if len(args := unbound_type.args) != 1:
@@ -397,7 +325,9 @@ class AnnotationResolver:
 
         return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
 
-    def instances_from_aliases(self, get_aliases: AliasGetter, *models: str) -> Iterator[Instance]:
+    def instances_from_aliases(
+        self, get_aliases: protocols.AliasGetter, *models: str
+    ) -> Iterator[Instance]:
         for model, alias in get_aliases(*models).items():
             if alias is None:
                 self.fail(f"Failed to find concrete alias instance for '{model}'")
@@ -427,4 +357,7 @@ class AnnotationResolver:
         return self._make_union(is_type, concrete)
 
 
-make_resolver = AnnotationResolver.create
+make_resolver: protocols.ResolverMaker = AnnotationResolver.create
+
+if TYPE_CHECKING:
+    _R: protocols.Resolver = cast(AnnotationResolver, None)

@@ -43,7 +43,6 @@ from mypy.types import Type as MypyType
 from typing_extensions import Self
 
 from .. import protocols
-from . import annotation_resolver
 
 
 class ResolveManagerMethodFromInstance(Protocol):
@@ -120,7 +119,7 @@ class BasicTypeInfo:
     item: ProperType
     finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
-    resolver: annotation_resolver.Resolver
+    resolver: protocols.Resolver
     concrete_annotation: protocols.KnownAnnotations | None
     unwrapped_type_guard: ProperType | None
 
@@ -129,7 +128,7 @@ class BasicTypeInfo:
         cls,
         func: CallableType,
         finder: Finder,
-        resolver: annotation_resolver.Resolver,
+        resolver: protocols.Resolver,
         item: MypyType | None = None,
     ) -> Self:
         is_type: bool = False
@@ -337,9 +336,7 @@ class BasicTypeInfo:
 
 
 class TypeChecking:
-    def __init__(
-        self, *, resolver: annotation_resolver.Resolver, api: CheckerPluginInterface
-    ) -> None:
+    def __init__(self, *, resolver: protocols.Resolver, api: CheckerPluginInterface) -> None:
         self.api = api
         self.resolver = resolver
 
@@ -481,7 +478,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
         self,
         make_resolver: Callable[
             [MethodContext | FunctionContext | MethodSigContext | FunctionSigContext],
-            annotation_resolver.Resolver,
+            protocols.Resolver,
         ],
         fullname: str,
         get_symbolnode_for_fullname: GetSymbolNode,

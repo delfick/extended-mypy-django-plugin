@@ -28,13 +28,10 @@ from mypy.types import (
 )
 
 from .. import protocols
-from . import annotation_resolver
 
 
 class TypeAnalyzer:
-    def __init__(
-        self, resolver: annotation_resolver.Resolver, api: TypeAnalyzerPluginInterface
-    ) -> None:
+    def __init__(self, resolver: protocols.Resolver, api: TypeAnalyzerPluginInterface) -> None:
         self.api = api
         self.resolver = resolver
 
@@ -57,7 +54,7 @@ class TypeAnalyzer:
 
 class SemAnalyzing:
     def __init__(
-        self, *, resolver: annotation_resolver.Resolver, api: SemanticAnalyzerPluginInterface
+        self, *, resolver: protocols.Resolver, api: SemanticAnalyzerPluginInterface
     ) -> None:
         # We need much more than is on the interface unfortunately
         assert isinstance(api, SemanticAnalyzer)
