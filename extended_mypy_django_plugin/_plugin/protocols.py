@@ -2,6 +2,7 @@ import enum
 from collections.abc import Iterator, Mapping, Sequence, Set
 from typing import TYPE_CHECKING, Protocol, TypeVar
 
+from mypy import errorcodes
 from mypy.nodes import SymbolTableNode, TypeInfo, TypeVarExpr
 from mypy.plugin import (
     AnalyzeTypeContext,
@@ -74,7 +75,7 @@ class FailFunc(Protocol):
     Used to insert an error into the mypy output
     """
 
-    def __call__(self, msg: str) -> None: ...
+    def __call__(self, msg: str, code: errorcodes.ErrorCode | None = None) -> None: ...
 
 
 class DeferFunc(Protocol):
