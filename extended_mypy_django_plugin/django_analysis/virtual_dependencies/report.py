@@ -105,13 +105,6 @@ class Report:
                     self.related_import_paths[module_import_path].add(ns)
                     self.related_import_paths[ns].add(module_import_path)
 
-            for field in concrete.all_fields.values():
-                if field.related_model:
-                    ns, _ = ImportPath.split(field.related_model)
-                    if ns != module_import_path:
-                        self.related_import_paths[module_import_path].add(ns)
-                        self.related_import_paths[ns].add(module_import_path)
-
             for mro in concrete.models_in_mro:
                 ns, _ = ImportPath.split(mro)
                 if ns != module_import_path:

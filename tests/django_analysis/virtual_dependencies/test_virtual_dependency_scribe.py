@@ -346,10 +346,7 @@ class TestVirtualDependencyScribe:
                     report_import_path={
                         "djangoexample.relations1.models": "__virtual__.mod_3327724610"
                     },
-                    related_import_paths={
-                        "djangoexample.relations1.models": {"djangoexample.relations2.models"},
-                        "djangoexample.relations2.models": {"djangoexample.relations1.models"},
-                    },
+                    related_import_paths={},
                 ),
                 virtual_import_path=virtual_dependency.summary.virtual_import_path,
             )

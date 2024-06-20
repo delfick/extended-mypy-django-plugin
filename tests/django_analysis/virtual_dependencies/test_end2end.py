@@ -177,30 +177,12 @@ class TestEnd2End:
                 "django.contrib.sessions.base_session": "__virtual__.mod_113708644",
             },
             related_import_paths={
-                "django.contrib.admin.models": {
-                    "django.contrib.auth.base_user",
-                    "django.contrib.auth.models",
-                    "django.contrib.contenttypes.models",
-                },
-                "django.contrib.auth.models": {
-                    "django.contrib.admin.models",
-                    "django.contrib.auth.base_user",
-                    "django.contrib.contenttypes.models",
-                },
-                "django.contrib.contenttypes.models": {
-                    "django.contrib.admin.models",
-                    "django.contrib.auth.models",
-                },
-                "django.contrib.auth.base_user": {
-                    "django.contrib.admin.models",
-                    "django.contrib.auth.models",
-                },
+                "django.contrib.auth.models": {"django.contrib.auth.base_user"},
+                "django.contrib.auth.base_user": {"django.contrib.auth.models"},
                 "django.contrib.sessions.models": {"django.contrib.sessions.base_session"},
                 "django.contrib.sessions.base_session": {"django.contrib.sessions.models"},
                 "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
                 "djangoexample.exampleapp2.models": {"djangoexample.exampleapp.models"},
-                "djangoexample.relations1.models": {"djangoexample.relations2.models"},
-                "djangoexample.relations2.models": {"djangoexample.relations1.models"},
             },
         )
 
