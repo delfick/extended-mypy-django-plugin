@@ -601,12 +601,15 @@ class TestBuildingReport:
         )
 
         # Expansion depends on super_deps and imports
-        assert report.additional_deps(
-            file_import_path="some.place",
-            imports=set(),
-            super_deps=[],
-            django_settings_module="my.settings",
-        ) == [(10, "my.settings", -1)]
+        assert (
+            report.additional_deps(
+                file_import_path="some.place",
+                imports=set(),
+                super_deps=[],
+                django_settings_module="my.settings",
+            )
+            == []
+        )
         assert sorted(
             report.additional_deps(
                 file_import_path="some.place",

@@ -186,7 +186,8 @@ class Report:
                 final.add((10, added, -1))
 
         if (
-            file_import_path != django_settings_module
+            final
+            and file_import_path != django_settings_module
             and (settings_dep := (10, django_settings_module, -1)) not in final
         ):
             # Make anything reliant on models also reliant on the settings module
