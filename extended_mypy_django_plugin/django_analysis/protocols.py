@@ -143,6 +143,12 @@ class Loaded(Protocol[T_Project]):
     """
 
     @property
+    def project(self) -> T_Project:
+        """
+        The project that was loaded
+        """
+
+    @property
     def root_dir(self) -> pathlib.Path:
         """
         Where the django project lives
