@@ -228,7 +228,6 @@ class TestVirtualDependencyScribe:
                         "djangoexample.exampleapp2.models": "__virtual__.mod_3537308831"
                     },
                     related_import_paths={
-                        "djangoexample.exampleapp2.models": {"djangoexample.exampleapp.models"},
                         "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
                     },
                 ),

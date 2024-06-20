@@ -347,7 +347,6 @@ class TestBuildingReport:
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
             related_import_paths={
-                ImportPath("my.parents"): {ImportPath("my.models"), ImportPath("my.querysets")},
                 ImportPath("my.models"): {ImportPath("my.parents")},
                 ImportPath("my.querysets"): {ImportPath("my.parents")},
             },
@@ -368,7 +367,6 @@ class TestBuildingReport:
             },
             related_import_paths={
                 ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.models"): {ImportPath("my.parents"), ImportPath("my.querysets")},
                 ImportPath("my.querysets"): {ImportPath("my.models")},
             },
         )
@@ -388,7 +386,6 @@ class TestBuildingReport:
             },
             related_import_paths={
                 ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.models"): {ImportPath("my.parents")},
             },
         )
 
@@ -412,7 +409,6 @@ class TestBuildingReport:
             related_import_paths={
                 ImportPath("mixins"): {ImportPath("other.models")},
                 ImportPath("my.querysets"): {ImportPath("other.models")},
-                ImportPath("other.models"): {ImportPath("mixins"), ImportPath("my.querysets")},
             },
         )
 
@@ -430,10 +426,6 @@ class TestBuildingReport:
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
             related_import_paths={
-                ImportPath("my.parents"): {
-                    ImportPath("my.models"),
-                    ImportPath("my.querysets"),
-                },
                 ImportPath("my.models"): {ImportPath("my.parents")},
                 ImportPath("my.querysets"): {ImportPath("my.parents")},
             },
@@ -451,11 +443,8 @@ class TestBuildingReport:
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
             },
             related_import_paths={
-                ImportPath("my.parents"): {
-                    ImportPath("my.models"),
-                    ImportPath("my.querysets"),
-                },
-                ImportPath("my.models"): {ImportPath("my.parents"), ImportPath("my.querysets")},
+                ImportPath("my.models"): {ImportPath("my.parents")},
+                ImportPath("my.parents"): {ImportPath("my.models")},
                 ImportPath("my.querysets"): {ImportPath("my.parents"), ImportPath("my.models")},
             },
         )
@@ -474,14 +463,8 @@ class TestBuildingReport:
                 ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
             },
             related_import_paths={
-                ImportPath("my.parents"): {
-                    ImportPath("my.models"),
-                    ImportPath("my.querysets"),
-                },
-                ImportPath("my.models"): {
-                    ImportPath("my.parents"),
-                    ImportPath("my.querysets"),
-                },
+                ImportPath("my.models"): {ImportPath("my.parents")},
+                ImportPath("my.parents"): {ImportPath("my.models")},
                 ImportPath("my.querysets"): {ImportPath("my.parents"), ImportPath("my.models")},
             },
         )
@@ -506,20 +489,13 @@ class TestBuildingReport:
                 ),
             },
             related_import_paths={
-                ImportPath("my.parents"): {
-                    ImportPath("my.models"),
-                    ImportPath("my.querysets"),
-                },
-                ImportPath("my.models"): {
-                    ImportPath("my.parents"),
-                    ImportPath("my.querysets"),
-                },
+                ImportPath("my.parents"): {ImportPath("my.models")},
+                ImportPath("my.models"): {ImportPath("my.parents")},
                 ImportPath("my.querysets"): {
                     ImportPath("my.parents"),
                     ImportPath("my.models"),
                     ImportPath("other.models"),
                 },
-                ImportPath("other.models"): {ImportPath("mixins"), ImportPath("my.querysets")},
                 ImportPath("mixins"): {ImportPath("other.models")},
             },
         )
