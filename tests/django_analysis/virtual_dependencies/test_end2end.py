@@ -53,10 +53,10 @@ class TestEnd2End:
             ]
         ):
             @classmethod
-            def discover_project(
+            def make_project(
                 cls, *, project_root: pathlib.Path, django_settings_module: str
-            ) -> protocols.Discovered[Project]:
-                return discovered_django_example
+            ) -> Project:
+                raise NotImplementedError()
 
             def interface_differentiator(self) -> str:
                 nonlocal count
@@ -95,11 +95,8 @@ class TestEnd2End:
 
         destination = tmp_path_factory.mktemp("destination")
 
-        handler = VirtualDependencyHandler.create(
-            project_root=discovered_django_example.loaded_project.root_dir,
-            django_settings_module=discovered_django_example.loaded_project.env_vars[
-                "DJANGO_SETTINGS_MODULE"
-            ],
+        handler = VirtualDependencyHandler(
+            discovered=discovered_django_example, hasher=VirtualDependencyHandler.make_hasher()
         )
 
         report = handler.make_report(virtual_deps_destination=destination)
