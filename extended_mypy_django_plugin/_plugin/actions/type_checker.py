@@ -42,7 +42,7 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 from typing_extensions import Self
 
-from .. import known_annotations
+from .. import protocols
 from . import annotation_resolver
 
 
@@ -98,12 +98,12 @@ class Finder:
 
         return result, item
 
-    def determine_if_concrete(self, item: ProperType) -> known_annotations.KnownAnnotations | None:
-        concrete_annotation: known_annotations.KnownAnnotations | None = None
+    def determine_if_concrete(self, item: ProperType) -> protocols.KnownAnnotations | None:
+        concrete_annotation: protocols.KnownAnnotations | None = None
 
         if isinstance(item, Instance):
             try:
-                concrete_annotation = known_annotations.KnownAnnotations(item.type.fullname)
+                concrete_annotation = protocols.KnownAnnotations(item.type.fullname)
             except ValueError:
                 pass
 
@@ -121,7 +121,7 @@ class BasicTypeInfo:
     finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
     resolver: annotation_resolver.Resolver
-    concrete_annotation: known_annotations.KnownAnnotations | None
+    concrete_annotation: protocols.KnownAnnotations | None
     unwrapped_type_guard: ProperType | None
 
     @classmethod
@@ -522,7 +522,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
 
         if isinstance(ret_type, Instance):
             try:
-                known_annotations.KnownAnnotations(ret_type.type.fullname)
+                protocols.KnownAnnotations(ret_type.type.fullname)
             except ValueError:
                 return False
             else:

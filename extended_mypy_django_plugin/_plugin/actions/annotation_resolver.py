@@ -28,7 +28,7 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 from typing_extensions import Self, assert_never
 
-from .. import known_annotations
+from .. import protocols
 
 
 class FailFunc(Protocol):
@@ -87,7 +87,7 @@ class Resolver(Protocol):
     def fail(self) -> FailFunc: ...
 
     def resolve(
-        self, annotation: known_annotations.KnownAnnotations, type_arg: ProperType
+        self, annotation: protocols.KnownAnnotations, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None: ...
 
     def find_type_arg(
@@ -97,7 +97,7 @@ class Resolver(Protocol):
     def rewrap_type_var(
         self,
         *,
-        annotation: known_annotations.KnownAnnotations,
+        annotation: protocols.KnownAnnotations,
         type_arg: ProperType,
         default: MypyType,
     ) -> MypyType: ...
@@ -319,11 +319,11 @@ class AnnotationResolver:
             return UnionType(tuple(items))
 
     def resolve(
-        self, annotation: known_annotations.KnownAnnotations, type_arg: ProperType
+        self, annotation: protocols.KnownAnnotations, type_arg: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
-        if annotation is known_annotations.KnownAnnotations.CONCRETE:
+        if annotation is protocols.KnownAnnotations.CONCRETE:
             return self.find_concrete_models(type_arg)
-        elif annotation is known_annotations.KnownAnnotations.DEFAULT_QUERYSET:
+        elif annotation is protocols.KnownAnnotations.DEFAULT_QUERYSET:
             return self.find_default_queryset(type_arg)
         else:
             assert_never(annotation)
@@ -362,7 +362,7 @@ class AnnotationResolver:
     def rewrap_type_var(
         self,
         *,
-        annotation: known_annotations.KnownAnnotations,
+        annotation: protocols.KnownAnnotations,
         type_arg: ProperType,
         default: MypyType,
     ) -> MypyType:
