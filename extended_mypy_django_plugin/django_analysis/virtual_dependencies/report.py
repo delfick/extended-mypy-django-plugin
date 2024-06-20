@@ -321,15 +321,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         module_import_path = self.virtual_dependency.summary.module_import_path
         summary = "None" if summary_hash is None else f'"{summary_hash}"'
         content = textwrap.dedent(f"""
-        from typing import TYPE_CHECKING
-
         def interface__{'empty__' if differentiator is None else differentiator}() -> None:
             return None
 
         mod = "{module_import_path}"
         summary = {summary}
 
-        if TYPE_CHECKING:
         """)
 
         added_imports: set[protocols.ImportPath] = set()
@@ -372,14 +369,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         )
 
         extra_lines = [
-            *(f"    import {import_path}" for import_path in sorted_added_imported_modules),
-            *(f"    {line}" for line in sorted(annotations)),
+            *(f"import {import_path}" for import_path in sorted_added_imported_modules),
+            *(f"{line}" for line in sorted(annotations)),
         ]
 
         if extra_lines:
             content = content + "\n".join(extra_lines)
-        else:
-            content = content[: -len("\n\nif TYPE_CHECKING:") + 1]
 
         return content.strip() + "\n"
 

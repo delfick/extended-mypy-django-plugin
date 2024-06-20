@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 def interface____differentiated__10() -> None:
     return None
 
