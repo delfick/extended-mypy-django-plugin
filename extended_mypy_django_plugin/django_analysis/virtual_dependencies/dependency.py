@@ -1,6 +1,6 @@
 import dataclasses
 import functools
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Generic, TypedDict, cast
 
 from typing_extensions import Self
@@ -13,14 +13,12 @@ class VirtualDependencySummary:
     virtual_namespace: protocols.ImportPath
     virtual_import_path: protocols.ImportPath
     module_import_path: protocols.ImportPath
-    installed_apps_hash: str | None
     significant_info: Sequence[str]
 
 
 @dataclasses.dataclass
 class VirtualDependency(Generic[protocols.T_Project]):
     module: protocols.Module
-    interface_differentiator: str | None
     summary: VirtualDependencySummary
     all_related_models: Sequence[protocols.ImportPath]
     concrete_models: protocols.ConcreteModelsMap
@@ -32,8 +30,6 @@ class VirtualDependency(Generic[protocols.T_Project]):
         discovered_project: protocols.Discovered[protocols.T_Project],
         module: protocols.Module,
         virtual_dependency_namer: protocols.VirtualDependencyNamer,
-        installed_apps_hash: str,
-        make_differentiator: Callable[[], str],
     ) -> Self:
         concrete_models = {
             import_path: discovered_project.concrete_models[import_path]
@@ -49,12 +45,10 @@ class VirtualDependency(Generic[protocols.T_Project]):
 
         return cls(
             module=module,
-            interface_differentiator=make_differentiator(),
             summary=VirtualDependencySummary(
                 virtual_namespace=virtual_dependency_namer.namespace,
                 virtual_import_path=virtual_dependency_namer(module.import_path),
                 module_import_path=module.import_path,
-                installed_apps_hash=installed_apps_hash,
                 significant_info=list(
                     cls.find_significant_info_from_module(
                         discovered_project=discovered_project,
@@ -133,8 +127,6 @@ if TYPE_CHECKING:
 
     class _RequiredMakerKwargs(TypedDict):
         virtual_dependency_namer: protocols.VirtualDependencyNamer
-        installed_apps_hash: str
-        make_differentiator: Callable[[], str]
 
     _VDM: protocols.P_VirtualDependencyMaker = functools.partial(
         VirtualDependency[protocols.P_Project].create, **cast(_RequiredMakerKwargs, None)

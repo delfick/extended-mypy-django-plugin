@@ -2,7 +2,6 @@ import abc
 import dataclasses
 import functools
 import pathlib
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Generic
 
 from ..django_analysis import Project, discovery, project, virtual_dependencies
@@ -24,20 +23,19 @@ class VirtualDependencyHandlerBase(
         return virtual_dependencies.Report
 
     def make_report_factory(
-        self,
+        self, *, installed_apps_hash: str
     ) -> d_protocols.ReportFactory[
         virtual_dependencies.VirtualDependency[d_protocols.T_Project], virtual_dependencies.Report
     ]:
         return virtual_dependencies.make_report_factory(
-            hasher=self.hasher, report_maker=self.get_report_maker()
+            hasher=self.hasher,
+            report_maker=self.get_report_maker(),
+            installed_apps_hash=installed_apps_hash,
+            make_differentiator=self.interface_differentiator,
         )
 
     def virtual_dependency_maker(
-        self,
-        *,
-        installed_apps_hash: str,
-        virtual_dependency_namer: d_protocols.VirtualDependencyNamer,
-        make_differentiator: Callable[[], str],
+        self, *, virtual_dependency_namer: d_protocols.VirtualDependencyNamer
     ) -> d_protocols.VirtualDependencyMaker[
         d_protocols.T_Project, virtual_dependencies.VirtualDependency[d_protocols.T_Project]
     ]:
@@ -45,8 +43,6 @@ class VirtualDependencyHandlerBase(
             virtual_dependencies.VirtualDependency.create,
             discovered_project=self.discovered,
             virtual_dependency_namer=virtual_dependency_namer,
-            installed_apps_hash=installed_apps_hash,
-            make_differentiator=make_differentiator,
         )
 
 

@@ -20,8 +20,6 @@ class TestVirtualDependencyGenerator:
     def test_it_can_generate_virtual_dependencies(
         self, discovered_django_example: protocols.Discovered[Project]
     ) -> None:
-        installed_apps_hash = "__hashed_installed_apps__"
-
         class CustomVirtualDependency(virtual_dependencies.VirtualDependency[Project]):
             @classmethod
             def find_significant_info_from_module(
@@ -38,10 +36,7 @@ class TestVirtualDependencyGenerator:
         )
 
         virtual_dependency_maker = functools.partial(
-            CustomVirtualDependency.create,
-            virtual_dependency_namer=virtual_dependency_namer,
-            installed_apps_hash=installed_apps_hash,
-            make_differentiator=lambda: "__differentiated__",
+            CustomVirtualDependency.create, virtual_dependency_namer=virtual_dependency_namer
         )
 
         generated = virtual_dependencies.VirtualDependencyGenerator(
@@ -57,12 +52,10 @@ class TestVirtualDependencyGenerator:
         assert generated == {
             ImportPath("django.contrib.admin.models"): CustomVirtualDependency(
                 module=IsModule("django.contrib.admin.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_2456226428"),
                     module_import_path=ImportPath("django.contrib.admin.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.admin.models__"],
                 ),
                 all_related_models=[
@@ -78,12 +71,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("django.contrib.auth.base_user"): CustomVirtualDependency(
                 module=IsModule("django.contrib.auth.base_user"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_2833058650"),
                     module_import_path=ImportPath("django.contrib.auth.base_user"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.auth.base_user__"],
                 ),
                 all_related_models=[
@@ -97,12 +88,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("django.contrib.auth.models"): CustomVirtualDependency(
                 module=IsModule("django.contrib.auth.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_2289830437"),
                     module_import_path=ImportPath("django.contrib.auth.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.auth.models__"],
                 ),
                 all_related_models=[
@@ -134,12 +123,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("django.contrib.contenttypes.models"): CustomVirtualDependency(
                 module=IsModule("django.contrib.contenttypes.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3961720227"),
                     module_import_path=ImportPath("django.contrib.contenttypes.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.contenttypes.models__"],
                 ),
                 all_related_models=[
@@ -155,12 +142,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("django.contrib.sessions.base_session"): CustomVirtualDependency(
                 module=IsModule("django.contrib.sessions.base_session"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_113708644"),
                     module_import_path=ImportPath("django.contrib.sessions.base_session"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.sessions.base_session__"],
                 ),
                 all_related_models=[
@@ -174,12 +159,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("django.contrib.sessions.models"): CustomVirtualDependency(
                 module=IsModule("django.contrib.sessions.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3074165738"),
                     module_import_path=ImportPath("django.contrib.sessions.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__django.contrib.sessions.models__"],
                 ),
                 all_related_models=[
@@ -193,12 +176,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.exampleapp.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.exampleapp.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3347844205"),
                     module_import_path=ImportPath("djangoexample.exampleapp.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.exampleapp.models__"],
                 ),
                 all_related_models=[
@@ -238,12 +219,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.exampleapp2.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.exampleapp2.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3537308831"),
                     module_import_path=ImportPath("djangoexample.exampleapp2.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.exampleapp2.models__"],
                 ),
                 all_related_models=[
@@ -261,12 +240,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.only_abstract.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.only_abstract.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_4035906997"),
                     module_import_path=ImportPath("djangoexample.only_abstract.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.only_abstract.models__"],
                 ),
                 all_related_models=[
@@ -278,12 +255,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.relations1.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.relations1.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3327724610"),
                     module_import_path=ImportPath("djangoexample.relations1.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.relations1.models__"],
                 ),
                 all_related_models=[
@@ -315,12 +290,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.relations2.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.relations2.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3328248899"),
                     module_import_path=ImportPath("djangoexample.relations2.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.relations2.models__"],
                 ),
                 all_related_models=[
@@ -335,12 +308,10 @@ class TestVirtualDependencyGenerator:
             ),
             ImportPath("djangoexample.empty_models.models"): CustomVirtualDependency(
                 module=IsModule("djangoexample.empty_models.models"),
-                interface_differentiator="__differentiated__",
                 summary=virtual_dependencies.VirtualDependencySummary(
                     virtual_namespace=ImportPath("__virtual__"),
                     virtual_import_path=ImportPath("__virtual__.mod_3808300370"),
                     module_import_path=ImportPath("djangoexample.empty_models.models"),
-                    installed_apps_hash="__hashed_installed_apps__",
                     significant_info=["__significant__djangoexample.empty_models.models__"],
                 ),
                 all_related_models=[],
@@ -489,12 +460,10 @@ class TestVirtualDependencyInstaller:
             virtual_dependencies={
                 ImportPath("M1.models"): Dep(
                     module=Module(import_path=ImportPath("M1.models"), defined_models={}),
-                    interface_differentiator="__differentiated__",
                     summary=virtual_dependencies.VirtualDependencySummary(
                         virtual_namespace=ImportPath("__virtual__"),
                         virtual_import_path=ImportPath("__virtual__.mod_239797041"),
                         module_import_path=ImportPath("M1"),
-                        installed_apps_hash="__hashed_installed_apps__",
                         significant_info=["__significant__django.contrib.admin.models__"],
                     ),
                     all_related_models=[],
@@ -502,12 +471,10 @@ class TestVirtualDependencyInstaller:
                 ),
                 ImportPath("M2"): Dep(
                     module=Module(import_path=ImportPath("M2"), defined_models={}),
-                    interface_differentiator="__differentiated__",
                     summary=virtual_dependencies.VirtualDependencySummary(
                         virtual_namespace=ImportPath("__virtual__"),
                         virtual_import_path=ImportPath("__virtual__.M2"),
                         module_import_path=ImportPath("M2"),
-                        installed_apps_hash="__hashed_installed_apps__",
                         significant_info=["__significant__django.contrib.admin.models__"],
                     ),
                     all_related_models=[],
