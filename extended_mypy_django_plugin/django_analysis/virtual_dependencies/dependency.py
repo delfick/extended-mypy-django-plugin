@@ -14,7 +14,7 @@ class VirtualDependencySummary:
     virtual_import_path: protocols.ImportPath
     module_import_path: protocols.ImportPath
     installed_apps_hash: str | None
-    significant_info: Sequence[str] | None
+    significant_info: Sequence[str]
 
 
 @dataclasses.dataclass
@@ -35,13 +35,6 @@ class VirtualDependency(Generic[protocols.T_Project]):
         installed_apps_hash: str,
         make_differentiator: Callable[[], str],
     ) -> Self:
-        if not module.installed:
-            return cls.create_not_installed(
-                discovered_project=discovered_project,
-                module=module,
-                virtual_dependency_namer=virtual_dependency_namer,
-            )
-
         concrete_models = {
             import_path: discovered_project.concrete_models[import_path]
             for import_path in module.defined_models
@@ -72,28 +65,6 @@ class VirtualDependency(Generic[protocols.T_Project]):
             ),
             all_related_models=sorted(related_models),
             concrete_models=concrete_models,
-        )
-
-    @classmethod
-    def create_not_installed(
-        cls,
-        *,
-        discovered_project: protocols.Discovered[protocols.T_Project],
-        module: protocols.Module,
-        virtual_dependency_namer: protocols.VirtualDependencyNamer,
-    ) -> Self:
-        return cls(
-            module=module,
-            interface_differentiator=None,
-            summary=VirtualDependencySummary(
-                virtual_namespace=virtual_dependency_namer.namespace,
-                virtual_import_path=virtual_dependency_namer(module.import_path),
-                module_import_path=module.import_path,
-                installed_apps_hash=None,
-                significant_info=None,
-            ),
-            all_related_models=[],
-            concrete_models={},
         )
 
     @classmethod

@@ -92,7 +92,6 @@ class TestModule:
         ]
 
         assert module == Module(
-            installed=True,
             import_path=ImportPath("djangoexample.exampleapp.models"),
             defined_models={model.import_path: model for model in defined_models},
         )

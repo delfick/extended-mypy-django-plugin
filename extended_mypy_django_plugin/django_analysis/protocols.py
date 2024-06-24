@@ -222,12 +222,6 @@ class Module(Protocol, Hashable):
     """
 
     @property
-    def installed(self) -> bool:
-        """
-        Whether this module is part of the installed django apps
-        """
-
-    @property
     def import_path(self) -> ImportPath:
         """
         The full import path for this module
@@ -405,13 +399,11 @@ class VirtualDependencySummary(Protocol):
         """
 
     @property
-    def significant_info(self) -> Sequence[str] | None:
+    def significant_info(self) -> Sequence[str]:
         """
         Strings representing significant information related to the module
 
         The idea is that changes in this list should warrant reloading Django in a fresh environment.
-
-        This should be None if the module is not part of the installed apps.
         """
 
 

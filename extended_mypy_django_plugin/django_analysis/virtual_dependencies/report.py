@@ -292,21 +292,19 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         else:
             return summary
 
-    def _get_summary_hash(self) -> str | None:
+    def _get_summary_hash(self) -> str:
         summary = self.virtual_dependency.summary
-        summary_hash: str | None = None
-        if summary.significant_info:
-            significant = self.hasher(*(info.encode() for info in summary.significant_info))
-            summary_hash = "::".join(
-                [
-                    f"{summary.virtual_import_path}",
-                    str(summary.module_import_path),
-                    f"installed_apps={summary.installed_apps_hash}",
-                    f"significant={significant}",
-                ]
-            )
 
-        return summary_hash
+        significant = self.hasher(*(info.encode() for info in summary.significant_info))
+
+        return "::".join(
+            [
+                f"{summary.virtual_import_path}",
+                str(summary.module_import_path),
+                f"installed_apps={summary.installed_apps_hash}",
+                f"significant={significant}",
+            ]
+        )
 
     def _template_virtual_dependency(
         self,

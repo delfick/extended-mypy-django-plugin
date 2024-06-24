@@ -21,18 +21,16 @@ class Module:
         *,
         model_creator: ModelCreator,
         import_path: protocols.ImportPath,
-        module: types.ModuleType | None,
+        module: types.ModuleType,
         models: Sequence[type[models.Model]],
     ) -> Self:
         return cls(
-            installed=module is not None,
             import_path=import_path,
             defined_models={
                 ImportPath.from_cls(model): model_creator(model=model) for model in models
             },
         )
 
-    installed: bool
     import_path: protocols.ImportPath
     defined_models: protocols.ModelMap
 
