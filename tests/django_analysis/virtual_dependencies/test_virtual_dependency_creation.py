@@ -1,5 +1,4 @@
 import dataclasses
-from collections.abc import Sequence
 
 from extended_mypy_django_plugin.django_analysis import (
     ImportPath,
@@ -211,59 +210,3 @@ class TestVirtualDependency:
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:children>field_type:django.db.models.fields.related.ManyToManyField",
             "module:djangoexample.relations1.models>model:djangoexample.relations1.models.Concrete2>field:children>related_model:djangoexample.relations1.models.Child1",
         ]
-
-    def test_making_uninstalled_virtual_dependency(
-        self, discovered_django_example: protocols.Discovered[Project]
-    ) -> None:
-        @dataclasses.dataclass(frozen=True, kw_only=True)
-        class FakeModel:
-            model_name: str = "MyModel"
-            module_import_path: protocols.ImportPath = dataclasses.field(
-                default_factory=lambda: ImportPath("fake.model")
-            )
-            import_path: protocols.ImportPath = dataclasses.field(
-                default_factory=lambda: ImportPath("fake.model.MyModel")
-            )
-            is_abstract: bool = False
-            default_custom_queryset: protocols.ImportPath | None = None
-            all_fields: protocols.FieldsMap = dataclasses.field(default_factory=dict)
-            models_in_mro: Sequence[protocols.ImportPath] = dataclasses.field(default_factory=list)
-
-        @dataclasses.dataclass(frozen=True, kw_only=True)
-        class FakeModule:
-            installed: bool = False
-            import_path: protocols.ImportPath = dataclasses.field(
-                default_factory=lambda: ImportPath("fake.model")
-            )
-            defined_models: protocols.ModelMap = dataclasses.field(
-                default_factory=lambda: {fake_model.import_path: fake_model}
-            )
-            models_hash: str = ""
-
-        fake_model: protocols.Model = FakeModel()
-        fake_module: protocols.Module = FakeModule()
-
-        def make_differentiator() -> str:
-            raise AssertionError("shouldn't be used")
-
-        virtual_dependency = virtual_dependencies.VirtualDependency.create(
-            discovered_project=discovered_django_example,
-            module=fake_module,
-            virtual_dependency_namer=Namer(),
-            installed_apps_hash="__hashed_installed_apps__",
-            make_differentiator=make_differentiator,
-        )
-
-        assert virtual_dependency == virtual_dependencies.VirtualDependency(
-            module=fake_module,
-            interface_differentiator=None,
-            summary=virtual_dependencies.VirtualDependencySummary(
-                virtual_namespace=ImportPath("__virtual__"),
-                virtual_import_path=ImportPath("__virtual__.mod_fake_model"),
-                module_import_path=fake_module.import_path,
-                installed_apps_hash=None,
-                significant_info=None,
-            ),
-            all_related_models=[],
-            concrete_models={},
-        )

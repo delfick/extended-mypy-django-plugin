@@ -488,9 +488,7 @@ class TestVirtualDependencyInstaller:
             virtual_dependency_namer=virtual_dependency_namer,
             virtual_dependencies={
                 ImportPath("M1.models"): Dep(
-                    module=Module(
-                        installed=True, import_path=ImportPath("M1.models"), defined_models={}
-                    ),
+                    module=Module(import_path=ImportPath("M1.models"), defined_models={}),
                     interface_differentiator="__differentiated__",
                     summary=virtual_dependencies.VirtualDependencySummary(
                         virtual_namespace=ImportPath("__virtual__"),
@@ -503,7 +501,7 @@ class TestVirtualDependencyInstaller:
                     concrete_models={},
                 ),
                 ImportPath("M2"): Dep(
-                    module=Module(installed=True, import_path=ImportPath("M2"), defined_models={}),
+                    module=Module(import_path=ImportPath("M2"), defined_models={}),
                     interface_differentiator="__differentiated__",
                     summary=virtual_dependencies.VirtualDependencySummary(
                         virtual_namespace=ImportPath("__virtual__"),
