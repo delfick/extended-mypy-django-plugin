@@ -208,7 +208,7 @@ class Report:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class WrittenVirtualDependency(Generic[protocols.T_Report]):
+class RenderedVirtualDependency(Generic[protocols.T_Report]):
     content: str
     summary_hash: str | None
     report: protocols.T_Report
@@ -236,7 +236,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             + "\n"
         )
 
-    def write(self) -> WrittenVirtualDependency[protocols.T_Report]:
+    def render(self) -> RenderedVirtualDependency[protocols.T_Report]:
         report = self.report_maker()
         summary_hash = self._get_summary_hash()
 
@@ -250,7 +250,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             report=report, virtual_import_path=virtual_import_path, summary_hash=summary_hash
         )
 
-        return WrittenVirtualDependency(
+        return RenderedVirtualDependency(
             content=content,
             summary_hash=summary_hash,
             report=report,
@@ -492,7 +492,7 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
 
     def deploy_scribes(
         self, virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
-    ) -> Iterator[protocols.WrittenVirtualDependency[protocols.T_Report]]:
+    ) -> Iterator[protocols.RenderedVirtualDependency[protocols.T_Report]]:
         for virtual_dependency in virtual_dependencies.values():
             yield self.report_scribe(
                 virtual_dependency=virtual_dependency,
@@ -505,7 +505,7 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
         destination: pathlib.Path,
         virtual_namespace: protocols.ImportPath,
         project_version: str,
-        written_dependencies: Sequence[protocols.WrittenVirtualDependency[protocols.T_Report]],
+        written_dependencies: Sequence[protocols.RenderedVirtualDependency[protocols.T_Report]],
     ) -> str:
         virtual_dep_hash = self.hasher(
             *(
@@ -527,7 +527,7 @@ def make_report_factory(
         *,
         virtual_dependency: protocols.T_VirtualDependency,
         all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency],
-    ) -> protocols.WrittenVirtualDependency[Report]:
+    ) -> protocols.RenderedVirtualDependency[Report]:
         return VirtualDependencyScribe(
             hasher=hasher,
             report_maker=Report,
@@ -535,7 +535,7 @@ def make_report_factory(
             virtual_dependency=virtual_dependency,
             all_virtual_dependencies=all_virtual_dependencies,
             make_differentiator=make_differentiator,
-        ).write()
+        ).render()
 
     return ReportFactory(
         hasher=hasher,
@@ -555,15 +555,15 @@ if TYPE_CHECKING:
     C_ReportFactory = ReportFactory[dependency.C_VirtualDependency, C_Report]
     C_ReportCombiner = ReportCombiner[C_Report]
     C_ReportInstaller = ReportInstaller
-    C_WrittenVirtualDependency = WrittenVirtualDependency[C_Report]
+    C_RenderedVirtualDependency = RenderedVirtualDependency[C_Report]
 
     _R: protocols.P_Report = cast(Report, None)
     _RC: protocols.P_CombinedReport = cast(CombinedReport[protocols.P_Report], None)
     _RF: protocols.P_ReportFactory = cast(
         ReportFactory[protocols.P_VirtualDependency, protocols.P_Report], None
     )
-    _WVD: protocols.P_WrittenVirtualDependency = cast(
-        WrittenVirtualDependency[protocols.P_Report], None
+    _WVD: protocols.P_RenderedVirtualDependency = cast(
+        RenderedVirtualDependency[protocols.P_Report], None
     )
     _RI: protocols.P_ReportInstaller = cast(ReportInstaller, None)
     _MEVDC: protocols.MakeEmptyVirtualDepContent = (
@@ -576,4 +576,4 @@ if TYPE_CHECKING:
         C_ReportFactory, None
     )
     _CRM: protocols.ReportMaker[C_Report] = C_Report
-    _CWVD: protocols.WrittenVirtualDependency[C_Report] = cast(C_WrittenVirtualDependency, None)
+    _CWVD: protocols.RenderedVirtualDependency[C_Report] = cast(C_RenderedVirtualDependency, None)

@@ -40,16 +40,16 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
         report_factory: protocols.ReportFactory[protocols.T_VirtualDependency, protocols.T_Report],
     ) -> protocols.CombinedReport[protocols.T_Report]:
         reports: list[protocols.T_Report] = []
-        written_dependencies: list[protocols.WrittenVirtualDependency[protocols.T_Report]] = []
-        for written in report_factory.deploy_scribes(self.virtual_dependencies):
+        written_dependencies: list[protocols.RenderedVirtualDependency[protocols.T_Report]] = []
+        for rendered in report_factory.deploy_scribes(self.virtual_dependencies):
             report_factory.report_installer.write_report(
-                virtual_import_path=written.virtual_import_path,
-                summary_hash=written.summary_hash,
-                content=written.content,
+                virtual_import_path=rendered.virtual_import_path,
+                summary_hash=rendered.summary_hash,
+                content=rendered.content,
                 scratch_root=scratch_root,
             )
-            written_dependencies.append(written)
-            reports.append(written.report)
+            written_dependencies.append(rendered)
+            reports.append(rendered.report)
 
         report_factory.report_installer.install_reports(
             scratch_root=scratch_root,

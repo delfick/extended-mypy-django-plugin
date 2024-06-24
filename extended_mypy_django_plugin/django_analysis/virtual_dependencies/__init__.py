@@ -4,13 +4,13 @@ from .handler import VirtualDependencyHandler
 from .namer import VirtualDependencyNamer
 from .report import (
     CombinedReport,
+    RenderedVirtualDependency,
     Report,
     ReportCombiner,
     ReportFactory,
     ReportInstaller,
     ReportSummaryGetter,
     VirtualDependencyScribe,
-    WrittenVirtualDependency,
     make_report_factory,
 )
 
@@ -29,5 +29,5 @@ __all__ = [
     "VirtualDependencySummary",
     "VirtualDependencyGenerator",
     "VirtualDependencyInstaller",
-    "WrittenVirtualDependency",
+    "RenderedVirtualDependency",
 ]

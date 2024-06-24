@@ -112,7 +112,7 @@ class TestVirtualDependencyScribe:
                 *,
                 hasher: protocols.Hasher,
                 virtual_dependency: virtual_dependencies.VirtualDependency[Project],
-            ) -> virtual_dependencies.WrittenVirtualDependency[virtual_dependencies.Report]:
+            ) -> virtual_dependencies.RenderedVirtualDependency[virtual_dependencies.Report]:
                 def make_differentiator() -> str:
                     self.count += 1
                     return f"__differentiated__{self.count}"
@@ -124,7 +124,7 @@ class TestVirtualDependencyScribe:
                     all_virtual_dependencies=self.all_virtual_dependencies,
                     installed_apps_hash="__installed_apps_hash__",
                     make_differentiator=make_differentiator,
-                ).write()
+                ).render()
 
             def make_report(
                 self,
@@ -212,7 +212,7 @@ class TestVirtualDependencyScribe:
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
-            assert written == virtual_dependencies.WrittenVirtualDependency(
+            assert written == virtual_dependencies.RenderedVirtualDependency(
                 content=content + "\n",
                 summary_hash=summary_hash,
                 report=scenario.make_report(
@@ -324,7 +324,7 @@ class TestVirtualDependencyScribe:
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
-            assert written == virtual_dependencies.WrittenVirtualDependency(
+            assert written == virtual_dependencies.RenderedVirtualDependency(
                 content=content + "\n",
                 summary_hash=summary_hash,
                 report=scenario.make_report(
@@ -384,7 +384,7 @@ class TestVirtualDependencyScribe:
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
-            assert written == virtual_dependencies.WrittenVirtualDependency(
+            assert written == virtual_dependencies.RenderedVirtualDependency(
                 content=content + "\n",
                 summary_hash=summary_hash,
                 report=virtual_dependencies.Report(

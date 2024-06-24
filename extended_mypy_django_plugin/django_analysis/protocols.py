@@ -493,7 +493,7 @@ class ReportMaker(Protocol[T_CO_Report]):
     def __call__(self) -> T_CO_Report: ...
 
 
-class WrittenVirtualDependency(Protocol[T_CO_Report]):
+class RenderedVirtualDependency(Protocol[T_CO_Report]):
     @property
     def content(self) -> str:
         """
@@ -523,7 +523,7 @@ class WrittenVirtualDependency(Protocol[T_CO_Report]):
 
 class VirtualDependencyScribe(Protocol[T_COT_VirtualDependency, T_CO_Report]):
     """
-    Used to generate the on disk representation of a virtual dependency along with the information
+    Used to render the on disk representation of a virtual dependency along with the information
     contained in that dependency
     """
 
@@ -532,7 +532,7 @@ class VirtualDependencyScribe(Protocol[T_COT_VirtualDependency, T_CO_Report]):
         *,
         virtual_dependency: T_COT_VirtualDependency,
         all_virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency],
-    ) -> WrittenVirtualDependency[T_CO_Report]: ...
+    ) -> RenderedVirtualDependency[T_CO_Report]: ...
 
 
 class MakeEmptyVirtualDepContent(Protocol):
@@ -637,7 +637,7 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
 
     def deploy_scribes(
         self, virtual_dependencies: VirtualDependencyMap[T_COT_VirtualDependency]
-    ) -> Iterator[WrittenVirtualDependency[T_Report]]: ...
+    ) -> Iterator[RenderedVirtualDependency[T_Report]]: ...
 
     def determine_version(
         self,
@@ -645,7 +645,7 @@ class ReportFactory(Protocol[T_COT_VirtualDependency, T_Report]):
         destination: pathlib.Path,
         virtual_namespace: ImportPath,
         project_version: str,
-        written_dependencies: Sequence[WrittenVirtualDependency[T_Report]],
+        written_dependencies: Sequence[RenderedVirtualDependency[T_Report]],
     ) -> str:
         """
         Determine a version for the project, such that it only changes if the mypy daemon needs to be restarted
@@ -699,5 +699,5 @@ if TYPE_CHECKING:
     P_VirtualDependencySummary = VirtualDependencySummary
     P_VirtualDependencyInstaller = VirtualDependencyInstaller[P_VirtualDependency, P_Report]
     P_VirtualDependencyScribe = VirtualDependencyScribe[P_VirtualDependency, P_Report]
-    P_WrittenVirtualDependency = WrittenVirtualDependency[P_Report]
+    P_RenderedVirtualDependency = RenderedVirtualDependency[P_Report]
     P_VirtualDependencyHandler = VirtualDependencyHandler[P_Report]
