@@ -19,6 +19,7 @@ class Field:
             model_import_path=model_import_path,
             field_type=ImportPath.from_cls(field.__class__),
             related_model=(
+                # We only care about related models that are other models that exist
                 ImportPath.from_cls(related)
                 if (
                     isinstance((related := field.related_model), type)
