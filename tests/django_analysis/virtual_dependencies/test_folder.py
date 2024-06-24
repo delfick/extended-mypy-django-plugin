@@ -413,14 +413,14 @@ class TestVirtualDependencyInstaller:
 
             def deploy_scribes(
                 self, all_virtual_dependencies: protocols.VirtualDependencyMap[Dep]
-            ) -> Iterator[protocols.WrittenVirtualDependency[Report]]:
+            ) -> Iterator[protocols.RenderedVirtualDependency[Report]]:
                 for virtual_dependency in all_virtual_dependencies.values():
                     report = self.report_maker()
                     report.register_module(
                         module_import_path=virtual_dependency.summary.module_import_path,
                         virtual_import_path=virtual_dependency.summary.virtual_import_path,
                     )
-                    yield virtual_dependencies.WrittenVirtualDependency(
+                    yield virtual_dependencies.RenderedVirtualDependency(
                         content=f"CONTENT__{virtual_dependency.summary.module_import_path}",
                         summary_hash=f"SUMMARY__{virtual_dependency.summary.module_import_path}",
                         report=report,
@@ -439,7 +439,7 @@ class TestVirtualDependencyInstaller:
                 virtual_namespace: protocols.ImportPath,
                 project_version: str,
                 written_dependencies: Sequence[
-                    protocols.WrittenVirtualDependency[protocols.T_Report]
+                    protocols.RenderedVirtualDependency[protocols.T_Report]
                 ],
             ) -> str:
                 assert project_version == "__project_version__"
