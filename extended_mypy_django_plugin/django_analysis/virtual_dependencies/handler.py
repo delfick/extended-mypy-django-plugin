@@ -17,6 +17,19 @@ from .namer import VirtualDependencyNamer
 class VirtualDependencyHandler(
     Generic[protocols.T_Project, protocols.T_VirtualDependency, protocols.T_Report], abc.ABC
 ):
+    """
+    This brings together the project, virtual dependencies and the report such that given a project
+    we can generate the virtual dependencies and a relevant report.
+
+    These three things are all customizable and this class is an orchestration mechanism.
+
+    Usage is via the "create" and "create_report" classmethods, where "create_report" is a shortcut
+    to saying ``Handler.create().make_report()``.
+
+    And "create" is a shortcut to creating an instance of the Handler with the hasher and project
+    found using the "make_hasher" and "make_project" classmethods on this class.
+    """
+
     hasher: protocols.Hasher
     discovered: protocols.Discovered[protocols.T_Project]
 
@@ -48,6 +61,15 @@ class VirtualDependencyHandler(
     def make_report(
         self, virtual_deps_destination: pathlib.Path
     ) -> protocols.CombinedReport[protocols.T_Report]:
+        """
+        The main orchestration to create the virtual dependencies and the final
+        combined report.
+
+        There are a number of customization points that this class has hooks for so that
+        this method remains generic to how virtual dependencies are represented on disk and
+        in the report, as well as what information goes into them, and how and where they
+        are written to disk.
+        """
         installed_apps_hash = self.hash_installed_apps()
         settings_types_hash = self.hash_settings_types()
         virtual_namespace = self.get_virtual_namespace()

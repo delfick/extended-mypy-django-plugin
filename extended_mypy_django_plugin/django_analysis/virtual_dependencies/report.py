@@ -93,6 +93,13 @@ class Report:
             f"{virtual_import_path}.{concrete_queryset_name}"
         )
 
+        # We only register related import paths from our implicit concrete relationship
+        # that isn't through field relationships
+        # So that means for example, an abstract class will register paths to their concrete
+        # children, but we don't register the abstract class as related to the concrete children
+        # Because the concrete children is already explicitly depending on the abstract class.
+        # We don't record field relationships, because the mypy plugin only needs to know about
+        # the inheritance chain and the more dependencies we add, the slower mypy becomes
         for concrete in concrete_models:
             ns, _ = ImportPath.split(concrete.import_path)
             if ns != module_import_path:
@@ -228,6 +235,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     def make_empty_virtual_dependency_content(
         cls, *, module_import_path: protocols.ImportPath
     ) -> str:
+        """
+        An empty virtual dependency is literally a placeholder and doesn't contain information
+        until the module it represents is an installed module.
+
+        So we only need to contain a "mod" and "summary" variable that our "get_report_summary" method can find
+        """
         return (
             textwrap.dedent(f"""
         mod = "{module_import_path}"
@@ -270,6 +283,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         if location.suffix != ".py":
             return None
 
+        # Look for 'mod = "{mod}"' and 'summary = "{summary}"' lines
         mod: str | None = None
         summary: str | None = None
         for line in location.read_text().splitlines():
@@ -285,11 +299,13 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 break
 
         if mod is None or summary is None:
+            # either no mod or not summary, so dependency is corrupt or irrelevant
             return None
 
         try:
             importlib.util.find_spec(mod)
         except ModuleNotFoundError:
+            # If we can't import the module this represents, we assume it doesn't exist
             return None
         else:
             return summary
@@ -317,6 +333,12 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     ) -> str:
         module_import_path = self.virtual_dependency.summary.module_import_path
         summary = "None" if summary_hash is None else f'"{summary_hash}"'
+
+        # mypy only considers a dependency as changed if it's public interface changes
+        # Which is where either the static name or types change
+        # So we include a function that has a different name everytime we write to the file
+        # We rely on the contents of "summary" to not overwrite the same content with but
+        # with a different interface when installing the dependencies
         content = textwrap.dedent(f"""
         def interface__{self.make_differentiator()}() -> None:
             return None
@@ -365,6 +387,10 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             {".".join(imp.split(".")[:-1]) for imp in added_imports}
         )
 
+        # We add type aliases we use to resolve our concrete annotations to the dependency
+        # This means that the mypy plugin relies completely on Django introspection to know
+        # how to resolve the annotations, and we avoid problems around mypy not knowing about
+        # relevant files when it analyses each file
         extra_lines = [
             *(f"import {import_path}" for import_path in sorted_added_imported_modules),
             *(f"{line}" for line in sorted(annotations)),
@@ -450,6 +476,10 @@ class ReportInstaller:
         virtual_destination.mkdir(parents=True, exist_ok=True)
 
         seen: set[pathlib.Path] = set()
+
+        # For all the dependencies we have written to the filesystem, determine
+        # if they represent different information to what is already on the destination
+        # and move across those that are different
         for location, summary in self._written.items():
             relative_path = location.relative_to(scratch_root)
             destination_path = destination / relative_path
@@ -463,6 +493,9 @@ class ReportInstaller:
                 destination_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(location, destination_path)
 
+        # Then we go ahead and do some garbage collection on the destination
+        # So that the destination is only ever dependencies for modules that exist
+        # and we don't have an infinitely growing folder of virtual dependencies
         for root, dirs, files in os.walk(virtual_destination):
             for name in list(dirs):
                 location = pathlib.Path(root) / name
@@ -523,6 +556,10 @@ def make_report_factory(
     installed_apps_hash: str,
     make_differentiator: Callable[[], str],
 ) -> protocols.ReportFactory[protocols.T_VirtualDependency, Report]:
+    """
+    Make a ReportFactory that's specific to the our implementation of protocols.Report found here
+    """
+
     def report_scribe(
         *,
         virtual_dependency: protocols.T_VirtualDependency,
