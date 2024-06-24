@@ -1,4 +1,21 @@
 #!/usr/bin/env python
+"""
+This is used by the Mypy plugin to determine if the Django project has changed in a
+way that would require the Mypy Daemon to restart itself.
+
+The django-stubs plugin this relies on loads Django to perform introspection, which means
+when Django ORM models or Django settings change, that introspection may no longer be correct.
+
+The nature of how Django relies on globals and caches means it's very difficult to reliably
+reload Django in a process where Django has already been loaded, and so this logic must be
+done in a separate process.
+
+The script relies on replicating Mypy plugin discovery logic to find a plugin that is based
+off `extended_mypy_django_plugin.plugin.PluginProvider` to find the `VirtualDependencyHandler`
+object that will determine a "version" for the project. This number is written to a file that
+is specified on the command line to communicate back to the existing Mypy daemon process whether
+to consider Django as changed or not.
+"""
 
 import argparse
 import importlib
@@ -24,9 +41,12 @@ def main(argv: list[str] | None = None) -> None:
     parser = make_parser()
     args = parser.parse_args(argv)
 
+    # We need to know where the scratch path is so that we can find the special
+    # file that tells us to pretend Django hasn't changed
     extra_options = ExtraOptions.from_config(args.config_file)
 
     if (extra_options.scratch_path / "__assume_django_state_unchanged__").exists():
+        # An exit code of 2 tells the existing process to say the version hasn't changed
         sys.exit(2)
 
     plugin_provider: PluginProvider[protocols.Report] | None = None
@@ -45,6 +65,8 @@ def main(argv: list[str] | None = None) -> None:
         virtual_dependency_handler=plugin_provider.virtual_dependency_handler,
     )
 
+    # Communicate back the version we have. This is done explicitly rather than
+    # by relying on filtering stdout or stderr
     args.version_file.write_text(report.version)
 
 
