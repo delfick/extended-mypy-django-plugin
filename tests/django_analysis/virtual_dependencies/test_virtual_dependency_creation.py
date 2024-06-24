@@ -104,20 +104,16 @@ class TestVirtualDependency:
             discovered_project=discovered_django_example,
             module=module,
             virtual_dependency_namer=Namer(),
-            installed_apps_hash="__hashed_installed_apps__",
-            make_differentiator=lambda: "__DIFFERENTIATOR__",
         )
 
         all_models = discovered_django_example.all_models
 
         assert virtual_dependency == virtual_dependencies.VirtualDependency(
             module=module,
-            interface_differentiator="__DIFFERENTIATOR__",
             summary=virtual_dependencies.VirtualDependencySummary(
                 virtual_namespace=ImportPath("__virtual__"),
                 virtual_import_path=ImportPath("__virtual__.mod_djangoexample_exampleapp_models"),
                 module_import_path=module.import_path,
-                installed_apps_hash="__hashed_installed_apps__",
                 significant_info=significant_info,
             ),
             all_related_models=sorted(related_models),
@@ -162,8 +158,6 @@ class TestVirtualDependency:
             discovered_project=discovered_django_example,
             module=module,
             virtual_dependency_namer=Namer(),
-            installed_apps_hash="__hashed_installed_apps__",
-            make_differentiator=lambda: "__DIFFERENTIATOR__",
         )
 
         assert virtual_dependency.summary.significant_info == [

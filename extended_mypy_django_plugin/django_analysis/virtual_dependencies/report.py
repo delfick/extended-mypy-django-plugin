@@ -10,7 +10,7 @@ import pathlib
 import re
 import shutil
 import textwrap
-from collections.abc import Iterator, Mapping, MutableMapping, MutableSet, Sequence, Set
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, MutableSet, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Literal, Protocol, TypeVar, cast
 
 from .. import protocols
@@ -221,6 +221,8 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     report_maker: protocols.ReportMaker[protocols.T_Report]
     virtual_dependency: protocols.T_VirtualDependency
     all_virtual_dependencies: protocols.VirtualDependencyMap[protocols.T_VirtualDependency]
+    make_differentiator: Callable[[], str]
+    installed_apps_hash: str
 
     @classmethod
     def make_empty_virtual_dependency_content(
@@ -301,7 +303,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
             [
                 f"{summary.virtual_import_path}",
                 str(summary.module_import_path),
-                f"installed_apps={summary.installed_apps_hash}",
+                f"installed_apps={self.installed_apps_hash}",
                 f"significant={significant}",
             ]
         )
@@ -313,11 +315,10 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         virtual_import_path: protocols.ImportPath,
         summary_hash: str | None,
     ) -> str:
-        differentiator = self.virtual_dependency.interface_differentiator
         module_import_path = self.virtual_dependency.summary.module_import_path
         summary = "None" if summary_hash is None else f'"{summary_hash}"'
         content = textwrap.dedent(f"""
-        def interface__{'empty__' if differentiator is None else differentiator}() -> None:
+        def interface__{self.make_differentiator()}() -> None:
             return None
 
         mod = "{module_import_path}"
@@ -516,7 +517,11 @@ class ReportFactory(Generic[protocols.T_VirtualDependency, protocols.T_Report]):
 
 
 def make_report_factory(
-    *, hasher: protocols.Hasher, report_maker: protocols.ReportMaker[Report]
+    *,
+    hasher: protocols.Hasher,
+    report_maker: protocols.ReportMaker[Report],
+    installed_apps_hash: str,
+    make_differentiator: Callable[[], str],
 ) -> protocols.ReportFactory[protocols.T_VirtualDependency, Report]:
     def report_scribe(
         *,
@@ -526,8 +531,10 @@ def make_report_factory(
         return VirtualDependencyScribe(
             hasher=hasher,
             report_maker=Report,
+            installed_apps_hash=installed_apps_hash,
             virtual_dependency=virtual_dependency,
             all_virtual_dependencies=all_virtual_dependencies,
+            make_differentiator=make_differentiator,
         ).write()
 
     return ReportFactory(

@@ -96,17 +96,11 @@ class TestVirtualDependencyScribe:
             def __init__(self, discovered_project: protocols.Discovered[Project]) -> None:
                 self.count: int = 0
 
-                def make_differentiator() -> str:
-                    self.count += 1
-                    return f"__differentiated__{self.count}"
-
                 virtual_dependency_maker = functools.partial(
                     virtual_dependencies.VirtualDependency[Project].create,
                     virtual_dependency_namer=virtual_dependencies.VirtualDependencyNamer(
                         namespace=ImportPath("__virtual__"), hasher=adler32_hash
                     ),
-                    installed_apps_hash="__installed_apps_hash__",
-                    make_differentiator=make_differentiator,
                 )
 
                 self.all_virtual_dependencies = virtual_dependencies.VirtualDependencyGenerator(
@@ -119,11 +113,17 @@ class TestVirtualDependencyScribe:
                 hasher: protocols.Hasher,
                 virtual_dependency: virtual_dependencies.VirtualDependency[Project],
             ) -> virtual_dependencies.WrittenVirtualDependency[virtual_dependencies.Report]:
+                def make_differentiator() -> str:
+                    self.count += 1
+                    return f"__differentiated__{self.count}"
+
                 return virtual_dependencies.VirtualDependencyScribe(
                     hasher=hasher,
                     report_maker=virtual_dependencies.Report,
                     virtual_dependency=virtual_dependency,
                     all_virtual_dependencies=self.all_virtual_dependencies,
+                    installed_apps_hash="__installed_apps_hash__",
+                    make_differentiator=make_differentiator,
                 ).write()
 
             def make_report(
@@ -190,7 +190,7 @@ class TestVirtualDependencyScribe:
             ]
 
             content = textwrap.dedent("""
-            def interface____differentiated__6() -> None:
+            def interface____differentiated__1() -> None:
                 return None
 
             mod = "djangoexample.exampleapp2.models"
@@ -296,7 +296,7 @@ class TestVirtualDependencyScribe:
             ]
 
             content = textwrap.dedent("""
-            def interface____differentiated__7() -> None:
+            def interface____differentiated__1() -> None:
                 return None
 
             mod = "djangoexample.relations1.models"
@@ -369,7 +369,7 @@ class TestVirtualDependencyScribe:
             ]
 
             content = textwrap.dedent("""
-            def interface____differentiated__10() -> None:
+            def interface____differentiated__1() -> None:
                 return None
 
             mod = "djangoexample.empty_models.models"

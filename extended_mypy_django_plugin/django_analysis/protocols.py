@@ -393,12 +393,6 @@ class VirtualDependencySummary(Protocol):
         """
 
     @property
-    def installed_apps_hash(self) -> str | None:
-        """
-        The hash of the installed apps if this module is part of the installed apps
-        """
-
-    @property
     def significant_info(self) -> Sequence[str]:
         """
         Strings representing significant information related to the module
@@ -416,14 +410,6 @@ class VirtualDependency(Protocol):
     def module(self) -> Module:
         """
         The module represented by this virtual dependency
-        """
-
-    @property
-    def interface_differentiator(self) -> str | None:
-        """
-        A string used to change the public interface of this virtual dependency
-
-        Should be None when the module isn't installed
         """
 
     @property

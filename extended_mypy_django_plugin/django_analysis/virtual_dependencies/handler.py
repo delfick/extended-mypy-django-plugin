@@ -3,7 +3,6 @@ import dataclasses
 import pathlib
 import tempfile
 import time
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Generic
 
 from typing_extensions import Self
@@ -56,14 +55,12 @@ class VirtualDependencyHandler(
             virtual_namespace=virtual_namespace
         )
         virtual_dependency_maker = self.virtual_dependency_maker(
-            installed_apps_hash=installed_apps_hash,
-            virtual_dependency_namer=virtual_dependency_namer,
-            make_differentiator=self.interface_differentiator,
+            virtual_dependency_namer=virtual_dependency_namer
         )
         all_virtual_dependencies = self.get_virtual_dependencies(
             virtual_dependency_maker=virtual_dependency_maker
         )
-        report_factory = self.make_report_factory()
+        report_factory = self.make_report_factory(installed_apps_hash=installed_apps_hash)
         project_version = (
             f"installed_apps:{installed_apps_hash}|settings_types:{settings_types_hash}"
         )
@@ -89,16 +86,12 @@ class VirtualDependencyHandler(
 
     @abc.abstractmethod
     def make_report_factory(
-        self,
+        self, *, installed_apps_hash: str
     ) -> protocols.ReportFactory[protocols.T_VirtualDependency, protocols.T_Report]: ...
 
     @abc.abstractmethod
     def virtual_dependency_maker(
-        self,
-        *,
-        installed_apps_hash: str,
-        virtual_dependency_namer: protocols.VirtualDependencyNamer,
-        make_differentiator: Callable[[], str],
+        self, *, virtual_dependency_namer: protocols.VirtualDependencyNamer
     ) -> protocols.VirtualDependencyMaker[protocols.T_Project, protocols.T_VirtualDependency]: ...
 
     def make_virtual_dependency_installer(

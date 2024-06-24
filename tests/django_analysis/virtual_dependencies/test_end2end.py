@@ -1,7 +1,6 @@
 import functools
 import os
 import pathlib
-from collections.abc import Callable
 
 import pytest
 
@@ -70,20 +69,19 @@ class TestEnd2End:
                 return "__installed_apps_hash__"
 
             def make_report_factory(
-                self,
+                self, *, installed_apps_hash: str
             ) -> protocols.ReportFactory[
                 virtual_dependencies.VirtualDependency[Project], virtual_dependencies.Report
             ]:
                 return virtual_dependencies.make_report_factory(
-                    hasher=self.hasher, report_maker=virtual_dependencies.Report
+                    hasher=self.hasher,
+                    report_maker=virtual_dependencies.Report,
+                    installed_apps_hash=installed_apps_hash,
+                    make_differentiator=self.interface_differentiator,
                 )
 
             def virtual_dependency_maker(
-                self,
-                *,
-                installed_apps_hash: str,
-                virtual_dependency_namer: protocols.VirtualDependencyNamer,
-                make_differentiator: Callable[[], str],
+                self, *, virtual_dependency_namer: protocols.VirtualDependencyNamer
             ) -> protocols.VirtualDependencyMaker[
                 Project, virtual_dependencies.VirtualDependency[Project]
             ]:
@@ -91,8 +89,6 @@ class TestEnd2End:
                     virtual_dependencies.VirtualDependency.create,
                     discovered_project=self.discovered,
                     virtual_dependency_namer=virtual_dependency_namer,
-                    installed_apps_hash=installed_apps_hash,
-                    make_differentiator=make_differentiator,
                 )
 
         destination = tmp_path_factory.mktemp("destination")
