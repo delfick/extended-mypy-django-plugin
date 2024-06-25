@@ -136,7 +136,7 @@ is to instead say:
     from myapp.code import process_row
 
 
-    def create_and_process(model_cls: Concrete[MyConcreteModel1], **kwargs) -> None:
+    def create_and_process(model_cls: Concrete[MyAbstractModel1], **kwargs) -> None:
         # Using **kwargs is bad, but it's irrelevant to what is being demonstrated
         row = model_cls.objects.create(**kwargs)
         process_row(row)
@@ -144,7 +144,7 @@ is to instead say:
 And let the mypy plugin determine which models will make up that Union type.
 
 Custom managers and querysets
-=============================
+-----------------------------
 
 In Django, a collection of rows from the database is represented using a
 ``QuerySet``. For example:
