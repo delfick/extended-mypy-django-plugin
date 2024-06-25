@@ -206,6 +206,10 @@ class BasicTypeInfo:
         formal_by_name = {arg.name: arg.typ for arg in self.func.formal_arguments()}
 
         for arg_name, arg_type in zip(ctx.callee_arg_names, ctx.arg_types):
+            if arg_name not in formal_by_name:
+                # arg isn't typed so can't be a type var!
+                continue
+
             underlying = get_proper_type(formal_by_name[arg_name])
             if isinstance(underlying, TypeType):
                 underlying = underlying.item
