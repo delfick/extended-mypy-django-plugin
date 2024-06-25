@@ -88,15 +88,10 @@ class Finder:
         return result, item
 
     def determine_if_concrete(self, item: ProperType) -> protocols.KnownAnnotations | None:
-        concrete_annotation: protocols.KnownAnnotations | None = None
-
         if isinstance(item, Instance):
-            try:
-                concrete_annotation = protocols.KnownAnnotations(item.type.fullname)
-            except ValueError:
-                pass
-
-        return concrete_annotation
+            return protocols.KnownAnnotations.resolve(item.type.fullname)
+        else:
+            return None
 
 
 @dataclasses.dataclass
@@ -548,12 +543,7 @@ class _SharedConcreteAnnotationLogic(abc.ABC):
             ret_type = get_proper_type(ret_type.args[0])
 
         if isinstance(ret_type, Instance):
-            try:
-                protocols.KnownAnnotations(ret_type.type.fullname)
-            except ValueError:
-                return False
-            else:
-                return True
+            return protocols.KnownAnnotations.resolve(ret_type.type.fullname) is not None
         else:
             return False
 

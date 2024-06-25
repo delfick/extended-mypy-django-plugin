@@ -1,6 +1,6 @@
 import enum
 from collections.abc import Iterator, Mapping, Sequence, Set
-from typing import TYPE_CHECKING, Protocol, TypeVar
+from typing import TYPE_CHECKING, Optional, Protocol, TypeVar
 
 from mypy import errorcodes
 from mypy.nodes import SymbolTableNode, TypeInfo, TypeVarExpr
@@ -32,6 +32,20 @@ class KnownClasses(enum.Enum):
 class KnownAnnotations(enum.Enum):
     CONCRETE = "extended_mypy_django_plugin.annotations.Concrete"
     DEFAULT_QUERYSET = "extended_mypy_django_plugin.annotations.DefaultQuerySet"
+
+    @classmethod
+    def resolve(cls, fullname: str) -> Optional["KnownAnnotations"]:
+        """
+        This function is an alternative to a try..catch(ValueError) that is quicker
+        """
+        if fullname == cls.CONCRETE.value:
+            return cls.CONCRETE
+
+        elif fullname == cls.DEFAULT_QUERYSET.value:
+            return cls.DEFAULT_QUERYSET
+
+        else:
+            return None
 
 
 class Report(Protocol):
