@@ -361,6 +361,16 @@ class TestConcreteAnnotations:
                 """
                 from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
                 from extended_mypy_django_plugin import Concrete
+                from example import models
+
+                # Test Concrete.type_var can be made with "models.Leader" (as in with a MemberExpr)
+                T_Leader = Concrete.type_var("T_Leader", models.Leader)
+
+                def get_leader(cls: type[T_Leader]) -> T_Leader:
+                    return cls.objects.create()
+
+                made = get_leader(Follower1)
+                # ^ REVEAL ^ example.models.Follower1
 
                 all_concrete: Concrete[Leader]
                 # ^ REVEAL[all-concrete] ^ Union[example.models.Follower1, example.models.Follower2]

@@ -3,6 +3,12 @@
 Changelog
 ---------
 
+.. _release-0.6.1:
+
+0.6.1 - TBD
+    * Fix bug where ``Concrete.type_var("T_Name", model.Name)`` wouldn't work because the plugin
+      couldn't resolve ``model.Name``
+
 .. _release-0.6.0:
 
 0.6.0 - 20 June 2024
