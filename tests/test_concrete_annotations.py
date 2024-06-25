@@ -150,6 +150,7 @@ class TestConcreteAnnotations:
                 from __future__ import annotations
 
                 from django.db import models
+                from typing import Any
                 from typing_extensions import Self
                 from extended_mypy_django_plugin import Concrete
 
@@ -161,6 +162,12 @@ class TestConcreteAnnotations:
                         cls = Concrete.cast_as_concrete(cls)
                         # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
                         return cls.objects.create()
+
+                    @classmethod
+                    def new_with_kwargs(cls, **kwargs: Any) -> Concrete[Self]:
+                        cls = Concrete.cast_as_concrete(cls)
+                        # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        return cls.objects.create(**kwargs)
 
                     class Meta:
                         abstract = True
@@ -192,6 +199,9 @@ class TestConcreteAnnotations:
 
                 instance2 = make_instance(Follower2)
                 # ^ REVEAL ^ example.models.Follower2
+
+                from_new_with_kwargs = Follower1.new_with_kwargs()
+                # ^ REVEAL ^ example.models.Follower1
 
                 model: type[Concrete[Leader]] = Follower1
                 # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
