@@ -3,7 +3,6 @@ from mypy.nodes import (
     AssignmentStmt,
     CastExpr,
     NameExpr,
-    StrExpr,
     SymbolTableNode,
     TypeInfo,
     Var,
@@ -148,46 +147,24 @@ class SemAnalyzing:
             return None
 
         second_arg = ctx.call.args[1]
-        model_name: str
+        parent: TypeInfo | None = None
 
-        if isinstance(second_arg, StrExpr):
-            if second_arg.value.isidentifier():
-                model_name = f"{self.api.cur_mod_id}.{second_arg.value}"
-            else:
-                self.api.fail(
-                    "Concrete.type_var needs to take the instance or name of a model class in this file",
-                    ctx.call,
-                )
-                return None
-        elif isinstance(second_arg, NameExpr):
-            model_name = f"{self.api.cur_mod_id}.{second_arg.name}"
-        else:
-            self.api.fail(
-                "Second argument to type_var must be either a simple name or a string of the name",
-                ctx.call,
-            )
-
-        parent = self.api.lookup_fully_qualified_or_none(model_name)
+        parent_type = self.api.expr_to_analyzed_type(second_arg)
+        if isinstance(instance := get_proper_type(parent_type), Instance):
+            parent = instance.type
 
         if parent is None:
             if self.api.final_iteration:
                 self.api.fail(
-                    f"Failed to locate the model provided to to make {ctx.name} ({model_name})",
-                    ctx.call,
+                    f"Failed to locate the model provided to to make {ctx.name}", ctx.call
                 )
                 return None
             else:
                 self.api.defer()
                 return None
 
-        if not isinstance(parent.node, TypeInfo):
-            self.api.fail(
-                "Second argument to Concrete.type_var was not pointing at a class", ctx.call
-            )
-            return
-
         type_var_expr = self.resolver.type_var_expr_for(
-            model=parent.node,
+            model=parent,
             name=name,
             fullname=f"{self.api.cur_mod_id}.{name}",
             object_type=self.api.named_type("builtins.object"),
