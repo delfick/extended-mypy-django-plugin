@@ -182,13 +182,17 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def choose(self) -> bool:
             class_name, _, method_name = self.fullname.rpartition(".")
-            try:
-                self.method_name = self.KnownConcreteMethods(method_name)
-            except ValueError:
-                return False
+            if method_name == self.KnownConcreteMethods.type_var.value:
+                self.method_name = self.KnownConcreteMethods.type_var
+
+            elif method_name == self.KnownConcreteMethods.cast_as_concrete.value:
+                self.method_name = self.KnownConcreteMethods.cast_as_concrete
+
             else:
-                info = self.plugin._get_typeinfo_or_none(class_name)
-                return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
+                return False
+
+            info = self.plugin._get_typeinfo_or_none(class_name)
+            return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
             sem_analyzing = sem_analyze.SemAnalyzing(
@@ -211,12 +215,12 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         annotation: protocols.KnownAnnotations
 
         def choose(self) -> bool:
-            try:
-                self.annotation = protocols.KnownAnnotations(self.fullname)
-            except ValueError:
-                return False
-            else:
+            annotation = protocols.KnownAnnotations.resolve(self.fullname)
+            if annotation is not None:
+                self.annotation = annotation
                 return True
+            else:
+                return False
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
             type_analyzer = sem_analyze.TypeAnalyzer(
