@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Generic, TypeVar, overload
 
 from django.db import models
@@ -21,8 +20,8 @@ class Concrete(Generic[T_Parent]):
     a type that represents the Union of all the concrete children of some
     abstract model.
 
-    .. automethod:: find_children
     .. automethod:: type_var
+
     .. automethod:: cast_as_concrete
     """
 
@@ -56,10 +55,12 @@ class Concrete(Generic[T_Parent]):
                 @classmethod
                 def new(cls) -> Concrete[Self]:
                     cls = Concrete.cast_as_concrete(cls)
+                    reveal_type(cls) # type[Concrete1] | type[Concrete2] | type[Concrete3] | ...
                     ...
 
                 def get_self(self) -> Concrete[Self]:
                     self = Concrete.cast_as_concrete(self)
+                    reveal_type(self) # Concrete1 | Concrete2 | Concrete3 | ...
                     ...
 
         This can also be used outside of a model method::
@@ -78,31 +79,6 @@ class Concrete(Generic[T_Parent]):
             raise RuntimeError("Expected a concrete instance")
 
         return obj
-
-    @classmethod
-    def find_children(cls, parent: type[models.Model]) -> Sequence[type[models.Model]]:
-        """
-        At runtime this will find all the concrete children of some model.
-
-        That is all models that inherit from this model and aren't abstract
-        themselves.
-        """
-        found: list[type[models.Model]] = []
-
-        from django.contrib.contenttypes.models import ContentType
-
-        content_types = ContentType.objects.filter(app_label=parent._meta.app_label)
-        for ct in content_types:
-            model = ct.model_class()
-            if model is None:
-                continue
-            if not issubclass(model, parent):
-                continue
-            if hasattr(model, "Meta") and getattr(model.Meta, "is_abstract", False):
-                continue
-            found.append(model)
-
-        return found
 
     @classmethod
     def type_var(cls, name: str, parent: type[models.Model] | str) -> TypeVar:
