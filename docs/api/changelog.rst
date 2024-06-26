@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.6.1:
 
-0.6.1 - TBD
+0.6.1 - 26 June 2024
     * Fix bug where ``Concrete.type_var("T_Name", model.Name)`` wouldn't work because the plugin
       couldn't resolve ``model.Name``
     * Fix bug where untyped arguments in a function that returns a concrete type var would crash
