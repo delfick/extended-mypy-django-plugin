@@ -1,5 +1,5 @@
 import enum
-from collections.abc import Iterator, Mapping, Sequence, Set
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence, Set
 from typing import TYPE_CHECKING, Optional, Protocol, TypeVar
 
 from mypy import errorcodes
@@ -23,6 +23,8 @@ T_Report = TypeVar("T_Report", bound="Report")
 
 CombinedReport = d_protocols.CombinedReport
 VirtualDependencyHandler = d_protocols.VirtualDependencyHandler
+
+TypeVarMap = MutableMapping[TypeVarType | str, Instance | TypeType | UnionType]
 
 
 class KnownClasses(enum.Enum):
@@ -242,17 +244,9 @@ class SignatureInfo(Protocol):
         """
 
     @property
-    def type_vars(self) -> Sequence[tuple[bool, TypeVarType]]:
+    def returns_concrete_annotation_with_type_var(self) -> bool:
         """
-        A sequence of tuples containing the type vars present in this signature with
-        a boolean indicating whether the type var is the type or instance of that variable
-        with True indicating it's the type of that variable
-        """
-
-    @property
-    def returns_concrete_annotation(self) -> bool:
-        """
-        Boolean indicating if the signature is returning a concrete annotation
+        Boolean indicating if the signature is returning a concrete annotation that is dependant on a typevar
         """
 
     @property

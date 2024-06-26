@@ -42,7 +42,7 @@ class TypeChecking:
         if info is None:
             return None
 
-        if info.is_guard and info.type_vars and info.returns_concrete_annotation:
+        if info.is_guard and info.returns_concrete_annotation_with_type_var:
             # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
             self.resolver.fail(
                 "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables"
@@ -56,13 +56,6 @@ class TypeChecking:
     def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
         info = signature_info.get_signature_info(ctx, self.resolver)
         if info is None:
-            return None
-
-        if info.is_guard and info.type_vars and info.returns_concrete_annotation:
-            # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
-            return None
-
-        if not info.returns_concrete_annotation:
             return None
 
         return info.resolve_return_type(ctx)
