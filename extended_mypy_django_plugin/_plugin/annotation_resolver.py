@@ -124,7 +124,9 @@ class AnnotationResolver:
             ):
                 context = ctx.context
                 defer = lambda: True
-                fail = functools.partial(api.fail, ctx=context)
+                # The interface for the type checker says fail takes ctx
+                # But the implementation of TypeChecker has it as context
+                fail = functools.partial(api.fail, context=context)
                 lookup_info = functools.partial(_lookup_info, None)
                 named_type_or_none = checker_named_type_or_none
             case _:
