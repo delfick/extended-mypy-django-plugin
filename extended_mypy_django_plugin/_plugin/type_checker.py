@@ -1,11 +1,7 @@
-from mypy.checker import TypeChecker
 from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     CallExpr,
-    Context,
     Decorator,
-    Expression,
-    IndexExpr,
     MemberExpr,
     MypyFile,
     RefExpr,
@@ -16,7 +12,6 @@ from mypy.nodes import (
 )
 from mypy.plugin import (
     AttributeContext,
-    CheckerPluginInterface,
     FunctionContext,
     FunctionSigContext,
     MethodContext,
@@ -27,7 +22,6 @@ from mypy.types import (
     CallableType,
     FunctionLike,
     Instance,
-    ProperType,
     TypeOfAny,
     TypeType,
     UnboundType,
@@ -40,59 +34,18 @@ from . import protocols, signature_info
 
 
 class TypeChecking:
-    def __init__(self, *, resolver: protocols.Resolver, api: CheckerPluginInterface) -> None:
-        self.api = api
+    def __init__(self, *, resolver: protocols.Resolver) -> None:
         self.resolver = resolver
 
-    def get_expression_type(
-        self, node: Expression, type_context: MypyType | None = None
-    ) -> MypyType:
-        # We can remove the assert and switch to self.api.get_expression_type
-        # when we don't have to support mypy 1.4
-        assert isinstance(self.api, TypeChecker)
-        self.expr_checker = self.api.expr_checker
-        return self.expr_checker.accept(node, type_context=type_context)
-
-    def _get_info(self, context: Context) -> signature_info.BasicTypeInfo | None:
-        found: ProperType | None = None
-
-        if isinstance(context, CallExpr):
-            found = get_proper_type(self.get_expression_type(context.callee))
-        elif isinstance(context, IndexExpr):
-            found = get_proper_type(self.get_expression_type(context.base))
-            if isinstance(found, Instance) and found.args:
-                found = get_proper_type(found.args[-1])
-
-        if found is None:
-            return None
-
-        if isinstance(found, Instance):
-            if not (call := found.type.names.get("__call__")) or not (calltype := call.type):
-                return None
-
-            func = get_proper_type(calltype)
-        else:
-            func = found
-
-        if not isinstance(func, CallableType):
-            return None
-
-        return signature_info.BasicTypeInfo.create(
-            func=func,
-            finder=signature_info.Finder(_api=self.api),
-            resolver=self.resolver,
-        )
-
     def check_typeguard(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        info = self._get_info(ctx.context)
+        info = signature_info.get_signature_info(ctx, self.resolver)
         if info is None:
             return None
 
-        if info.is_guard and info.type_vars and info.contains_concrete_annotation:
+        if info.is_guard and info.type_vars and info.returns_concrete_annotation:
             # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
-            self.api.fail(
-                "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables",
-                ctx.context,
+            self.resolver.fail(
+                "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables"
             )
 
             if info.unwrapped_type_guard:
@@ -101,24 +54,18 @@ class TypeChecking:
         return None
 
     def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        info = self._get_info(ctx.context)
+        info = signature_info.get_signature_info(ctx, self.resolver)
         if info is None:
             return None
 
-        if info.is_guard and info.type_vars and info.concrete_annotation is not None:
+        if info.is_guard and info.type_vars and info.returns_concrete_annotation:
             # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
             return None
 
-        if not info.contains_concrete_annotation:
+        if not info.returns_concrete_annotation:
             return None
 
-        type_vars_map = info.map_type_vars(ctx)
-
-        result = info.transform(ctx.context, type_vars_map)
-        if isinstance(result, UnionType) and len(result.items) == 1:
-            return result.items[0]
-        else:
-            return result
+        return info.resolve_return_type(ctx)
 
     def extended_get_attribute_resolve_manager_method(
         self,
@@ -262,7 +209,7 @@ class _SharedConcreteAnnotationLogic:
     def _type_checking(
         self, ctx: MethodContext | FunctionContext | MethodSigContext | FunctionSigContext
     ) -> TypeChecking:
-        return TypeChecking(resolver=self.make_resolver(ctx=ctx), api=ctx.api)
+        return TypeChecking(resolver=self.make_resolver(ctx=ctx))
 
 
 class SharedModifyReturnTypeLogic(_SharedConcreteAnnotationLogic):

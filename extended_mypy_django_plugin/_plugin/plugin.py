@@ -239,9 +239,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return self.super_hook is resolve_manager_method
 
         def run(self, ctx: AttributeContext) -> MypyType:
-            type_checking = type_checker.TypeChecking(
-                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
-            )
+            type_checking = type_checker.TypeChecking(resolver=self.plugin.make_resolver(ctx=ctx))
 
             return type_checking.extended_get_attribute_resolve_manager_method(
                 ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance

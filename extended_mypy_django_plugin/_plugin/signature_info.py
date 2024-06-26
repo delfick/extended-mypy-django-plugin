@@ -2,8 +2,15 @@ import dataclasses
 from collections.abc import Iterator, MutableMapping
 from typing import Final
 
-from mypy.nodes import Context
-from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext
+from mypy.checker import TypeChecker
+from mypy.nodes import CallExpr, Context, Expression, IndexExpr
+from mypy.plugin import (
+    CheckerPluginInterface,
+    FunctionContext,
+    FunctionSigContext,
+    MethodContext,
+    MethodSigContext,
+)
 from mypy.types import (
     AnyType,
     CallableType,
@@ -152,14 +159,14 @@ class BasicTypeInfo:
         )
 
     @property
-    def contains_concrete_annotation(self) -> bool:
+    def returns_concrete_annotation(self) -> bool:
         if self.concrete_annotation is not None:
             return True
 
         for item in self.items():
             if item.item is self.item:
                 continue
-            if item.contains_concrete_annotation:
+            if item.returns_concrete_annotation:
                 return True
 
         return False
@@ -295,3 +302,48 @@ class BasicTypeInfo:
             arg = UnionType(tuple(models))
 
         return self.resolver.resolve(self.concrete_annotation, arg)
+
+    def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
+        type_vars_map = self.map_type_vars(ctx)
+
+        result = self.transform(ctx.context, type_vars_map)
+        if isinstance(result, UnionType) and len(result.items) == 1:
+            return result.items[0]
+        else:
+            return result
+
+
+def get_signature_info(
+    ctx: MethodContext | FunctionContext | MethodSigContext | FunctionSigContext,
+    resolver: protocols.Resolver,
+) -> protocols.SignatureInfo | None:
+    def get_expression_type(node: Expression, type_context: MypyType | None = None) -> MypyType:
+        # We can remove the assert and switch to self.api.get_expression_type
+        # when we don't have to support mypy 1.4
+        assert isinstance(ctx.api, TypeChecker)
+        return ctx.api.expr_checker.accept(node, type_context=type_context)
+
+    found: ProperType | None = None
+
+    if isinstance(ctx.context, CallExpr):
+        found = get_proper_type(get_expression_type(ctx.context.callee))
+    elif isinstance(ctx.context, IndexExpr):
+        found = get_proper_type(get_expression_type(ctx.context.base))
+        if isinstance(found, Instance) and found.args:
+            found = get_proper_type(found.args[-1])
+
+    if found is None:
+        return None
+
+    if isinstance(found, Instance):
+        if not (call := found.type.names.get("__call__")) or not (calltype := call.type):
+            return None
+
+        func = get_proper_type(calltype)
+    else:
+        func = found
+
+    if not isinstance(func, CallableType):
+        return None
+
+    return BasicTypeInfo.create(func=func, finder=Finder(_api=ctx.api), resolver=resolver)

@@ -13,7 +13,7 @@ from mypy.plugin import (
     MethodContext,
     MethodSigContext,
 )
-from mypy.types import AnyType, Instance, ProperType, TypeType, UnboundType, UnionType
+from mypy.types import AnyType, Instance, ProperType, TypeType, TypeVarType, UnboundType, UnionType
 from mypy.types import Type as MypyType
 
 from ..django_analysis import protocols as d_protocols
@@ -227,6 +227,45 @@ class ResolverMaker(Protocol):
     """
 
     def __call__(cls, *, ctx: ValidContextForAnnotationResolver) -> Resolver: ...
+
+
+class SignatureInfo(Protocol):
+    """
+    This is used by the type checker to represent important information about a signature for
+    a method or function
+    """
+
+    @property
+    def is_guard(self) -> bool:
+        """
+        Whether this signature represents a type guard
+        """
+
+    @property
+    def type_vars(self) -> Sequence[tuple[bool, TypeVarType]]:
+        """
+        A sequence of tuples containing the type vars present in this signature with
+        a boolean indicating whether the type var is the type or instance of that variable
+        with True indicating it's the type of that variable
+        """
+
+    @property
+    def returns_concrete_annotation(self) -> bool:
+        """
+        Boolean indicating if the signature is returning a concrete annotation
+        """
+
+    @property
+    def unwrapped_type_guard(self) -> ProperType | None:
+        """
+        When the signature is returning a type guard, this will be the type the type guard is
+        representing.
+        """
+
+    def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
+        """
+        Return a type that represents the return type of the method/function when we substitute in the type vars
+        """
 
 
 if TYPE_CHECKING:
