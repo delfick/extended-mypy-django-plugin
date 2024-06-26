@@ -4,13 +4,7 @@ from typing import Final
 
 from mypy.checker import TypeChecker
 from mypy.nodes import CallExpr, Context, Expression, IndexExpr
-from mypy.plugin import (
-    CheckerPluginInterface,
-    FunctionContext,
-    FunctionSigContext,
-    MethodContext,
-    MethodSigContext,
-)
+from mypy.plugin import FunctionContext, FunctionSigContext, MethodContext, MethodSigContext
 from mypy.types import (
     AnyType,
     CallableType,
@@ -35,49 +29,6 @@ _TypeVarMap = MutableMapping[TypeVarType | str, Instance | TypeType | UnionType]
 
 
 @dataclasses.dataclass
-class Finder:
-    _api: CheckerPluginInterface
-
-    def find_type_vars(
-        self, item: MypyType, _chain: list[ProperType] | None = None
-    ) -> tuple[list[tuple[bool, TypeVarType]], ProperType]:
-        if _chain is None:
-            _chain = []
-
-        result: list[tuple[bool, TypeVarType]] = []
-
-        item = get_proper_type(item)
-
-        is_type: bool = False
-        if isinstance(item, TypeType):
-            is_type = True
-            item = item.item
-
-        if isinstance(item, TypeVarType):
-            if item.fullname not in [TYPING_EXTENSION_SELF, TYPING_SELF]:
-                result.append((is_type, item))
-
-        elif isinstance(item, UnionType):
-            for arg in item.items:
-                proper = get_proper_type(arg)
-                if isinstance(proper, TypeType):
-                    proper = proper.item
-
-                if proper not in _chain:
-                    _chain.append(proper)
-                    for nxt_is_type, nxt in self.find_type_vars(arg, _chain=_chain)[0]:
-                        result.append((is_type or nxt_is_type, nxt))
-
-        return result, item
-
-    def determine_if_concrete(self, item: ProperType) -> protocols.KnownAnnotations | None:
-        if isinstance(item, Instance):
-            return protocols.KnownAnnotations.resolve(item.type.fullname)
-        else:
-            return None
-
-
-@dataclasses.dataclass
 class BasicTypeInfo:
     func: CallableType
 
@@ -85,7 +36,6 @@ class BasicTypeInfo:
     is_guard: bool
 
     item: ProperType
-    finder: Finder
     type_vars: list[tuple[bool, TypeVarType]]
     resolver: protocols.Resolver
     concrete_annotation: protocols.KnownAnnotations | None
@@ -95,7 +45,6 @@ class BasicTypeInfo:
     def create(
         cls,
         func: CallableType,
-        finder: Finder,
         resolver: protocols.Resolver,
         item: MypyType | None = None,
     ) -> Self:
@@ -129,11 +78,14 @@ class BasicTypeInfo:
             is_type = True
             item = item.item
 
-        concrete_annotation = finder.determine_if_concrete(item)
+        concrete_annotation: protocols.KnownAnnotations | None = None
+        if isinstance(item, Instance):
+            concrete_annotation = protocols.KnownAnnotations.resolve(item.type.fullname)
+
         if concrete_annotation and not item_passed_in and isinstance(item, Instance):
-            type_vars, item = finder.find_type_vars(UnionType(item.args))
+            type_vars, item = cls.find_type_vars(UnionType(item.args))
         else:
-            type_vars, item = finder.find_type_vars(item)
+            type_vars, item = cls.find_type_vars(item)
 
         if isinstance(item, UnionType) and len(item.items) == 1:
             item = item.items[0]
@@ -141,7 +93,6 @@ class BasicTypeInfo:
         return cls(
             func=func,
             item=get_proper_type(item),
-            finder=finder,
             is_type=is_type,
             is_guard=is_guard,
             type_vars=type_vars,
@@ -150,11 +101,43 @@ class BasicTypeInfo:
             unwrapped_type_guard=unwrapped_type_guard,
         )
 
+    @classmethod
+    def find_type_vars(
+        cls, item: MypyType, _chain: list[ProperType] | None = None
+    ) -> tuple[list[tuple[bool, TypeVarType]], ProperType]:
+        if _chain is None:
+            _chain = []
+
+        result: list[tuple[bool, TypeVarType]] = []
+
+        item = get_proper_type(item)
+
+        is_type: bool = False
+        if isinstance(item, TypeType):
+            is_type = True
+            item = item.item
+
+        if isinstance(item, TypeVarType):
+            if item.fullname not in [TYPING_EXTENSION_SELF, TYPING_SELF]:
+                result.append((is_type, item))
+
+        elif isinstance(item, UnionType):
+            for arg in item.items:
+                proper = get_proper_type(arg)
+                if isinstance(proper, TypeType):
+                    proper = proper.item
+
+                if proper not in _chain:
+                    _chain.append(proper)
+                    for nxt_is_type, nxt in cls.find_type_vars(arg, _chain=_chain)[0]:
+                        result.append((is_type or nxt_is_type, nxt))
+
+        return result, item
+
     def _clone_with_item(self, item: MypyType) -> Self:
         return self.create(
             func=self.func,
             item=item,
-            finder=self.finder,
             resolver=self.resolver,
         )
 
@@ -346,4 +329,4 @@ def get_signature_info(
     if not isinstance(func, CallableType):
         return None
 
-    return BasicTypeInfo.create(func=func, finder=Finder(_api=ctx.api), resolver=resolver)
+    return BasicTypeInfo.create(func=func, resolver=resolver)
