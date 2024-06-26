@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 import dataclasses
 import functools
 import importlib
@@ -10,7 +9,7 @@ import pathlib
 import re
 import shutil
 import textwrap
-from collections.abc import Callable, Iterator, Mapping, MutableMapping, MutableSet, Sequence, Set
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence, Set
 from typing import TYPE_CHECKING, Generic, Literal, Protocol, TypeVar, cast
 
 from .. import protocols
@@ -63,9 +62,6 @@ class Report:
     report_import_path: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
         dataclasses.field(default_factory=dict)
     )
-    related_import_paths: MutableMapping[
-        protocols.ImportPath, MutableSet[protocols.ImportPath]
-    ] = dataclasses.field(default_factory=lambda: collections.defaultdict(set))
 
     def register_module(
         self,
@@ -93,28 +89,6 @@ class Report:
             f"{virtual_import_path}.{concrete_queryset_name}"
         )
 
-        # We only register related import paths from our implicit concrete relationship
-        # that isn't through field relationships
-        # So that means for example, an abstract class will register paths to their concrete
-        # children, but we don't register the abstract class as related to the concrete children
-        # Because the concrete children is already explicitly depending on the abstract class.
-        # We don't record field relationships, because the mypy plugin only needs to know about
-        # the inheritance chain and the more dependencies we add, the slower mypy becomes
-        for concrete in concrete_models:
-            ns, _ = ImportPath.split(concrete.import_path)
-            if ns != module_import_path:
-                self.related_import_paths[ns].add(module_import_path)
-
-            if concrete.default_custom_queryset:
-                ns, _ = ImportPath.split(concrete.default_custom_queryset)
-                if ns != module_import_path:
-                    self.related_import_paths[ns].add(module_import_path)
-
-            for mro in concrete.models_in_mro:
-                ns, _ = ImportPath.split(mro)
-                if ns != module_import_path:
-                    self.related_import_paths[ns].add(module_import_path)
-
     def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
         result: dict[str, str | None] = {}
         for model in sorted(models):
@@ -134,6 +108,7 @@ class Report:
         imports: Set[str],
         super_deps: Sequence[tuple[int, str, int]],
         django_settings_module: str,
+        using_incremental_cache: bool,
     ) -> Sequence[tuple[int, str, int]]:
         if file_import_path.startswith("django."):
             # Don't add additional deps to django itself
@@ -145,73 +120,24 @@ class Report:
             # if things they depend on change, then the virtual dep also changes already
             return super_deps
 
-        deps = set(super_deps)
-        final = set(deps)
-        mods = {name for _, name, _ in deps}
+        # We need to include the virtual dependency so that we can find it and use
+        # The type aliases it provides to resolve concrete annotations
+        report_name = self.report_import_path.get(protocols.ImportPath(file_import_path))
+        if report_name:
+            extra_dep = (10, report_name, -1)
+            if extra_dep not in super_deps:
+                super_deps = [*super_deps, extra_dep]
 
-        # We want to make sure that our deps include imports from known modules so that when we expand
-        # In the next section, we take into account dependencies of the imports as well
-        for full in imports:
-            if full == file_import_path:
-                continue
+        # When we're using the incremental cache we also want to make sure that
+        # mypy understands there is a relationship between the file and the settings module
+        # This isn't necessary in daemon mode cause changes to that will make us restart dmypy
+        # And when there is no cache everything is from scratch anyways
+        if report_name and using_incremental_cache:
+            settings_dep = (10, django_settings_module, -1)
+            if settings_dep not in super_deps:
+                super_deps = [*super_deps, settings_dep]
 
-            if full in self.report_import_path:
-                if full not in mods:
-                    mods.add(full)
-                    deps.add((10, full, -1))
-                continue
-
-            for mod in self.report_import_path:
-                if full.startswith(f"{mod}."):
-                    if mod not in mods:
-                        mods.add(mod)
-                        deps.add((10, mod, -1))
-                    break
-
-        # and take into account this file itself!
-        if file_import_path not in mods:
-            mods.add(file_import_path)
-            deps.add((10, file_import_path, -1))
-
-        # Keep expanding the deps until it doesn't add any more
-        while self._expand_additional_deps(deps):
-            pass
-
-        # Only keep the virtual dependencies we added
-        for _, added, _ in deps - final:
-            if added in report_names:
-                final.add((10, added, -1))
-
-        if (
-            final
-            and file_import_path != django_settings_module
-            and (settings_dep := (10, django_settings_module, -1)) not in final
-        ):
-            # Make anything reliant on models also reliant on the settings module
-            # Given we depend on changes to that module rather than changes to django.conf.settings
-            # And dmypy treats changes to real files different than changes to virtual deps
-            final.add(settings_dep)
-
-        return list(final)
-
-    def _expand_additional_deps(self, deps: MutableSet[tuple[int, str, int]]) -> bool:
-        changed: bool = False
-
-        mods = {mod for _, mod, _ in deps}
-
-        for _, mod_s, _ in list(deps):
-            mod = protocols.ImportPath(mod_s)
-            report_name = self.report_import_path.get(mod)
-            if report_name and report_name not in mods:
-                changed = True
-                mods.add(report_name)
-                deps.add((10, report_name, -1))
-                if mod in self.related_import_paths:
-                    for related in self.related_import_paths[mod]:
-                        mods.add(related)
-                        deps.add((10, related, -1))
-
-        return changed
+        return super_deps
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -415,9 +341,6 @@ class ReportCombiner(Generic[T_Report]):
             final.concrete_annotations.update(report.concrete_annotations)
             final.concrete_querysets.update(report.concrete_querysets)
             final.report_import_path.update(report.report_import_path)
-
-            for path, related in report.related_import_paths.items():
-                final.related_import_paths[path] |= related
 
         return CombinedReport(
             version=version, report=final, write_empty_virtual_dep=write_empty_virtual_dep

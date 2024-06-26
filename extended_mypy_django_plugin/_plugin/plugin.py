@@ -145,11 +145,19 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 for name, _ in imp.ids:
                     full_imports.add(name)
 
+        if self.options.use_fine_grained_cache:
+            using_incremental_cache = False
+        else:
+            using_incremental_cache = (
+                self.options.incremental and self.options.cache_dir != "/dev/null"
+            )
+
         return list(
             self.virtual_dependency_report.report.additional_deps(
                 file_import_path=file_import,
                 imports=full_imports,
                 django_settings_module=self.extra_options.django_settings_module,
+                using_incremental_cache=using_incremental_cache,
                 super_deps=super().get_additional_deps(file),
             )
         )

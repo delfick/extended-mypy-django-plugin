@@ -1,5 +1,7 @@
 import dataclasses
 
+import pytest
+
 from extended_mypy_django_plugin.django_analysis import (
     Field,
     ImportPath,
@@ -23,9 +25,6 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M1"): ImportPath("VM1"),
             },
-            related_import_paths={
-                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
-            },
         )
         report2 = virtual_dependencies.Report(
             concrete_annotations={
@@ -36,9 +35,6 @@ class TestCombiningReports:
             },
             report_import_path={
                 ImportPath("M2"): ImportPath("VM2"),
-            },
-            related_import_paths={
-                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
             },
         )
         report3 = virtual_dependencies.Report(
@@ -54,9 +50,6 @@ class TestCombiningReports:
             },
             report_import_path={
                 ImportPath("M3"): ImportPath("VM3"),
-            },
-            related_import_paths={
-                ImportPath("M3"): {ImportPath("VM3")},
             },
         )
 
@@ -92,11 +85,6 @@ class TestCombiningReports:
                 ImportPath("M2"): ImportPath("VM2"),
                 ImportPath("M3"): ImportPath("VM3"),
             },
-            related_import_paths={
-                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
-                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
-                ImportPath("M3"): {ImportPath("VM3")},
-            },
         )
 
     def test_it_can_ensure_empty_vritual_deps(self) -> None:
@@ -113,9 +101,6 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M1"): ImportPath("VM1"),
             },
-            related_import_paths={
-                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
-            },
         )
         report2 = virtual_dependencies.Report(
             concrete_annotations={
@@ -126,9 +111,6 @@ class TestCombiningReports:
             },
             report_import_path={
                 ImportPath("M2"): ImportPath("VM2"),
-            },
-            related_import_paths={
-                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
             },
         )
 
@@ -167,10 +149,6 @@ class TestCombiningReports:
             report_import_path={
                 ImportPath("M1"): ImportPath("VM1"),
                 ImportPath("M2"): ImportPath("VM2"),
-            },
-            related_import_paths={
-                ImportPath("M1"): {ImportPath("VM1"), ImportPath("VM2")},
-                ImportPath("M2"): {ImportPath("VM1"), ImportPath("VM2")},
             },
         )
         assert final_report.report == expected
@@ -346,10 +324,6 @@ class TestBuildingReport:
             concrete_querysets={
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
-            related_import_paths={
-                ImportPath("my.models"): {ImportPath("my.parents")},
-                ImportPath("my.querysets"): {ImportPath("my.parents")},
-            },
         )
 
     def test_building_individually_model1(self) -> None:
@@ -365,10 +339,6 @@ class TestBuildingReport:
             concrete_querysets={
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
             },
-            related_import_paths={
-                ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.querysets"): {ImportPath("my.models")},
-            },
         )
 
     def test_building_individually_model2(self) -> None:
@@ -383,9 +353,6 @@ class TestBuildingReport:
             },
             concrete_querysets={
                 ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
-            },
-            related_import_paths={
-                ImportPath("my.parents"): {ImportPath("my.models")},
             },
         )
 
@@ -406,10 +373,6 @@ class TestBuildingReport:
                     "virtual.other.models.QuerySet__Model3"
                 ),
             },
-            related_import_paths={
-                ImportPath("mixins"): {ImportPath("other.models")},
-                ImportPath("my.querysets"): {ImportPath("other.models")},
-            },
         )
 
     def test_building_up_a_report(self) -> None:
@@ -425,10 +388,6 @@ class TestBuildingReport:
             concrete_querysets={
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
             },
-            related_import_paths={
-                ImportPath("my.models"): {ImportPath("my.parents")},
-                ImportPath("my.querysets"): {ImportPath("my.parents")},
-            },
         )
 
         scenario.register_model1(report)
@@ -441,11 +400,6 @@ class TestBuildingReport:
             concrete_querysets={
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
-            },
-            related_import_paths={
-                ImportPath("my.models"): {ImportPath("my.parents")},
-                ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.querysets"): {ImportPath("my.parents"), ImportPath("my.models")},
             },
         )
 
@@ -461,11 +415,6 @@ class TestBuildingReport:
                 ImportPath("my.parents.Parent"): ImportPath("virtual.my.parents.QuerySet__Parent"),
                 ImportPath("my.models.Model1"): ImportPath("virtual.my.models.QuerySet__Model1"),
                 ImportPath("my.models.Model2"): ImportPath("virtual.my.models.QuerySet__Model2"),
-            },
-            related_import_paths={
-                ImportPath("my.models"): {ImportPath("my.parents")},
-                ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.querysets"): {ImportPath("my.parents"), ImportPath("my.models")},
             },
         )
 
@@ -488,19 +437,10 @@ class TestBuildingReport:
                     "virtual.other.models.QuerySet__Model3"
                 ),
             },
-            related_import_paths={
-                ImportPath("my.parents"): {ImportPath("my.models")},
-                ImportPath("my.models"): {ImportPath("my.parents")},
-                ImportPath("my.querysets"): {
-                    ImportPath("my.parents"),
-                    ImportPath("my.models"),
-                    ImportPath("other.models"),
-                },
-                ImportPath("mixins"): {ImportPath("other.models")},
-            },
         )
 
-    def test_additional_deps(self) -> None:
+    @pytest.mark.parametrize("using_incremental_cache", (True, False))
+    def test_additional_deps(self, using_incremental_cache: bool) -> None:
         report = virtual_dependencies.Report(
             report_import_path={
                 ImportPath(k): ImportPath(v)
@@ -514,150 +454,94 @@ class TestBuildingReport:
                     "another.one": "v_another_one",
                     "more": "v_more",
                 }.items()
-            },
-            related_import_paths={
-                ImportPath("one.two"): {
-                    ImportPath("five.six"),
-                    ImportPath("ten.eleven"),
-                    ImportPath("three.four"),
-                },
-                ImportPath("three.four"): {
-                    ImportPath("one.two"),
-                },
-                ImportPath("five.six"): {
-                    ImportPath("six.seven"),
-                    ImportPath("one.two"),
-                },
-                ImportPath("eight.nine"): {
-                    ImportPath("twelve.thirteen"),
-                },
-                ImportPath("another.one"): {
-                    ImportPath("more"),
-                },
-            },
+            }
         )
+
+        ##
+        ## These are the test cases above but they still only return super_deps
 
         # File name startswith django., it is effectively ignored
-        super_deps = [(10, "one.two", -1), (10, "two", -1)]
-        assert (
-            report.additional_deps(
-                file_import_path="django.db.models",
-                imports=set(),
-                super_deps=super_deps,
-                django_settings_module="my.settings",
-            )
-            is super_deps
+        made = report.additional_deps(
+            file_import_path="django.db.models",
+            imports=set(),
+            super_deps=(super_deps := [(10, "one.two", -1), (10, "two", -1)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
         )
+        assert sorted(made) == sorted(super_deps)
 
-        # Expansion depends on super_deps and imports
-        assert (
-            report.additional_deps(
-                file_import_path="some.place",
-                imports=set(),
-                super_deps=[],
-                django_settings_module="my.settings",
-            )
-            == []
+        # Expansion depending only on super deps and imports
+        made = report.additional_deps(
+            file_import_path="some.place",
+            imports=set(),
+            super_deps=(super_deps := []),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
         )
-        assert sorted(
-            report.additional_deps(
-                file_import_path="some.place",
-                imports={"eight.nine", "typing.Protocol"},
-                super_deps=[],
-                django_settings_module="my.settings",
-            )
-        ) == sorted(
-            [(10, "v_eight_nine", -1), (10, "v_twelve_thirteen", -1), (10, "my.settings", -1)]
-        )
-        # So imports and super_deps both expand, but super_deps remain in the output
-        assert sorted(
-            report.additional_deps(
-                file_import_path="some.place",
-                imports=set(),
-                super_deps=[(10, "eight.nine", -1), (10, "typing.Protocol", 13)],
-                django_settings_module="my.settings",
-            )
-        ) == sorted(
-            [
-                (10, "eight.nine", -1),
-                (10, "v_eight_nine", -1),
-                (10, "v_twelve_thirteen", -1),
-                (10, "typing.Protocol", 13),
-                (10, "my.settings", -1),
-            ]
-        )
+        assert sorted(made) == sorted(super_deps)
 
-        # Infinite loops don't happen. In second and third layer here we get one.two again
-        # one.two -> five.six,ten.eleven,three.four -> six.seven
-        assert sorted(
-            report.additional_deps(
-                file_import_path="some.place",
-                imports={"one.two"},
-                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
-                django_settings_module="my.settings",
-            )
-        ) == sorted(
-            [
-                (10, "v_one_two", -1),
-                (10, "v_five_six", -1),
-                (10, "v_six_seven", -1),
-                (10, "v_three_four", -1),
-                (10, "hello.there", -1),
-                (10, "typing.Protocol", 13),
-                (10, "my.settings", -1),
-            ]
+        made = report.additional_deps(
+            file_import_path="some.place",
+            imports={"eight.nine", "typing.Protocol"},
+            super_deps=(super_deps := []),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
         )
+        assert sorted(made) == sorted(super_deps)
+
+        made = report.additional_deps(
+            file_import_path="some.place",
+            imports=set(),
+            super_deps=(super_deps := [(10, "eight.nine", -1), (10, "typing.Protocol", 13)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
+        )
+        assert sorted(made) == sorted(super_deps)
+
+        made = report.additional_deps(
+            file_import_path="some.place",
+            imports={"one.two"},
+            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
+        )
+        assert sorted(made) == sorted(super_deps)
 
         # Also add from the file import itself
-        assert sorted(
-            report.additional_deps(
-                file_import_path="another.one",
-                imports={"one.two"},
-                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
-                django_settings_module="my.settings",
-            )
-        ) == sorted(
-            [
-                (10, "v_another_one", -1),
-                (10, "v_more", -1),
-                (10, "v_one_two", -1),
-                (10, "v_five_six", -1),
-                (10, "v_six_seven", -1),
-                (10, "v_three_four", -1),
-                (10, "hello.there", -1),
-                (10, "typing.Protocol", 13),
-                (10, "my.settings", -1),
-            ]
+        made = report.additional_deps(
+            file_import_path="another.one",
+            imports={"one.two"},
+            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
         )
+        if using_incremental_cache:
+            assert sorted(made) == sorted(
+                [*super_deps, (10, "v_another_one", -1), (10, "my.settings", -1)]
+            )
+        else:
+            assert sorted(made) == sorted([*super_deps, (10, "v_another_one", -1)])
 
-        # Also find when we have objects from a reported module
-        assert sorted(
-            report.additional_deps(
-                file_import_path="another.one",
-                imports={"one.two.MyModel"},
-                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
-                django_settings_module="my.settings",
-            )
-        ) == sorted(
-            [
-                (10, "v_another_one", -1),
-                (10, "v_more", -1),
-                (10, "v_one_two", -1),
-                (10, "v_five_six", -1),
-                (10, "v_six_seven", -1),
-                (10, "v_three_four", -1),
-                (10, "hello.there", -1),
-                (10, "typing.Protocol", 13),
-                (10, "my.settings", -1),
-            ]
+        made = report.additional_deps(
+            file_import_path="another.one",
+            imports={"one.two.MyModel"},
+            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
         )
+        if using_incremental_cache:
+            assert sorted(made) == sorted(
+                [*super_deps, (10, "v_another_one", -1), (10, "my.settings", -1)]
+            )
+        else:
+            assert sorted(made) == sorted([*super_deps, (10, "v_another_one", -1)])
 
         # Also virtual_deps themselves don't add extra
-        assert sorted(
-            report.additional_deps(
-                file_import_path="v_another_one",
-                imports={"one.two.MyModel"},
-                super_deps=[(10, "hello.there", -1), (10, "typing.Protocol", 13)],
-                django_settings_module="my.settings",
-            )
-        ) == sorted([(10, "hello.there", -1), (10, "typing.Protocol", 13)])
+        made = report.additional_deps(
+            file_import_path="v_another_one",
+            imports={"one.two.MyModel"},
+            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            django_settings_module="my.settings",
+            using_incremental_cache=using_incremental_cache,
+        )
+        assert sorted(made) == sorted(super_deps)

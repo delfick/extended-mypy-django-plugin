@@ -10,6 +10,7 @@ Changelog
       couldn't resolve ``model.Name``
     * Fix bug where untyped arguments in a function that returns a concrete type var would crash
       the plugin
+    * Improved mypy performance by realising we can give drastically less additional deps for files
 
 .. _release-0.6.0:
 

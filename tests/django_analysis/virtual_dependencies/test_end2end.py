@@ -19,7 +19,6 @@ def make_report(
     concrete_annotations: dict[str, str],
     concrete_querysets: dict[str, str],
     report_import_path: dict[str, str],
-    related_import_paths: dict[str, set[str]],
 ) -> virtual_dependencies.Report:
     """
     Helper to make the tests below easier to read
@@ -30,9 +29,6 @@ def make_report(
         },
         concrete_querysets={ImportPath(k): ImportPath(v) for k, v in concrete_querysets.items()},
         report_import_path={ImportPath(k): ImportPath(v) for k, v in report_import_path.items()},
-        related_import_paths={
-            ImportPath(k): {ImportPath(v) for v in vs} for k, vs in related_import_paths.items()
-        },
     )
 
 
@@ -171,14 +167,6 @@ class TestEnd2End:
                 "djangoexample.empty_models.models": "__virtual__.mod_3808300370",
                 "django.contrib.auth.base_user": "__virtual__.mod_2833058650",
                 "django.contrib.sessions.base_session": "__virtual__.mod_113708644",
-            },
-            related_import_paths={
-                "django.contrib.auth.models": {"django.contrib.auth.base_user"},
-                "django.contrib.auth.base_user": {"django.contrib.auth.models"},
-                "django.contrib.sessions.models": {"django.contrib.sessions.base_session"},
-                "django.contrib.sessions.base_session": {"django.contrib.sessions.models"},
-                "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
-                "djangoexample.exampleapp2.models": {"djangoexample.exampleapp.models"},
             },
         )
 
