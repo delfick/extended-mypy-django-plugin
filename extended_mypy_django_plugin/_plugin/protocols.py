@@ -58,6 +58,7 @@ class Report(Protocol):
         imports: Set[str],
         super_deps: Sequence[tuple[int, str, int]],
         django_settings_module: str,
+        using_incremental_cache: bool,
     ) -> Sequence[tuple[int, str, int]]:
         """
         This is used to add to the result for the get_additional_deps mypy hook.

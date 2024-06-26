@@ -132,7 +132,6 @@ class TestVirtualDependencyScribe:
                 concrete_annotations: dict[str, str],
                 concrete_querysets: dict[str, str],
                 report_import_path: dict[str, str],
-                related_import_paths: dict[str, set[str]],
             ) -> virtual_dependencies.Report:
                 """
                 Helper to make the tests below easier to read
@@ -146,10 +145,6 @@ class TestVirtualDependencyScribe:
                     },
                     report_import_path={
                         ImportPath(k): ImportPath(v) for k, v in report_import_path.items()
-                    },
-                    related_import_paths={
-                        ImportPath(k): {ImportPath(v) for v in vs}
-                        for k, vs in related_import_paths.items()
                     },
                 )
 
@@ -226,9 +221,6 @@ class TestVirtualDependencyScribe:
                     },
                     report_import_path={
                         "djangoexample.exampleapp2.models": "__virtual__.mod_3537308831"
-                    },
-                    related_import_paths={
-                        "djangoexample.exampleapp.models": {"djangoexample.exampleapp2.models"},
                     },
                 ),
                 virtual_import_path=virtual_dependency.summary.virtual_import_path,
@@ -345,7 +337,6 @@ class TestVirtualDependencyScribe:
                     report_import_path={
                         "djangoexample.relations1.models": "__virtual__.mod_3327724610"
                     },
-                    related_import_paths={},
                 ),
                 virtual_import_path=virtual_dependency.summary.virtual_import_path,
             )
