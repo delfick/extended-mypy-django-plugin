@@ -20,7 +20,6 @@ from mypy.types import (
     ProperType,
     TypeOfAny,
     TypeType,
-    TypeVarType,
     UnboundType,
     UnionType,
     get_proper_type,
@@ -45,7 +44,18 @@ class AnnotationResolver:
         plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
         ctx: protocols.ValidContextForAnnotationResolver,
     ) -> Self:
+        """
+        This classmethod constructor lets us normalise the ctx to satisfy the interface the
+        AnnotationResolver expects.
+
+        Because each ctx type has a different api on it that provides a different set of
+        abilities.
+        """
+
         def sem_defer(sem_api: SemanticAnalyzer) -> bool:
+            """
+            The semantic analyzer is the only api that can actually defer
+            """
             if sem_api.final_iteration:
                 return True
             else:
@@ -53,6 +63,10 @@ class AnnotationResolver:
                 return False
 
         def _lookup_info(sem_api: SemanticAnalyzer | None, fullname: str) -> TypeInfo | None:
+            """
+            If we have the semantic api, there's more we can do when trying to lookup
+            some name
+            """
             if sem_api is not None:
                 instance = sem_api.named_type_or_none(fullname)
                 if instance:
@@ -67,6 +81,10 @@ class AnnotationResolver:
         def checker_named_type_or_none(
             fullname: str, args: list[MypyType] | None = None
         ) -> Instance | None:
+            """
+            When we have a TypeChecker we need to replicate close to what the semantic api
+            does for named_type_or_none
+            """
             sym = plugin_lookup_fully_qualified(fullname)
             if not sym or not isinstance(node := sym.node, TypeInfo):
                 return None
@@ -75,6 +93,9 @@ class AnnotationResolver:
             return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
         def lookup_alias(alias: str) -> Iterator[Instance]:
+            """
+            This is the same regardless of which ctx we have
+            """
             sym = plugin_lookup_fully_qualified(alias)
             if sym and isinstance(sym.node, PlaceholderNode):
                 raise ShouldDefer()
@@ -165,63 +186,74 @@ class AnnotationResolver:
         self.get_queryset_aliases = get_queryset_aliases
 
     def _flatten_union(self, typ: ProperType) -> Iterator[ProperType]:
+        """
+        Recursively flatten a union
+        """
         if isinstance(typ, UnionType):
             for item in typ.items:
                 yield from self._flatten_union(get_proper_type(item))
         else:
             yield typ
 
-    def _analyze_first_type_arg(
-        self, type_arg: ProperType, get_aliases: protocols.AliasGetter
-    ) -> tuple[bool, Sequence[Instance] | None]:
+    def _concrete_for(
+        self, model_type: ProperType, get_aliases: protocols.AliasGetter
+    ) -> Instance | TypeType | UnionType | None:
+        """
+        Given some type that represents a model, and an alias getter, determine an
+        Instance if we can from the model_type and use it with the alias getter.
+
+        Return a tuple indicating whether this represents the type of those aliases,
+        and those aliases if we could find any
+        """
         is_type: bool = False
 
-        found: ProperType = type_arg
-        if isinstance(type_arg, TypeType):
+        found: ProperType = model_type
+        if isinstance(model_type, TypeType):
             is_type = True
-            found = type_arg.item
+            found = model_type.item
 
         if isinstance(found, AnyType):
             self.fail("Tried to use concrete annotations on a typing.Any")
-            return False, None
+            return None
 
         if not isinstance(found, Instance | UnionType):
-            return False, None
-
-        if isinstance(found, Instance):
-            found = UnionType((found,))
+            return None
 
         all_types = list(self._flatten_union(found))
         all_instances: list[Instance] = []
-        not_all_instances: bool = False
+        are_not_all_instances: bool = False
         for item in all_types:
             if not isinstance(item, Instance):
                 self.fail(
                     f"Expected to operate on specific classes, got a {item.__class__.__name__}: {item}"
                 )
-                not_all_instances = True
+                are_not_all_instances = True
             else:
                 all_instances.append(item)
 
-        if not_all_instances:
-            return False, None
+        if are_not_all_instances:
+            return None
 
         concrete: list[Instance] = []
         names = ", ".join([item.type.fullname for item in all_instances])
 
         for item in all_instances:
-            concrete.extend(list(self.instances_from_aliases(get_aliases, item.type.fullname)))
+            concrete.extend(list(self._instances_from_aliases(get_aliases, item.type.fullname)))
 
         if not concrete:
             if not self._defer():
                 self.fail(f"No concrete models found for {names}")
-            return False, None
+            return None
 
-        return is_type, tuple(concrete)
+        return self._make_union(is_type, tuple(concrete))
 
     def _make_union(
         self, is_type: bool, instances: Sequence[Instance]
     ) -> UnionType | Instance | TypeType:
+        """
+        Given a sequence of instances, make them all TypeType if is_type and then
+        return either the one type if the list is of 1, or the list wrapped in a UnionType
+        """
         items: Sequence[UnionType | TypeType | Instance]
 
         if is_type:
@@ -234,46 +266,37 @@ class AnnotationResolver:
         else:
             return UnionType(tuple(items))
 
-    def _has_typevars(self, type_arg: ProperType) -> bool:
-        if isinstance(type_arg, TypeType):
-            type_arg = type_arg.item
+    def _instances_from_aliases(
+        self, get_aliases: protocols.AliasGetter, *models: str
+    ) -> Iterator[Instance]:
+        for model, alias in get_aliases(*models).items():
+            if alias is None:
+                self.fail(f"Failed to find concrete alias instance for '{model}'")
+                continue
 
-        if isinstance(type_arg, TypeVarType):
-            return True
-
-        if not isinstance(type_arg, UnionType):
-            return False
-
-        return any(self._has_typevars(get_proper_type(item)) for item in type_arg.items)
+            try:
+                yield from self.lookup_alias(alias)
+            except AssertionError:
+                self.fail(f"Failed to create concrete alias instance for '{model}' ({alias})")
 
     def resolve(
-        self, annotation: protocols.KnownAnnotations, type_arg: ProperType
+        self, annotation: protocols.KnownAnnotations, model_type: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
         if annotation is protocols.KnownAnnotations.CONCRETE:
-            return self.find_concrete_models(type_arg)
+            return self._concrete_for(model_type, self.get_concrete_aliases)
         elif annotation is protocols.KnownAnnotations.DEFAULT_QUERYSET:
-            return self.find_default_queryset(type_arg)
+            return self._concrete_for(model_type, self.get_queryset_aliases)
         else:
             assert_never(annotation)
-
-    def find_type_arg(
-        self, unbound_type: UnboundType, analyze_type: protocols.TypeAnalyze
-    ) -> tuple[ProperType | None, bool]:
-        args = unbound_type.args
-        if len(args := unbound_type.args) != 1:
-            self.fail("Concrete annotations must contain exactly one argument")
-            return None, False
-
-        type_arg = get_proper_type(analyze_type(args[0]))
-        needs_rewrap = self._has_typevars(type_arg)
-        return type_arg, needs_rewrap
 
     def type_var_expr_for(
         self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
     ) -> TypeVarExpr:
         try:
-            values = list(self.instances_from_aliases(self.get_concrete_aliases, model.fullname))
+            values = list(self._instances_from_aliases(self.get_concrete_aliases, model.fullname))
         except ShouldDefer:
+            # In this case the type var will be analyzed again and given values
+            # or reach the call to fail below
             values = []
         else:
             if not values:
@@ -288,61 +311,23 @@ class AnnotationResolver:
         )
 
     def rewrap_type_var(
-        self,
-        *,
-        annotation: protocols.KnownAnnotations,
-        type_arg: ProperType,
-        default: MypyType,
-    ) -> MypyType:
+        self, *, annotation: protocols.KnownAnnotations, model_type: ProperType
+    ) -> UnboundType | None:
         info = self.lookup_info(annotation.value)
         if info is None:
             self.fail(f"Couldn't find information for {annotation.value}")
-            return default
+            return None
 
-        if isinstance(type_arg, TypeType) and isinstance(type_arg.item, TypeVarType):
-            if type_arg.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                return default
-        elif isinstance(type_arg, TypeVarType):
-            if type_arg.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                return default
-
+        # By returning this unbound type, mypy won't get confused that an Instance of Concrete does not
+        # match the interface we end up resolving it to.
+        # It's still important to resolve the instance here though because we don't have the ability to do
+        # that where the analysis of this continues later on
         return UnboundType(
             "__ConcreteWithTypeVar__",
-            [Instance(info, [type_arg])],
+            [Instance(info, [model_type])],
             line=self.context.line,
             column=self.context.column,
         )
-
-    def instances_from_aliases(
-        self, get_aliases: protocols.AliasGetter, *models: str
-    ) -> Iterator[Instance]:
-        for model, alias in get_aliases(*models).items():
-            if alias is None:
-                self.fail(f"Failed to find concrete alias instance for '{model}'")
-                continue
-
-            try:
-                yield from self.lookup_alias(alias)
-            except AssertionError:
-                self.fail(f"Failed to create concrete alias instance for '{model}' ({alias})")
-
-    def find_concrete_models(
-        self, type_arg: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | None:
-        is_type, concrete = self._analyze_first_type_arg(type_arg, self.get_concrete_aliases)
-        if concrete is None:
-            return None
-
-        return self._make_union(is_type, concrete)
-
-    def find_default_queryset(
-        self, type_arg: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | None:
-        is_type, concrete = self._analyze_first_type_arg(type_arg, self.get_queryset_aliases)
-        if concrete is None:
-            return None
-
-        return self._make_union(is_type, concrete)
 
 
 make_resolver = AnnotationResolver.create

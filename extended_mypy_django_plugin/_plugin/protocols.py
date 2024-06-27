@@ -105,14 +105,6 @@ class DeferFunc(Protocol):
     def __call__(self) -> bool: ...
 
 
-class TypeAnalyze(Protocol):
-    """
-    Given a type, do any additional resolving that can be done
-    """
-
-    def __call__(self, typ: MypyType, /) -> MypyType: ...
-
-
 class LookupInfo(Protocol):
     """
     Given some fullname return a TypeInfo if one can be found
@@ -175,31 +167,16 @@ class Resolver(Protocol):
     def fail(self) -> FailFunc: ...
 
     def resolve(
-        self, annotation: KnownAnnotations, type_arg: ProperType
+        self, annotation: KnownAnnotations, model_type: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:
         """
         Given a specific annotation and some model return the resolved
         concrete form.
         """
 
-    def find_type_arg(
-        self, unbound_type: UnboundType, analyze_type: TypeAnalyze
-    ) -> tuple[ProperType | None, bool]:
-        """
-        Given some unbound type, determine which model is inside the unbound type
-
-        Return a boolean indicating if the result should be rewrapped as an unbound type. This
-        is so that mypy doesn't treat the type of the result as the annotation itself before it's
-        fully resolved at a later stage
-        """
-
     def rewrap_type_var(
-        self,
-        *,
-        annotation: KnownAnnotations,
-        type_arg: ProperType,
-        default: MypyType,
-    ) -> MypyType:
+        self, *, annotation: KnownAnnotations, model_type: ProperType
+    ) -> UnboundType | None:
         """
         Given some annotation and type inside the annotation, create an unbound type that can be
         recognised at a later stage where more information is available to continue analysis

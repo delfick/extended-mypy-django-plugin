@@ -17,6 +17,7 @@ from mypy.semanal import SemanticAnalyzer
 from mypy.types import (
     CallableType,
     Instance,
+    ProperType,
     TypeType,
     TypeVarType,
     UnionType,
@@ -32,17 +33,43 @@ class TypeAnalyzer:
         self.api = api
         self.resolver = resolver
 
+    def _has_typevars(self, the_type: ProperType) -> bool:
+        if isinstance(the_type, TypeType):
+            the_type = the_type.item
+
+        if isinstance(the_type, TypeVarType):
+            return True
+
+        if not isinstance(the_type, UnionType):
+            return False
+
+        return any(self._has_typevars(get_proper_type(item)) for item in the_type.items)
+
     def analyze(self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations) -> MypyType:
-        type_arg, rewrap = self.resolver.find_type_arg(ctx.type, self.api.analyze_type)
-        if type_arg is None:
+        if len(args := ctx.type.args) != 1:
+            ctx.api.fail("Concrete annotations must contain exactly one argument", ctx.context)
             return ctx.type
 
-        if rewrap:
-            return self.resolver.rewrap_type_var(
-                type_arg=type_arg, annotation=annotation, default=ctx.type
-            )
+        model_type = get_proper_type(self.api.analyze_type(args[0]))
 
-        resolved = self.resolver.resolve(annotation, type_arg)
+        if isinstance(model_type, TypeType) and isinstance(model_type.item, TypeVarType):
+            # We want to ignore when extended_mypy_django_plugin.annotations.Concrete is being analyzed
+            if model_type.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                return ctx.type
+
+        elif isinstance(model_type, TypeVarType):
+            # We want to ignore when extended_mypy_django_plugin.annotations.Concrete is being analyzed
+            if model_type.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
+                return ctx.type
+
+        if self._has_typevars(model_type):
+            # We don't have the information to resolve type vars at this point
+            # We wrap the result so that we can continue this later without mypy
+            # being sad about how Concrete doesn't match what we resolve it to in the end
+            wrapped = self.resolver.rewrap_type_var(model_type=model_type, annotation=annotation)
+            return ctx.type if wrapped is None else wrapped
+
+        resolved = self.resolver.resolve(annotation, model_type)
         if resolved is None:
             return ctx.type
         else:
