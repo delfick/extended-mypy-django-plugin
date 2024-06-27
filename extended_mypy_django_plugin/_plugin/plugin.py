@@ -191,6 +191,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             type_var = "type_var"
             cast_as_concrete = "cast_as_concrete"
 
+        # Used to pass on information from choose to run
+        # so that we don't repeat the logic we run in choose
+        # if we tell Mypy to use this hook
         method_name: KnownConcreteMethods
 
         def choose(self) -> bool:
@@ -223,6 +226,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         Resolve classes annotated with ``Concrete`` or ``DefaultQuerySet``.
         """
 
+        # Used to pass on information from choose to run
+        # so that we don't repeat the logic we run in choose
+        # if we tell Mypy to use this hook
         annotation: protocols.KnownAnnotations
 
         def choose(self) -> bool:
