@@ -92,14 +92,15 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             extra_options=self.extra_options, virtual_dependency_handler=virtual_dependency_handler
         )
 
-        self.make_resolver: protocols.ResolverMaker = functools.partial(
+        make_resolver: protocols.ResolverMaker = functools.partial(
             annotation_resolver.make_resolver,
             get_concrete_aliases=self.virtual_dependency_report.report.get_concrete_aliases,
             get_queryset_aliases=self.virtual_dependency_report.report.get_queryset_aliases,
             plugin_lookup_fully_qualified=self.lookup_fully_qualified,
         )
 
-        self.analyzer = analyze.Analyzer(make_resolver=self.make_resolver)
+        self.analyzer = analyze.Analyzer(make_resolver=make_resolver)
+        self.type_checker = type_checker.TypeChecking(make_resolver=make_resolver)
 
         super().__init__(options)
 
@@ -259,9 +260,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return self.super_hook is resolve_manager_method
 
         def run(self, ctx: AttributeContext) -> MypyType:
-            type_checking = type_checker.TypeChecking(resolver=self.plugin.make_resolver(ctx=ctx))
-
-            return type_checking.extended_get_attribute_resolve_manager_method(
+            return self.plugin.type_checker.extended_get_attribute_resolve_manager_method(
                 ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance
             )
 
@@ -271,7 +270,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
-                make_resolver=lambda ctx: self.plugin.make_resolver(ctx=ctx),
+                type_checker=self.plugin.type_checker,
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
@@ -315,7 +314,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = type_checker.SharedCheckTypeGuardsLogic(
-                make_resolver=lambda ctx: self.plugin.make_resolver(ctx=ctx),
+                type_checker=self.plugin.type_checker,
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
