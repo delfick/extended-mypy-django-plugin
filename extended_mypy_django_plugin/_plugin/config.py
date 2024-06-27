@@ -8,6 +8,7 @@ from mypy_django_plugin import config as django_stubs_config
 from typing_extensions import Self
 
 from ..django_analysis import ImportPath, protocols
+from ..version import VERSION
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -77,6 +78,7 @@ class ExtraOptions:
             "scratch_path": str(self.scratch_path),
             "project_root": str(self.project_root),
             "django_settings_module": self.django_settings_module,
+            "plugin_version": str(VERSION),
         }
 
 
