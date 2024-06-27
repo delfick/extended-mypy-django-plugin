@@ -163,6 +163,7 @@ class SemAnalyzing:
         assert isinstance(ctx.api, SemanticAnalyzer)
         sem_api = ctx.api
 
+        # This copies what mypy does to resolve TypeVars
         name = sem_api.extract_typevarlike_name(
             AssignmentStmt([NameExpr(ctx.name)], ctx.call.callee), ctx.call
         )
@@ -193,6 +194,9 @@ class SemAnalyzing:
             object_type=ctx.api.named_type("builtins.object"),
         )
 
+        # Note that we will override even if we've already generated the type var
+        # because it's possible for a first pass to have no values but a second to do have values
+        # And in between that we do need this to be a typevar expr
         module = ctx.api.modules[ctx.api.cur_mod_id]
         module.names[name] = SymbolTableNode(GDEF, type_var_expr, plugin_generated=True)
         return None
