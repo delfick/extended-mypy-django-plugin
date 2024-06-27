@@ -17,6 +17,17 @@ class TestConcreteAnnotations:
                 model: type[Leader] = Follow1
                 # ^ REVEAL ^ type[leader.models.Leader]
 
+                class Thing:
+                    def __init__(self, model: type[Leader]) -> None:
+                        self.model = model
+
+                found = Concrete.cast_as_concrete(Thing(model=model).model)
+                # ^ ERROR(misc) ^ cast_as_concrete can only take variable names. Create a variable with what you're passing in and pass in that variable instead
+
+                thing = Thing(model=model)
+                found = Concrete.cast_as_concrete(thing.model)
+                # ^ ERROR(misc) ^ cast_as_concrete can only take variable names. Create a variable with what you're passing in and pass in that variable instead
+
                 model = Concrete.cast_as_concrete(model)
                 # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
 

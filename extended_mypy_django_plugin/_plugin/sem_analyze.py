@@ -1,12 +1,4 @@
-from mypy.nodes import (
-    GDEF,
-    AssignmentStmt,
-    CastExpr,
-    NameExpr,
-    SymbolTableNode,
-    TypeInfo,
-    Var,
-)
+from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode, TypeInfo
 from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import SemanticAnalyzer
 from mypy.types import (
@@ -88,23 +80,25 @@ class SemAnalyzing:
 
     def transform_cast_as_concrete(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 1:
-            self.api.fail("Concrete.cast_as_concrete takes exactly one argument", ctx.call)
+            ctx.api.fail("Concrete.cast_as_concrete takes exactly one argument", ctx.call)
             return None
 
-        node = self.api.lookup_type_node(ctx.call.args[0])
-        if not node or not node.node:
-            self.api.fail("Failed to lookup the argument", ctx.call)
+        first_arg = ctx.call.args[0]
+        if not isinstance(first_arg, NameExpr):
+            # It seems too difficult to support anything more complicated from this hook
+            ctx.api.fail(
+                "cast_as_concrete can only take variable names."
+                " Create a variable with what you're passing in and pass in that variable instead",
+                ctx.call,
+            )
+            return
+
+        node = ctx.api.lookup_qualified(first_arg.name, ctx.call)
+        if not node or not node.node or not (arg_type := getattr(node.node, "type", None)):
+            ctx.api.fail("Failed to lookup the argument", ctx.call)
             return None
 
-        arg_node = self.api.lookup_current_scope(node.node.name)
-
-        if arg_node is None or arg_node.type is None or arg_node.node is None:
-            return None
-
-        if not isinstance(arg_node.node, Var):
-            return None
-
-        arg_node_typ = get_proper_type(arg_node.type)
+        arg_node_typ: ProperType = get_proper_type(arg_type)
 
         is_type: bool = False
         if isinstance(arg_node_typ, TypeType):
@@ -112,42 +106,39 @@ class SemAnalyzing:
             arg_node_typ = arg_node_typ.item
 
         if not isinstance(arg_node_typ, Instance | UnionType | TypeVarType):
-            self.api.fail(
+            ctx.api.fail(
                 f"Unsure what to do with the type of the argument given to cast_as_concrete: {arg_node_typ}",
                 ctx.call,
             )
             return None
 
+        # The only type var we support is Self
         if isinstance(arg_node_typ, TypeVarType):
-            if (
-                self.api.is_func_scope()
-                and isinstance(self.api.type, TypeInfo)
-                and arg_node_typ.name == "Self"
-            ):
-                replacement: Instance | TypeType | None = self.api.named_type_or_none(
-                    self.api.type.fullname
+            func = self.api.scope.function
+            if func is not None and arg_node_typ.name == "Self":
+                replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
+                    func.info.fullname
                 )
-                if replacement:
-                    arg_node_typ = replacement
-                    if is_type:
-                        replacement = TypeType(replacement)
-
-                    if self.api.scope.function and isinstance(
-                        self.api.scope.function.type, CallableType
-                    ):
-                        if self.api.scope.function.type.arg_names[0] == ctx.name:
-                            # Avoid getting an assignment error trying to assign a union of the concrete types to
-                            # a variable typed in terms of Self
-                            self.api.scope.function.type.arg_types[0] = replacement
-                else:
-                    self.api.fail("Failed to resolve Self", ctx.call)
+                if not replacement:
+                    ctx.api.fail("Failed to resolve Self", ctx.call)
                     return None
             else:
-                self.api.fail(
+                ctx.api.fail(
                     f"Resolving type variables for cast_as_concrete not implemented: {arg_node_typ}",
                     ctx.call,
                 )
                 return None
+
+            arg_node_typ = replacement
+            if is_type:
+                replacement = TypeType(replacement)
+
+            # Need to convince mypy that we can change the type of the first argument
+            if isinstance(func.type, CallableType):
+                if func.type.arg_names[0] == ctx.name:
+                    # Avoid getting an assignment error trying to assign a union of the concrete types to
+                    # a variable typed in terms of Self
+                    func.type.arg_types[0] = replacement
 
         concrete = self.resolver.resolve(
             protocols.KnownAnnotations.CONCRETE,
@@ -156,6 +147,7 @@ class SemAnalyzing:
         if not concrete:
             return None
 
+        # Perform a cast!
         ctx.call.analyzed = CastExpr(ctx.call.args[0], concrete)
         ctx.call.analyzed.line = ctx.call.line
         ctx.call.analyzed.column = ctx.call.column
@@ -165,7 +157,7 @@ class SemAnalyzing:
 
     def transform_type_var_classmethod(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 2:
-            self.api.fail("Concrete.type_var takes exactly two arguments", ctx.call)
+            ctx.api.fail("Concrete.type_var takes exactly two arguments", ctx.call)
             return None
 
         name = self.api.extract_typevarlike_name(
@@ -182,22 +174,22 @@ class SemAnalyzing:
             parent = instance.type
 
         if parent is None:
-            if self.api.final_iteration:
-                self.api.fail(
+            if ctx.api.final_iteration:
+                ctx.api.fail(
                     f"Failed to locate the model provided to to make {ctx.name}", ctx.call
                 )
                 return None
             else:
-                self.api.defer()
+                ctx.api.defer()
                 return None
 
         type_var_expr = self.resolver.type_var_expr_for(
             model=parent,
             name=name,
-            fullname=f"{self.api.cur_mod_id}.{name}",
-            object_type=self.api.named_type("builtins.object"),
+            fullname=f"{ctx.api.cur_mod_id}.{name}",
+            object_type=ctx.api.named_type("builtins.object"),
         )
 
-        module = self.api.modules[self.api.cur_mod_id]
+        module = ctx.api.modules[ctx.api.cur_mod_id]
         module.names[name] = SymbolTableNode(GDEF, type_var_expr, plugin_generated=True)
         return None
