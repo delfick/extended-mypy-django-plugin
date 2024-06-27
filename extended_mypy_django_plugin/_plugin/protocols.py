@@ -163,9 +163,6 @@ class Resolver(Protocol):
     Used to resolve concrete annotations
     """
 
-    @property
-    def fail(self) -> FailFunc: ...
-
     def resolve(
         self, annotation: KnownAnnotations, model_type: ProperType
     ) -> Instance | TypeType | UnionType | AnyType | None:

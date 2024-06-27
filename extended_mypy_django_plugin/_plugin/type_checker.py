@@ -44,8 +44,9 @@ class TypeChecking:
 
         if info.is_guard and info.returns_concrete_annotation_with_type_var:
             # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
-            self.resolver.fail(
-                "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables"
+            ctx.api.fail(
+                "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables",
+                ctx.context,
             )
 
             if info.unwrapped_type_guard:
