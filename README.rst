@@ -38,5 +38,5 @@ old version is purely a transitional crutch.
 Status
 ------
 
-This mostly works and is in a reasonable tidy state, but some more work needs
-to be done improve the test coverage and general tidiness oft he code.
+The code works and has reasonable test coverage, but could do with some more and
+needs some more work done on the documentation.

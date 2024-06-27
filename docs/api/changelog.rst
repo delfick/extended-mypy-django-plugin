@@ -5,8 +5,10 @@ Changelog
 
 .. _release-0.6.2:
 
-0.6.2 - TBD
+0.6.2 - 27 June 2024
     * Make sure that mypy/dmypy clear caches when a new version of the plugin is installed.
+    * Using ``Concrete.cast_as_concrete`` with something that isn't a NameExpr will give an explicit error
+    * Some of the mypy specific code was cleaned up, but should remain functionally the same
 
 .. _release-0.6.1:
 
