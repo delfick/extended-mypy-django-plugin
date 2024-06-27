@@ -1,5 +1,5 @@
 from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode, TypeInfo
-from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext
 from mypy.semanal import SemanticAnalyzer
 from mypy.types import (
     CallableType,
@@ -70,12 +70,7 @@ class TypeAnalyzer:
 
 
 class SemAnalyzing:
-    def __init__(
-        self, *, resolver: protocols.Resolver, api: SemanticAnalyzerPluginInterface
-    ) -> None:
-        # We need much more than is on the interface unfortunately
-        assert isinstance(api, SemanticAnalyzer)
-        self.api = api
+    def __init__(self, *, resolver: protocols.Resolver) -> None:
         self.resolver = resolver
 
     def transform_cast_as_concrete(self, ctx: DynamicClassDefContext) -> None:
@@ -112,9 +107,13 @@ class SemAnalyzing:
             )
             return None
 
+        # We need much more than is on the interface unfortunately
+        assert isinstance(ctx.api, SemanticAnalyzer)
+        sem_api = ctx.api
+
         # The only type var we support is Self
         if isinstance(arg_node_typ, TypeVarType):
-            func = self.api.scope.function
+            func = sem_api.scope.function
             if func is not None and arg_node_typ.name == "Self":
                 replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
                     func.info.fullname
@@ -151,7 +150,7 @@ class SemAnalyzing:
         ctx.call.analyzed = CastExpr(ctx.call.args[0], concrete)
         ctx.call.analyzed.line = ctx.call.line
         ctx.call.analyzed.column = ctx.call.column
-        ctx.call.analyzed.accept(self.api)
+        ctx.call.analyzed.accept(sem_api)
 
         return None
 
@@ -160,7 +159,11 @@ class SemAnalyzing:
             ctx.api.fail("Concrete.type_var takes exactly two arguments", ctx.call)
             return None
 
-        name = self.api.extract_typevarlike_name(
+        # We need much more than is on the interface unfortunately
+        assert isinstance(ctx.api, SemanticAnalyzer)
+        sem_api = ctx.api
+
+        name = sem_api.extract_typevarlike_name(
             AssignmentStmt([NameExpr(ctx.name)], ctx.call.callee), ctx.call
         )
         if name is None:
@@ -169,7 +172,7 @@ class SemAnalyzing:
         second_arg = ctx.call.args[1]
         parent: TypeInfo | None = None
 
-        parent_type = self.api.expr_to_analyzed_type(second_arg)
+        parent_type = sem_api.expr_to_analyzed_type(second_arg)
         if isinstance(instance := get_proper_type(parent_type), Instance):
             parent = instance.type
 
