@@ -16,8 +16,8 @@ from . import protocols
 
 
 class Analyzer:
-    def __init__(self, resolver: protocols.Resolver) -> None:
-        self.resolver = resolver
+    def __init__(self, make_resolver: protocols.ResolverMaker) -> None:
+        self.make_resolver = make_resolver
 
     def _has_typevars(self, the_type: ProperType) -> bool:
         if isinstance(the_type, TypeType):
@@ -57,14 +57,16 @@ class Analyzer:
             if model_type.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
                 return ctx.type
 
+        resolver = self.make_resolver(ctx=ctx)
+
         if self._has_typevars(model_type):
             # We don't have the information to resolve type vars at this point
             # We wrap the result so that we can continue this later without mypy
             # being sad about how Concrete doesn't match what we resolve it to in the end
-            wrapped = self.resolver.rewrap_type_var(model_type=model_type, annotation=annotation)
+            wrapped = resolver.rewrap_type_var(model_type=model_type, annotation=annotation)
             return ctx.type if wrapped is None else wrapped
 
-        resolved = self.resolver.resolve(annotation, model_type)
+        resolved = resolver.resolve(annotation, model_type)
         if resolved is None:
             return ctx.type
         else:
@@ -136,7 +138,7 @@ class Analyzer:
                     # a variable typed in terms of Self
                     func.type.arg_types[0] = replacement
 
-        concrete = self.resolver.resolve(
+        concrete = self.make_resolver(ctx=ctx).resolve(
             protocols.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
@@ -184,7 +186,7 @@ class Analyzer:
                 ctx.api.defer()
                 return None
 
-        type_var_expr = self.resolver.type_var_expr_for(
+        type_var_expr = self.make_resolver(ctx=ctx).type_var_expr_for(
             model=parent,
             name=name,
             fullname=f"{ctx.api.cur_mod_id}.{name}",

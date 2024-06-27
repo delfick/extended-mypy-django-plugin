@@ -99,6 +99,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             plugin_lookup_fully_qualified=self.lookup_fully_qualified,
         )
 
+        self.analyzer = analyze.Analyzer(make_resolver=self.make_resolver)
+
         super().__init__(options)
 
         self.extra_init()
@@ -217,12 +219,10 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
-            analyzer = analyze.Analyzer(resolver=self.plugin.make_resolver(ctx=ctx))
-
             if self.method_name is self.KnownConcreteMethods.type_var:
-                return analyzer.transform_type_var_classmethod(ctx)
+                return self.plugin.analyzer.transform_type_var_classmethod(ctx)
             elif self.method_name is self.KnownConcreteMethods.cast_as_concrete:
-                return analyzer.transform_cast_as_concrete(ctx)
+                return self.plugin.analyzer.transform_cast_as_concrete(ctx)
             else:
                 assert_never(self.method_name)
 
@@ -246,8 +246,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return False
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            analyzer = analyze.Analyzer(resolver=self.plugin.make_resolver(ctx=ctx))
-            return analyzer.analyze_type(ctx, self.annotation)
+            return self.plugin.analyzer.analyze_type(ctx, self.annotation)
 
     @hook.hook
     class get_attribute_hook(Hook[T_Report, AttributeContext, MypyType]):
