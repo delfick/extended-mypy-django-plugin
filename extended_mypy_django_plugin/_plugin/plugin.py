@@ -188,6 +188,12 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         """
 
         class KnownConcreteMethods(enum.Enum):
+            """
+            These are the methods that we care about in this plugin
+
+            Expressed as an enum given Mypy forces us to split up choosing from running the hook
+            """
+
             type_var = "type_var"
             cast_as_concrete = "cast_as_concrete"
 
