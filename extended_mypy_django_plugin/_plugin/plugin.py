@@ -1,6 +1,5 @@
 import enum
 import functools
-from collections.abc import Callable
 from typing import Generic, TypeVar
 
 from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
@@ -55,9 +54,15 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
     .. autoattribute:: get_type_analyze_hook
 
+    .. autoattribute:: get_attribute_hook
+
+    .. autoattribute:: get_method_hook
+
     .. autoattribute:: get_function_hook
 
-    .. autoattribute:: get_attribute_hook
+    .. autoattribute:: get_method_signature_hook
+
+    .. autoattribute:: get_function_signature_hook
     """
 
     @classmethod
@@ -252,8 +257,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     class _get_method_or_function_hook(
         Generic[T2_Report], Hook[T2_Report, MethodContext | FunctionContext, MypyType]
     ):
-        runner: Callable[[MethodContext | FunctionContext], MypyType | None]
-
         def extra_init(self) -> None:
             super().extra_init()
             self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
@@ -265,14 +268,10 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             )
 
         def choose(self) -> bool:
-            if self.shared_logic.choose():
-                self.runner = self.shared_logic.run
-                return True
-            else:
-                return False
+            return self.shared_logic.choose()
 
         def run(self, ctx: FunctionContext | MethodContext) -> MypyType:
-            result = self.runner(ctx)
+            result = self.shared_logic.run(ctx)
             if result is not None:
                 return result
 
