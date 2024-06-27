@@ -63,6 +63,7 @@ class _SignatureTypeInfo:
             item = item.item
 
         unwrapped_type_guard: ProperType | None = None
+        # Check if this was a wrapped annotation of a TypeVar from the semantic analyzing pass
         if isinstance(item, UnboundType) and item.name == "__ConcreteWithTypeVar__":
             item = get_proper_type(item.args[0])
             unwrapped_type_guard = item
@@ -82,6 +83,7 @@ class _SignatureTypeInfo:
             tuple[protocols.KnownAnnotations | None, ProperType, bool, TypeVarType | None]
         ] = []
 
+        # We want to represent ret types as a list, given we may have a union we want to collapse
         for found in found_ret_types:
             type_var: TypeVarType | None = None
             found_is_type: bool = False
@@ -263,6 +265,7 @@ def get_signature_info(
 
     found: ProperType | None = None
 
+    # normalise the difference between `func()` and `namespace.func()`
     if isinstance(ctx.context, CallExpr):
         found = get_proper_type(get_expression_type(ctx.context.callee))
     elif isinstance(ctx.context, IndexExpr):
@@ -273,6 +276,7 @@ def get_signature_info(
     if found is None:
         return None
 
+    # If we found a class, then we want to use `instance.__call__` as the function to analyze
     if isinstance(found, Instance):
         if not (call := found.type.names.get("__call__")) or not (calltype := call.type):
             return None
