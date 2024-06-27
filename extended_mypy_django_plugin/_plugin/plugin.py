@@ -282,11 +282,21 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
     @hook.hook
     class get_method_hook(_get_method_or_function_hook[T_Report]):
-        pass
+        """
+        Used to resolve methods that return a concrete annotation of a type variable.
+
+        In this hook we have access to where the function is called and so we can resolve those type variables
+        and ultimately resolve the concrete annotation.
+        """
 
     @hook.hook
     class get_function_hook(_get_method_or_function_hook[T_Report]):
-        pass
+        """
+        Used to resolve functions that return a concrete annotation of a type variable.
+
+        In this hook we have access to where the function is called and so we can resolve those type variables
+        and ultimately resolve the concrete annotation.
+        """
 
     class _get_method_or_function_signature_hook(
         Generic[T2_Report], Hook[T2_Report, MethodSigContext | FunctionSigContext, FunctionLike]
@@ -316,8 +326,18 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
     @hook.hook
     class get_method_signature_hook(_get_method_or_function_signature_hook[T_Report]):
-        pass
+        """
+        Used to complain about methods that return a TypeGuard for a concrete annotation of a type var.
+
+        In these cases Mypy does not give us an opportunity to change the resolve the concrete annotation
+        and modify the TypeGuard.
+        """
 
     @hook.hook
     class get_function_signature_hook(_get_method_or_function_signature_hook[T_Report]):
-        pass
+        """
+        Used to complain about functions that return a TypeGuard for a concrete annotation of a type var.
+
+        In these cases Mypy does not give us an opportunity to change the resolve the concrete annotation
+        and modify the TypeGuard.
+        """
