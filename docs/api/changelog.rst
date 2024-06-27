@@ -3,6 +3,11 @@
 Changelog
 ---------
 
+.. _release-0.6.2:
+
+0.6.2 - TBD
+    * Make sure that mypy/dmypy clear caches when a new version of the plugin is installed.
+
 .. _release-0.6.1:
 
 0.6.1 - 26 June 2024
