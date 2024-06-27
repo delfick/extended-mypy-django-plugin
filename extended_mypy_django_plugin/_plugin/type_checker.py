@@ -34,11 +34,11 @@ from . import protocols, signature_info
 
 
 class TypeChecking:
-    def __init__(self, *, resolver: protocols.Resolver) -> None:
-        self.resolver = resolver
+    def __init__(self, *, make_resolver: protocols.ResolverMaker) -> None:
+        self.make_resolver = make_resolver
 
     def check_typeguard(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        info = signature_info.get_signature_info(ctx, self.resolver)
+        info = signature_info.get_signature_info(ctx, self.make_resolver(ctx=ctx))
         if info is None:
             return None
 
@@ -55,7 +55,7 @@ class TypeChecking:
         return None
 
     def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        info = signature_info.get_signature_info(ctx, self.resolver)
+        info = signature_info.get_signature_info(ctx, self.make_resolver(ctx=ctx))
         if info is None:
             return None
 
@@ -121,17 +121,17 @@ class TypeChecking:
 class _SharedConcreteAnnotationLogic:
     def __init__(
         self,
-        make_resolver: protocols.ResolverMaker,
+        type_checker: protocols.TypeChecker,
         fullname: str,
         plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
         is_function: bool,
         modules: dict[str, MypyFile] | None,
     ) -> None:
-        self.make_resolver = make_resolver
         self.fullname = fullname
         self._modules = modules
         self._is_function = is_function
         self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
+        self._type_checker = type_checker
 
     def get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
         sym = self._plugin_lookup_fully_qualified(fullname)
@@ -200,11 +200,6 @@ class _SharedConcreteAnnotationLogic:
         else:
             return False
 
-    def _type_checking(
-        self, ctx: MethodContext | FunctionContext | MethodSigContext | FunctionSigContext
-    ) -> TypeChecking:
-        return TypeChecking(resolver=self.make_resolver(ctx=ctx))
-
 
 class SharedModifyReturnTypeLogic(_SharedConcreteAnnotationLogic):
     """
@@ -219,7 +214,7 @@ class SharedModifyReturnTypeLogic(_SharedConcreteAnnotationLogic):
         return self._choose_with_concrete_annotation()
 
     def run(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        return self._type_checking(ctx).modify_return_type(ctx)
+        return self._type_checker.modify_return_type(ctx)
 
 
 class SharedCheckTypeGuardsLogic(_SharedConcreteAnnotationLogic):
@@ -237,4 +232,4 @@ class SharedCheckTypeGuardsLogic(_SharedConcreteAnnotationLogic):
         return self._choose_with_concrete_annotation()
 
     def run(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        return self._type_checking(ctx).check_typeguard(ctx)
+        return self._type_checker.check_typeguard(ctx)
