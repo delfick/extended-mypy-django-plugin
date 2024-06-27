@@ -15,7 +15,7 @@ from mypy.types import Type as MypyType
 from . import protocols
 
 
-class TypeAnalyzer:
+class Analyzer:
     def __init__(self, resolver: protocols.Resolver) -> None:
         self.resolver = resolver
 
@@ -31,7 +31,9 @@ class TypeAnalyzer:
 
         return any(self._has_typevars(get_proper_type(item)) for item in the_type.items)
 
-    def analyze(self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations) -> MypyType:
+    def analyze_type(
+        self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations
+    ) -> MypyType:
         """
         We resolve annotations at this point. Unless the type being analyzed involves type vars.
 
@@ -67,11 +69,6 @@ class TypeAnalyzer:
             return ctx.type
         else:
             return resolved
-
-
-class SemAnalyzing:
-    def __init__(self, *, resolver: protocols.Resolver) -> None:
-        self.resolver = resolver
 
     def transform_cast_as_concrete(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 1:
