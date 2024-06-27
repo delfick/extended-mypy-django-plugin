@@ -188,8 +188,9 @@ class _SignatureTypeInfo:
                 if len(choices) == 1:
                     result[type_var] = choices[0]
                 else:
-                    self.resolver.fail(
-                        f"Failed to find an argument that matched the type var {type_var}"
+                    ctx.api.fail(
+                        f"Failed to find an argument that matched the type var {type_var}",
+                        ctx.context,
                     )
 
             if found is not None:
@@ -225,14 +226,15 @@ class _SignatureTypeInfo:
                 ):
                     replaced = type_vars_map[TYPING_SELF]
                 else:
-                    self.resolver.fail(f"Failed to work out type for type var {type_var}")
+                    ctx.api.fail(f"Failed to work out type for type var {type_var}", ctx.context)
                     return AnyType(TypeOfAny.from_error)
 
             if annotation is not None:
                 resolved = self.resolver.resolve(annotation, replaced)
                 if resolved is None:
-                    self.resolver.fail(
-                        f"Got an unexpected item in the concrete annotation, {replaced}"
+                    ctx.api.fail(
+                        f"Got an unexpected item in the concrete annotation, {replaced}",
+                        ctx.context,
                     )
                     return AnyType(TypeOfAny.from_error)
                 else:
