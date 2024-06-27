@@ -133,7 +133,7 @@ class _SharedConcreteAnnotationLogic:
         self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
         self._type_checker = type_checker
 
-    def get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
+    def _get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
         sym = self._plugin_lookup_fully_qualified(fullname)
         if sym and sym.node:
             return sym.node
@@ -166,7 +166,7 @@ class _SharedConcreteAnnotationLogic:
         return None
 
     def _choose_with_concrete_annotation(self) -> bool:
-        sym_node = self.get_symbolnode_for_fullname(self.fullname)
+        sym_node = self._get_symbolnode_for_fullname(self.fullname)
         if not sym_node:
             return False
 
