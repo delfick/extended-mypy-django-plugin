@@ -203,9 +203,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
-            sem_analyzing = sem_analyze.SemAnalyzing(
-                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
-            )
+            sem_analyzing = sem_analyze.SemAnalyzing(resolver=self.plugin.make_resolver(ctx=ctx))
 
             if self.method_name is self.KnownConcreteMethods.type_var:
                 return sem_analyzing.transform_type_var_classmethod(ctx)
