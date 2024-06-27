@@ -10,6 +10,7 @@ from extended_mypy_django_plugin.django_analysis import (
     protocols,
     virtual_dependencies,
 )
+from extended_mypy_django_plugin.version import VERSION
 
 here = pathlib.Path(__file__).parent
 
@@ -97,7 +98,7 @@ class TestEnd2End:
 
         assert (
             report.version
-            == "__virtual__|installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:917076629"
+            == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:917076629"
         )
         assert report.report == make_report(
             concrete_annotations={

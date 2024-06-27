@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Generic
 
 from typing_extensions import Self
 
+from ...version import VERSION
 from .. import discovery, hasher, project, protocols
 from . import dependency, report
 from .folder import VirtualDependencyGenerator, VirtualDependencyInstaller
@@ -83,9 +84,7 @@ class VirtualDependencyHandler(
             virtual_dependency_maker=virtual_dependency_maker
         )
         report_factory = self.make_report_factory(installed_apps_hash=installed_apps_hash)
-        project_version = (
-            f"installed_apps:{installed_apps_hash}|settings_types:{settings_types_hash}"
-        )
+        project_version = f"plugin:{VERSION}:installed_apps:{installed_apps_hash}|settings_types:{settings_types_hash}"
         virtual_dependency_installer = self.make_virtual_dependency_installer(
             virtual_dependency_namer=virtual_dependency_namer,
             project_version=project_version,
