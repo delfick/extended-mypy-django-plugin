@@ -267,21 +267,17 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     class _get_method_or_function_hook(
         Generic[T2_Report], Hook[T2_Report, MethodContext | FunctionContext, MypyType]
     ):
-        def extra_init(self) -> None:
-            super().extra_init()
-            self.shared_logic = type_checker.SharedModifyReturnTypeLogic(
-                type_checker=self.plugin.type_checker,
+        def choose(self) -> bool:
+            return type_checker.ConcreteAnnotationChooser(
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
                 modules=self.plugin._modules,
-            )
-
-        def choose(self) -> bool:
-            return self.shared_logic.choose()
+            ).choose()
 
         def run(self, ctx: FunctionContext | MethodContext) -> MypyType:
-            result = self.shared_logic.run(ctx)
+            result = self.plugin.type_checker.modify_return_type(ctx)
+
             if result is not None:
                 return result
 
@@ -311,21 +307,17 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     class _get_method_or_function_signature_hook(
         Generic[T2_Report], Hook[T2_Report, MethodSigContext | FunctionSigContext, FunctionLike]
     ):
-        def extra_init(self) -> None:
-            super().extra_init()
-            self.shared_logic = type_checker.SharedCheckTypeGuardsLogic(
-                type_checker=self.plugin.type_checker,
+        def choose(self) -> bool:
+            return type_checker.ConcreteAnnotationChooser(
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
                 is_function=self.__class__.__name__ == "get_function_hook",
                 modules=self.plugin._modules,
-            )
-
-        def choose(self) -> bool:
-            return self.shared_logic.choose()
+            ).choose()
 
         def run(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike:
-            result = self.shared_logic.run(ctx)
+            result = self.plugin.type_checker.check_typeguard(ctx)
+
             if result is not None:
                 return result
 
