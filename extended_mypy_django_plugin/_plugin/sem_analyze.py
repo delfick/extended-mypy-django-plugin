@@ -7,12 +7,7 @@ from mypy.nodes import (
     TypeInfo,
     Var,
 )
-from mypy.plugin import (
-    AnalyzeTypeContext,
-    DynamicClassDefContext,
-    SemanticAnalyzerPluginInterface,
-    TypeAnalyzerPluginInterface,
-)
+from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import SemanticAnalyzer
 from mypy.types import (
     CallableType,
@@ -29,8 +24,7 @@ from . import protocols
 
 
 class TypeAnalyzer:
-    def __init__(self, resolver: protocols.Resolver, api: TypeAnalyzerPluginInterface) -> None:
-        self.api = api
+    def __init__(self, resolver: protocols.Resolver) -> None:
         self.resolver = resolver
 
     def _has_typevars(self, the_type: ProperType) -> bool:
@@ -46,11 +40,18 @@ class TypeAnalyzer:
         return any(self._has_typevars(get_proper_type(item)) for item in the_type.items)
 
     def analyze(self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations) -> MypyType:
+        """
+        We resolve annotations at this point. Unless the type being analyzed involves type vars.
+
+        Resolving type vars requires we wait until we are analyzing method/function calls. Between now
+        and then we replace the type with an unbound type that wraps a resolved instance because when we
+        can resolve the type vars we can't resolve what the type var actually is!
+        """
         if len(args := ctx.type.args) != 1:
             ctx.api.fail("Concrete annotations must contain exactly one argument", ctx.context)
             return ctx.type
 
-        model_type = get_proper_type(self.api.analyze_type(args[0]))
+        model_type = get_proper_type(ctx.api.analyze_type(args[0]))
 
         if isinstance(model_type, TypeType) and isinstance(model_type.item, TypeVarType):
             # We want to ignore when extended_mypy_django_plugin.annotations.Concrete is being analyzed

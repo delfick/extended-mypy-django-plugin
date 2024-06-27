@@ -231,9 +231,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return False
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            type_analyzer = sem_analyze.TypeAnalyzer(
-                resolver=self.plugin.make_resolver(ctx=ctx), api=ctx.api
-            )
+            type_analyzer = sem_analyze.TypeAnalyzer(resolver=self.plugin.make_resolver(ctx=ctx))
             return type_analyzer.analyze(ctx, self.annotation)
 
     @hook.hook
