@@ -23,7 +23,7 @@ from mypy_django_plugin.transformers.managers import (
 )
 from typing_extensions import assert_never
 
-from . import annotation_resolver, config, hook, protocols, sem_analyze, type_checker
+from . import analyze, annotation_resolver, config, hook, protocols, type_checker
 
 # Can't re-use the same type var in an embedded class
 # So we make another type var that we can substitute T_Report into
@@ -217,12 +217,12 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
 
         def run(self, ctx: DynamicClassDefContext) -> None:
-            sem_analyzing = sem_analyze.SemAnalyzing(resolver=self.plugin.make_resolver(ctx=ctx))
+            analyzer = analyze.Analyzer(resolver=self.plugin.make_resolver(ctx=ctx))
 
             if self.method_name is self.KnownConcreteMethods.type_var:
-                return sem_analyzing.transform_type_var_classmethod(ctx)
+                return analyzer.transform_type_var_classmethod(ctx)
             elif self.method_name is self.KnownConcreteMethods.cast_as_concrete:
-                return sem_analyzing.transform_cast_as_concrete(ctx)
+                return analyzer.transform_cast_as_concrete(ctx)
             else:
                 assert_never(self.method_name)
 
@@ -246,8 +246,8 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return False
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            type_analyzer = sem_analyze.TypeAnalyzer(resolver=self.plugin.make_resolver(ctx=ctx))
-            return type_analyzer.analyze(ctx, self.annotation)
+            analyzer = analyze.Analyzer(resolver=self.plugin.make_resolver(ctx=ctx))
+            return analyzer.analyze_type(ctx, self.annotation)
 
     @hook.hook
     class get_attribute_hook(Hook[T_Report, AttributeContext, MypyType]):
