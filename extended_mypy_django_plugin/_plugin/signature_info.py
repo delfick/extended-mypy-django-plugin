@@ -1,6 +1,6 @@
 import dataclasses
 from collections.abc import Sequence
-from typing import Final
+from typing import TYPE_CHECKING, Final, cast
 
 from mypy.checker import TypeChecker
 from mypy.nodes import CallExpr, Expression, IndexExpr
@@ -285,3 +285,7 @@ def get_signature_info(
         return None
 
     return _SignatureTypeInfo.create(func=func, resolver=resolver)
+
+
+if TYPE_CHECKING:
+    _SI: protocols.SignatureInfo = cast(_SignatureTypeInfo, None)
