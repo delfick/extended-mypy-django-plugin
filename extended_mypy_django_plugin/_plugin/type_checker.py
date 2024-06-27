@@ -118,10 +118,16 @@ class TypeChecking:
             return AnyType(TypeOfAny.from_error)
 
 
-class _SharedConcreteAnnotationLogic:
+class ConcreteAnnotationChooser:
+    """
+    Helper for the plugin to tell Mypy to choose the plugin when we find functions/methods that
+    return types using concrete annotations.
+
+    At this point the only ones yet to be resolved should be using type vars.
+    """
+
     def __init__(
         self,
-        type_checker: protocols.TypeChecker,
         fullname: str,
         plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
         is_function: bool,
@@ -131,7 +137,6 @@ class _SharedConcreteAnnotationLogic:
         self._modules = modules
         self._is_function = is_function
         self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
-        self._type_checker = type_checker
 
     def _get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
         sym = self._plugin_lookup_fully_qualified(fullname)
@@ -165,7 +170,7 @@ class _SharedConcreteAnnotationLogic:
 
         return None
 
-    def _choose_with_concrete_annotation(self) -> bool:
+    def choose(self) -> bool:
         sym_node = self._get_symbolnode_for_fullname(self.fullname)
         if not sym_node:
             return False
@@ -199,37 +204,3 @@ class _SharedConcreteAnnotationLogic:
             return protocols.KnownAnnotations.resolve(ret_type.type.fullname) is not None
         else:
             return False
-
-
-class SharedModifyReturnTypeLogic(_SharedConcreteAnnotationLogic):
-    """
-    Shared logic for modifying the return type of methods and functions that use a concrete
-    annotation with a type variable.
-
-    Note that the signature hook will already raise errors if a concrete annotation is
-    used with a type var in a type guard.
-    """
-
-    def choose(self) -> bool:
-        return self._choose_with_concrete_annotation()
-
-    def run(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        return self._type_checker.modify_return_type(ctx)
-
-
-class SharedCheckTypeGuardsLogic(_SharedConcreteAnnotationLogic):
-    """
-    Shared logic for modifying the signature of methods and functions.
-
-    This is only used to find cases where a concrete annotation with a type var
-    is used in a type guard.
-
-    In this situation the mypy plugin system does not provide an opportunity to fully resolve
-    the type guard.
-    """
-
-    def choose(self) -> bool:
-        return self._choose_with_concrete_annotation()
-
-    def run(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        return self._type_checker.check_typeguard(ctx)

@@ -13,16 +13,7 @@ from mypy.plugin import (
     MethodContext,
     MethodSigContext,
 )
-from mypy.types import (
-    AnyType,
-    FunctionLike,
-    Instance,
-    ProperType,
-    TypeType,
-    TypeVarType,
-    UnboundType,
-    UnionType,
-)
+from mypy.types import AnyType, Instance, ProperType, TypeType, TypeVarType, UnboundType, UnionType
 from mypy.types import Type as MypyType
 
 from ..django_analysis import protocols as d_protocols
@@ -246,31 +237,8 @@ class SignatureInfo(Protocol):
         """
 
 
-class TypeChecker(Protocol):
-    def check_typeguard(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        """
-        Used to check for functions/methods that have a typeguard with a concrete annotation of a type var
-        """
-
-    def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        """
-        Used to resolve the return type of methods/functions that return concrete annotations
-        """
-
-    def extended_get_attribute_resolve_manager_method(
-        self,
-        ctx: AttributeContext,
-        *,
-        resolve_manager_method_from_instance: ResolveManagerMethodFromInstance,
-    ) -> MypyType:
-        """
-        Part of adding the fix from https://github.com/typeddjango/django-stubs/pull/2027
-        """
-
-
 if TYPE_CHECKING:
     P_Report = Report
     P_Resolver = Resolver
-    P_TypeChecker = TypeChecker
     P_ResolverMaker = ResolverMaker
     P_VirtualDependencyHandler = VirtualDependencyHandler[P_Report]
