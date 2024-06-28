@@ -85,10 +85,11 @@ class Analyzer:
                 " Create a variable with what you're passing in and pass in that variable instead",
                 ctx.call,
             )
-            return
+            return None
 
         node = ctx.api.lookup_qualified(first_arg.name, ctx.call)
         if not node or not node.node or not (arg_type := getattr(node.node, "type", None)):
+            # TODO reword this message
             ctx.api.fail("Failed to lookup the argument", ctx.call)
             return None
 
@@ -100,6 +101,7 @@ class Analyzer:
             arg_node_typ = arg_node_typ.item
 
         if not isinstance(arg_node_typ, Instance | UnionType | TypeVarType):
+            # TODO: "Expected X..." would be a useful addition.
             ctx.api.fail(
                 f"Unsure what to do with the type of the argument given to cast_as_concrete: {arg_node_typ}",
                 ctx.call,
@@ -113,11 +115,13 @@ class Analyzer:
         # The only type var we support is Self
         if isinstance(arg_node_typ, TypeVarType):
             func = sem_api.scope.function
+            # TODO: Invert and return early
             if func is not None and arg_node_typ.name == "Self":
                 replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
                     func.info.fullname
                 )
                 if not replacement:
+                    # TODO: Is this tested? Function outwith a class.
                     ctx.api.fail("Failed to resolve Self", ctx.call)
                     return None
             else:
@@ -138,21 +142,24 @@ class Analyzer:
                     # a variable typed in terms of Self
                     func.type.arg_types[0] = replacement
 
+        # TODO: name to indicate that concrete is a type.
         concrete = self.make_resolver(ctx=ctx).resolve(
             protocols.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
+        # TODO: In this case the resolver will have already complained.
         if not concrete:
             return None
 
         # Perform a cast!
-        ctx.call.analyzed = CastExpr(ctx.call.args[0], concrete)
+        ctx.call.analyzed = CastExpr(first_arg, concrete)
         ctx.call.analyzed.line = ctx.call.line
         ctx.call.analyzed.column = ctx.call.column
         ctx.call.analyzed.accept(sem_api)
 
         return None
 
+    # TODO: T_Leader = TypeVar("T_Leader", bound=Concrete[Leader])
     def transform_type_var_classmethod(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 2:
             ctx.api.fail("Concrete.type_var takes exactly two arguments", ctx.call)
@@ -162,6 +169,7 @@ class Analyzer:
         assert isinstance(ctx.api, SemanticAnalyzer)
         sem_api = ctx.api
 
+        # TODO: Link to prior art.
         # This copies what mypy does to resolve TypeVars
         name = sem_api.extract_typevarlike_name(
             AssignmentStmt([NameExpr(ctx.name)], ctx.call.callee), ctx.call
@@ -170,29 +178,27 @@ class Analyzer:
             return None
 
         second_arg = ctx.call.args[1]
-        parent: TypeInfo | None = None
 
-        parent_type = sem_api.expr_to_analyzed_type(second_arg)
-        if isinstance(instance := get_proper_type(parent_type), Instance):
-            parent = instance.type
-
-        if parent is None:
+        parent_type = get_proper_type(sem_api.expr_to_analyzed_type(second_arg))
+        if not isinstance(parent_type, Instance):
             if ctx.api.final_iteration:
                 ctx.api.fail(
                     f"Failed to locate the model provided to to make {ctx.name}", ctx.call
                 )
-                return None
             else:
+                # TODO: Are we deferring where we don't need to?
                 ctx.api.defer()
-                return None
+
+            return None
 
         type_var_expr = self.make_resolver(ctx=ctx).type_var_expr_for(
-            model=parent,
+            model=parent_type.type,
             name=name,
             fullname=f"{ctx.api.cur_mod_id}.{name}",
             object_type=ctx.api.named_type("builtins.object"),
         )
 
+        # TODO: Check assumption of module scope.
         # Note that we will override even if we've already generated the type var
         # because it's possible for a first pass to have no values but a second to do have values
         # And in between that we do need this to be a typevar expr
