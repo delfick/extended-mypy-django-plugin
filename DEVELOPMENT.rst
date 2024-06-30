@@ -1,7 +1,7 @@
 Development
 ===========
 
-This project uses `venvstarter`_ to manage a ``virtualenv``.
+This project uses `uv` to manage a ``virtualenv``.
 
 All the commands will only install things locally to this repository.
 
@@ -32,5 +32,3 @@ To activate the ``virtualenv`` in your current shell::
 To build the docs locally::
 
   > ./dev docs view
-
-.. _venvstarter: https://venvstarter.readthedocs.io
