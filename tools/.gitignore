@@ -1,2 +1,2 @@
-deps
-.python
+requirements.local.txt
+.bootstrap-venv

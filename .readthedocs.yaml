@@ -10,6 +10,6 @@ sphinx:
 
 python:
    install:
-    - requirements: tools/requirements.docs.txt
+    - requirements: ./tools/.requirements.readthedocs.txt
     - method: pip
-      path: .[stubs-latest]
+      path: .

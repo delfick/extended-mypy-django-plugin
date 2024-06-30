@@ -30,26 +30,17 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
-      - name: Install patch to make this use old versions of things
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git am ./scripts/make_old.patch
-
-      - name: Install deps
-        shell: bash
-        env:
-          VENVSTARTER_ONLY_MAKE_VENV: "1"
-        run: python ./tools/venv
+      - name: Install venv
+        run: ./tools/uv sync --extra tools --locked
 
       - name: Run tests without cache
         shell: bash
-        run: ./test.sh -v --typing-strategy MYPY_NO_INCREMENTAL
+        run: ./tools/ci tests --old -v --typing-strategy MYPY_NO_INCREMENTAL
 
       - name: Run tests incremental
         shell: bash
-        run: ./test.sh -v --typing-strategy MYPY_INCREMENTAL
+        run: ./tools/ci tests --old -v --typing-strategy MYPY_INCREMENTAL
 
       - name: Run tests daemon
         shell: bash
-        run: ./test.sh -v --typing-strategy MYPY_DAEMON
+        run: ./tools/ci tests --old -v --typing-strategy MYPY_DAEMON

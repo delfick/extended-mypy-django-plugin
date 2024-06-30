@@ -48,10 +48,27 @@ fi
 PROJECT_ROOT=$(pwd)
 export PROJECT_ROOT
 
+if ! ./tools/uv sync --locked -q; then
+    if [ "$sourced" = "1" ]; then
+        return 1
+    else
+        exit 1
+    fi
+fi
+
+if [ -f ./tools/requirements.local.txt ]; then
+    if ! ./tools/uv pip install -q -r ./tools/requirements.local.txt; then
+        if [ "$sourced" = "1" ]; then
+            return 1
+        else
+            exit 1
+        fi
+    fi
+fi
+
 if [ "$sourced" = "1" ]; then
-    VENVSTARTER_ONLY_MAKE_VENV=1 ./tools/venv
     # shellcheck source=/dev/null
-    source ./tools/.python/bin/activate
+    source ./.venv/bin/activate
 else
-    exec ./tools/venv "$@"
+    exec uv run ./tools/run.py "$@"
 fi

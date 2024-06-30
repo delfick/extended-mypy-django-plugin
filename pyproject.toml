@@ -11,15 +11,14 @@ license = { text = "MIT" }
 authors = [
     { name = "Stephen Moore", email = "stephen@delfick.com" },
 ]
+requires-python = ">=3.10"
 
-[project.optional-dependencies]
-stubs-latest = [
-    "mypy==1.10.0",
-    "django-stubs==5.0.2",
-]
-stubs-older = [
-    "mypy==1.4.0",
-    "django-stubs==4.2.3",
+[tool.uv]
+dev-dependencies = [
+    "tools",
+    "djangoexample",
+    "proper_plugin",
+    "extended_mypy_django_plugin_test_driver",
 ]
 
 [tool.hatch.metadata]
@@ -32,6 +31,15 @@ path = "extended_mypy_django_plugin/version.py"
 include = [
     "/extended_mypy_django_plugin",
 ]
+
+[tool.uv.sources]
+tools = { workspace = true }
+djangoexample = { workspace = true }
+proper_plugin = { workspace = true }
+extended_mypy_django_plugin_test_driver = { workspace = true }
+
+[tool.uv.workspace]
+members = ["tools", "example", "scripts/test_helpers", "scripts/proper_plugin"]
 
 [tool.ruff]
 target-version = "py310"

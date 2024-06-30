@@ -23,14 +23,11 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install deps
-        shell: bash
-        env:
-          VENVSTARTER_ONLY_MAKE_VENV: "1"
-        run: python ./tools/venv
+      - name: Install venv
+        run: ./tools/uv sync --extra tools --locked
 
       - name: Ensure linter is happy
-        run: ./lint
+        run: ./tools/ci lint
 
   types:
     runs-on: ubuntu-latest
@@ -46,14 +43,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install deps
-        shell: bash
-        env:
-          VENVSTARTER_ONLY_MAKE_VENV: "1"
-        run: python ./tools/venv
+      - name: Install venv
+        run: ./tools/uv sync --extra tools --locked
 
       - name: Ensure mypy is happy
-        run: ./types
+        run: ./tools/ci types
+
+  types-old:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install venv
+        run: ./tools/uv sync --extra tools --locked
+
+      - name: Ensure mypy is happy
+        run: ./tools/ci types --old
 
   format:
     runs-on: ubuntu-latest
@@ -65,15 +75,14 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install deps
-        shell: bash
-        env:
-          VENVSTARTER_ONLY_MAKE_VENV: "1"
-        run: python ./tools/venv
+      - name: Install venv
+        run: ./tools/uv sync --extra tools --locked
 
       - name: Ensure code is formatted
         run: |
-          ./format
+          ./tools/ci format
+
+          git status --porcelain
 
           # Complain if there were changes
           if [[ ! -z "$(git status --porcelain)" ]]; then
