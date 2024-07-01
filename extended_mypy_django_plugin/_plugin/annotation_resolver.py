@@ -17,6 +17,7 @@ from mypy.typeanal import TypeAnalyser
 from mypy.types import (
     AnyType,
     Instance,
+    PlaceholderType,
     ProperType,
     TypeOfAny,
     TypeType,
@@ -92,13 +93,15 @@ class AnnotationResolver:
                 return Instance(node, args)
             return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-        def lookup_alias(alias: str) -> Iterator[Instance]:
+        def lookup_alias(alias: str) -> Iterator[Instance | PlaceholderType]:
             """
             This is the same regardless of which ctx we have
             """
             sym = plugin_lookup_fully_qualified(alias)
             if sym and isinstance(sym.node, PlaceholderNode):
-                raise ShouldDefer()
+                yield PlaceholderType(alias, [], sym.node.line)
+                return
+
             assert sym and isinstance(sym.node, TypeAlias)
             target = get_proper_type(sym.node.target)
 
@@ -107,7 +110,7 @@ class AnnotationResolver:
             elif isinstance(target, UnionType):
                 for item in target.items:
                     found = get_proper_type(item)
-                    assert isinstance(found, Instance)
+                    assert isinstance(found, Instance | PlaceholderType)
                     yield found
             else:
                 raise AssertionError(f"Expected only instances or unions, got {target}")
@@ -197,7 +200,7 @@ class AnnotationResolver:
 
     def _concrete_for(
         self, model_type: ProperType, get_aliases: protocols.AliasGetter
-    ) -> Instance | TypeType | UnionType | None:
+    ) -> Instance | TypeType | UnionType | PlaceholderType | None:
         """
         Given some type that represents a model, and an alias getter, determine an
         Instance if we can from the model_type and use it with the alias getter.
@@ -213,7 +216,8 @@ class AnnotationResolver:
             found = model_type.item
 
         if isinstance(found, AnyType):
-            self.fail("Tried to use concrete annotations on a typing.Any")
+            if self._defer():
+                self.fail("Tried to use concrete annotations on a typing.Any")
             return None
 
         if not isinstance(found, Instance | UnionType):
@@ -234,7 +238,7 @@ class AnnotationResolver:
         if are_not_all_instances:
             return None
 
-        concrete: list[Instance] = []
+        concrete: list[Instance | PlaceholderType] = []
         names = ", ".join([item.type.fullname for item in all_instances])
 
         for item in all_instances:
@@ -248,13 +252,13 @@ class AnnotationResolver:
         return self._make_union(is_type, tuple(concrete))
 
     def _make_union(
-        self, is_type: bool, instances: Sequence[Instance]
-    ) -> UnionType | Instance | TypeType:
+        self, is_type: bool, instances: Sequence[Instance | PlaceholderType]
+    ) -> UnionType | Instance | TypeType | PlaceholderType:
         """
         Given a sequence of instances, make them all TypeType if is_type and then
         return either the one type if the list is of 1, or the list wrapped in a UnionType
         """
-        items: Sequence[UnionType | TypeType | Instance]
+        items: Sequence[UnionType | TypeType | Instance | PlaceholderType]
 
         if is_type:
             items = [item if isinstance(item, TypeType) else TypeType(item) for item in instances]
@@ -268,7 +272,7 @@ class AnnotationResolver:
 
     def _instances_from_aliases(
         self, get_aliases: protocols.AliasGetter, *models: str
-    ) -> Iterator[Instance]:
+    ) -> Iterator[Instance | PlaceholderType]:
         for model, alias in get_aliases(*models).items():
             if alias is None:
                 self.fail(f"Failed to find concrete alias instance for '{model}'")
@@ -281,7 +285,7 @@ class AnnotationResolver:
 
     def resolve(
         self, annotation: protocols.KnownAnnotations, model_type: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | None:
+    ) -> Instance | TypeType | UnionType | AnyType | PlaceholderType | None:
         if annotation is protocols.KnownAnnotations.CONCRETE:
             return self._concrete_for(model_type, self.get_concrete_aliases)
         elif annotation is protocols.KnownAnnotations.DEFAULT_QUERYSET:
