@@ -85,7 +85,7 @@ class Analyzer:
                 " Create a variable with what you're passing in and pass in that variable instead",
                 ctx.call,
             )
-            return
+            return None
 
         node = ctx.api.lookup_qualified(first_arg.name, ctx.call)
         if not node or not node.node or not (arg_type := getattr(node.node, "type", None)):
