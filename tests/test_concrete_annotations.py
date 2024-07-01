@@ -138,6 +138,84 @@ class TestConcreteAnnotations:
                 """,
             )
 
+    def test_can_reference_concrete_model_across_apps(self, scenario: Scenario) -> None:
+        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
+        def _(expected: OutputBuilder) -> None:
+            for app in ("example", "example2"):
+                scenario.file(expected, f"{app}/__init__.py", "")
+                scenario.file(
+                    expected,
+                    f"{app}/apps.py",
+                    f"""
+                    from django.apps import AppConfig
+
+                    class Config(AppConfig):
+                        name = "{app}"
+                    """,
+                )
+
+            scenario.file(
+                expected,
+                "example/models/__init__.py",
+                """
+                from .parent import Parent 
+                """,
+            )
+            scenario.file(
+                expected,
+                "example2/models/__init__.py",
+                """
+                from .children import Child, DTO 
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example/models/parent.py",
+                """
+                from django.db import models
+
+                class Parent(models.Model):
+                    class Meta:
+                        abstract = True
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example2/models/children.py",
+                """
+                from extended_mypy_django_plugin import Concrete
+                from example import models as common_models
+                import dataclasses
+                from django.db import models
+
+                class Child(common_models.Parent):
+                    ...
+
+                @dataclasses.dataclass
+                class DTO:
+                    models_cls: type[Concrete[common_models.Parent]]
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "main.py",
+                """
+                from extended_mypy_django_plugin import Concrete
+                from typing import cast
+                from example import models as common_models
+                from example2 import models as models2
+
+                cls: Concrete[common_models.Parent]
+                # ^ REVEAL ^ example2.models.children.Child
+
+                cast(models2.DTO, None).models_cls
+                # ^ REVEAL ^ type[example2.models.children.Child]
+                """,
+            )
+
     def test_can_use_type_var_before_class_is_defined(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after(installed_apps=["example"])
         def _(expected: OutputBuilder) -> None:
@@ -251,19 +329,19 @@ class TestConcreteAnnotations:
                 from django.db import models
                 from collections.abc import Callable
                 from typing_extensions import Self
-                from typing import Protocol
+                from typing import Protocol, TYPE_CHECKING
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
                 class Leader(models.Model):
                     @classmethod
                     def new(cls) -> Concrete[Self]:
                         cls = Concrete.cast_as_concrete(cls)
-                        # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        # ^ REVEAL[cls-all] ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
                         return cls.objects.create()
 
                     def qs(self) -> DefaultQuerySet[Self]:
                         self = Concrete.cast_as_concrete(self)
-                        # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                        # ^ REVEAL[self-all] ^ Union[example.models.Follower1, example.models.Follower2]
                         return self.__class__.objects.filter(pk=self.pk)
 
                     class Meta:
@@ -279,6 +357,10 @@ class TestConcreteAnnotations:
 
                 class Follower2(Leader):
                     ...
+
+                if TYPE_CHECKING:
+                    _CL: Concrete[Leader]
+                    # ^ REVEAL[base-all] ^ Union[example.models.Follower1, example.models.Follower2]
                 """,
             )
 
@@ -293,10 +375,10 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ type[example.models.Leader]
 
                 leader = model.new()
-                # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL[leader-new] ^ Union[example.models.Follower1, example.models.Follower2]
 
                 qs = leader.qs()
-                # ^ REVEAL ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
+                # ^ REVEAL[all-qs] ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
 
                 follower1 = Follower1.new()
                 # ^ REVEAL ^ example.models.Follower1
@@ -308,10 +390,70 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Leader
 
                 narrowed = Concrete.cast_as_concrete(other)
-                # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL[narrowed] ^ Union[example.models.Follower1, example.models.Follower2]
                 other
                 # ^ REVEAL ^ example.models.Leader
                 """,
+            )
+
+        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.file(expected, "example2/__init__.py", "")
+
+            scenario.file(
+                expected,
+                "example2/apps.py",
+                """
+                from django.apps import AppConfig
+
+                class Config(AppConfig):
+                    name = "example2"
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example2/models.py",
+                """
+                from example.models import Leader
+
+                class Follower3(Leader):
+                    pass
+                """,
+            )
+
+            expected.daemon_should_restart()
+
+            (
+                expected.on("example/models.py")
+                .add_revealed_type(
+                    "cls-all",
+                    "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]",
+                )
+                .add_revealed_type(
+                    "self-all",
+                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+                )
+                .add_revealed_type(
+                    "base-all",
+                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+                )
+            )
+
+            (
+                expected.on("main.py")
+                .add_revealed_type(
+                    "leader-new",
+                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+                )
+                .add_revealed_type(
+                    "all-qs",
+                    "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]]",
+                )
+                .add_revealed_type(
+                    "narrowed",
+                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+                )
             )
 
     def test_resolving_concrete_type_vars(self, scenario: Scenario) -> None:

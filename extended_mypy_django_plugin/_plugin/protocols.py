@@ -13,7 +13,16 @@ from mypy.plugin import (
     MethodContext,
     MethodSigContext,
 )
-from mypy.types import AnyType, Instance, ProperType, TypeType, TypeVarType, UnboundType, UnionType
+from mypy.types import (
+    AnyType,
+    Instance,
+    PlaceholderType,
+    ProperType,
+    TypeType,
+    TypeVarType,
+    UnboundType,
+    UnionType,
+)
 from mypy.types import Type as MypyType
 
 from ..django_analysis import protocols as d_protocols
@@ -137,7 +146,7 @@ class LookupAlias(Protocol):
     by that type alias
     """
 
-    def __call__(self, alias: str) -> Iterator[Instance]: ...
+    def __call__(self, alias: str) -> Iterator[Instance | PlaceholderType]: ...
 
 
 class LookupFullyQualified(Protocol):
@@ -165,7 +174,7 @@ class Resolver(Protocol):
 
     def resolve(
         self, annotation: KnownAnnotations, model_type: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | None:
+    ) -> Instance | TypeType | UnionType | AnyType | PlaceholderType | None:
         """
         Given a specific annotation and some model return the resolved
         concrete form.
