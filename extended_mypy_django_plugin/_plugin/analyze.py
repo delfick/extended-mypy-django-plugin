@@ -115,18 +115,20 @@ class Analyzer:
         # The only type var we support is Self
         if isinstance(arg_node_typ, TypeVarType):
             func = sem_api.scope.function
-            if func is not None and arg_node_typ.name == "Self":
-                replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
-                    func.info.fullname
-                )
-                if not replacement:
-                    ctx.api.fail("Failed to resolve Self", ctx.call)
-                    return None
-            else:
+            if func is None or arg_node_typ.name != "Self":
                 ctx.api.fail(
-                    f"Resolving type variables for cast_as_concrete not implemented: {arg_node_typ}",
+                    f"Resolving type variables for cast_as_concrete only implement for the Self type: {arg_node_typ}",
                     ctx.call,
                 )
+                return
+
+            replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
+                func.info.fullname
+            )
+            if not replacement:
+                # This is one of those "no possible to reach in practise" branches
+                # because mypy fails before we get here anyways
+                ctx.api.fail("The Self type only makes sense on class methods", ctx.call)
                 return None
 
             arg_node_typ = replacement

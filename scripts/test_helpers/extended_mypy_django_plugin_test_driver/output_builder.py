@@ -125,8 +125,10 @@ class OutputBuilder:
 
     def _normalise_message(self, message: str) -> str:
         if importlib.metadata.version("mypy") == "1.4.0":
-            return message.replace("type[", "Type[").replace(
-                "django.db.models.query.QuerySet", "django.db.models.query._QuerySet"
+            return (
+                message.replace("type[", "Type[")
+                .replace("django.db.models.query.QuerySet", "django.db.models.query._QuerySet")
+                .replace("Type[Concrete?", "type[Concrete?")
             )
         else:
             return message

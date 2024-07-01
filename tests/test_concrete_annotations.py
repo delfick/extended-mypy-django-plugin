@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
@@ -13,7 +15,8 @@ class TestConcreteAnnotations:
                 from simple.models import Follow1, Follow2
                 from leader.models import Leader
                 from extended_mypy_django_plugin import Concrete
-                from typing import Any
+                from typing import Any, TypeVar
+                from typing_extensions import Self
 
                 model: type[Leader] = Follow1
                 # ^ REVEAL ^ type[leader.models.Leader]
@@ -63,8 +66,26 @@ class TestConcreteAnnotations:
                 a: Any = None
                 thing = Concrete.cast_as_concrete(a)
                 # ^ ERROR(misc) ^ Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got <class 'mypy.types.AnyType'>
+
+                T_LeaderNormal = TypeVar("T_LeaderNormal", bound=Leader)
+
+                def myfunc(model: type[T_LeaderNormal]) -> T_LeaderNormal:
+                    model = Concrete.cast_as_concrete(model)
+                    # ^ ERROR(misc) ^ Resolving type variables for cast_as_concrete only implement for the Self type: T_LeaderNormal`-1
+                    return model.objects.create()
+                    # ^ ERROR(attr-defined) ^ "type[Concrete?[T_Parent?]]" has no attribute "objects"
+
+                def myfunc2(model: type[Self]) -> Self:
+                    # ^ ERROR(misc) ^ Self type is only allowed in annotations within class definition
+                    model = Concrete.cast_as_concrete(model)
+                    # ^ ERROR(misc) ^ Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got <class 'mypy.types.AnyType'>
+                    return model.objects.create()
+                    # ^ ERROR(attr-defined)[not-in-1.4] ^ "type[Concrete?[T_Parent?]]" has no attribute "objects"
                 """,
             )
+
+            if importlib.metadata.version("mypy") == "1.4.0":
+                expected.on("main.py").remove_errors("not-in-1.4")
 
     def test_simple_annotation(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after
