@@ -293,6 +293,9 @@ class OutputBuilder:
         expected = self.on(path)
 
         lines = content.split("\n")
+        # TODO: Clean this up as part of making https://github.com/delfick/pytest-typing-runner
+        previous_instruction: _Instruction | None = None
+        previous_instruction_line: int | None = None
         for i, line in enumerate(lines):
             m = regexes["instruction"].match(line)
             if m is None:
@@ -301,11 +304,13 @@ class OutputBuilder:
                         f"Looks like line is trying to be an expectation but it didn't pass the regex for one: {line}"
                     )
                 result.append(line)
+                previous_instruction = None
+                previous_instruction_line = None
                 continue
 
             gd = m.groupdict()
             result.append("")
-            expected._parse_instruction(
+            previous_instruction_line = expected._parse_instruction(
                 i,
                 result,
                 line,
@@ -314,7 +319,10 @@ class OutputBuilder:
                 options=gd.get("options", "") or "",
                 tag=gd.get("tag", "") or "",
                 rest=gd["rest"],
+                previous_instruction=previous_instruction,
+                previous_instruction_line=previous_instruction_line,
             )
+            previous_instruction = _Instruction(gd["instruction"])
 
         return "\n".join(result)
 
@@ -329,7 +337,9 @@ class OutputBuilder:
         options: str,
         tag: str,
         rest: str,
-    ) -> None:
+        previous_instruction: _Instruction | None,
+        previous_instruction_line: int | None,
+    ) -> int:
         if instruction is _Instruction.REVEAL:
             previous_line = result[i - 1]
             m = regexes["assignment"].match(previous_line.strip())
@@ -340,15 +350,25 @@ class OutputBuilder:
                 result[i - 1] = f"{prefix_whitespace}reveal_type({previous_line.strip()})"
 
             self.add_revealed_type(i, rest, tag=tag)
+            return i
         elif instruction is _Instruction.ERROR:
             assert options, "Must use `# ^ ERROR(error-type) ^ error here`"
+            if previous_instruction is not None:
+                assert previous_instruction_line is not None
+                i = previous_instruction_line
             self.add_error(i, options, rest, tag=tag)
+            return i
         elif instruction is _Instruction.NOTE:
             self.add_note(i, rest, tag=tag)
+            if previous_instruction is not None:
+                assert previous_instruction_line is not None
+                i = previous_instruction_line
+            return i
         elif instruction is _Instruction.TAG:
             assert tag, "Must use a `# ^ TAG[tag-name] ^`"
             assert self.target_file is not None
             self._build.add(self.target_file, i, None, "error", "", tag=tag, tag_only=True)
+            return i
         else:
             assert_never(instruction)
 

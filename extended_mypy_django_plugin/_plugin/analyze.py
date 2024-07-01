@@ -89,7 +89,9 @@ class Analyzer:
 
         node = ctx.api.lookup_qualified(first_arg.name, ctx.call)
         if not node or not node.node or not (arg_type := getattr(node.node, "type", None)):
-            ctx.api.fail("Failed to lookup the argument", ctx.call)
+            ctx.api.fail(
+                f'Failed to find a model type represented by "{first_arg.name}"', ctx.call
+            )
             return None
 
         arg_node_typ: ProperType = get_proper_type(arg_type)
