@@ -168,6 +168,7 @@ class Analyzer:
         sem_api = ctx.api
 
         # This copies what mypy does to resolve TypeVars
+        # https://github.com/python/mypy/blob/v1.10.1/mypy/semanal.py#L4234
         name = sem_api.extract_typevarlike_name(
             AssignmentStmt([NameExpr(ctx.name)], ctx.call.callee), ctx.call
         )
