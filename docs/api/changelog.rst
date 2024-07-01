@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.6.3:
 
-0.6.3 - 27 June 2024
+0.6.3 - 1 June 2024
     * Fixed a bug with resolving Concrete annotations at the module scope
 
 .. _release-0.6.2:
