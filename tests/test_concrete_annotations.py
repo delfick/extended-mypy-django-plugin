@@ -54,6 +54,10 @@ class TestConcreteAnnotations:
 
                 instance2
                 # ^ REVEAL ^ leader.models.Leader
+
+                thing = Concrete.cast_as_concrete(nup)
+                # ^ ERROR(name-defined) ^ Name "nup" is not defined
+                # ^ ERROR(misc) ^ Failed to find a model type represented by "nup"
                 """,
             )
 
