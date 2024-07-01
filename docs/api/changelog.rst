@@ -3,6 +3,12 @@
 Changelog
 ---------
 
+.. _release-0.6.4:
+
+0.6.4 - TBD
+    * Improved error messages when using ``Concrete.cast_as_concrete`` and ``Concrete.type_var``
+    * Ensure that ``Concrete.type_var`` is only used in the module scope
+
 .. _release-0.6.3:
 
 0.6.3 - 1 June 2024

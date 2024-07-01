@@ -167,6 +167,21 @@ class Analyzer:
         assert isinstance(ctx.api, SemanticAnalyzer)
         sem_api = ctx.api
 
+        inside: str | None = None
+        if ctx.api.scope.classes and ctx.api.scope.functions:
+            inside = "method scope"
+        elif ctx.api.scope.classes:
+            inside = "class scope"
+        elif ctx.api.scope.functions:
+            inside = "function scope"
+
+        if inside:
+            # We modify the module scope in this hook, so make sure it's in module scope!
+            ctx.api.fail(
+                f"Can only use Concrete.type_var at module scope, rather than {inside}", ctx.call
+            )
+            return None
+
         # This copies what mypy does to resolve TypeVars
         # https://github.com/python/mypy/blob/v1.10.1/mypy/semanal.py#L4234
         name = sem_api.extract_typevarlike_name(
