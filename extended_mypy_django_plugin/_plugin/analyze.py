@@ -1,4 +1,4 @@
-from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode, TypeInfo
+from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode
 from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext
 from mypy.semanal import SemanticAnalyzer
 from mypy.types import (
@@ -176,24 +176,18 @@ class Analyzer:
             return None
 
         second_arg = ctx.call.args[1]
-        parent: TypeInfo | None = None
+        parent_type = get_proper_type(sem_api.expr_to_analyzed_type(second_arg))
 
-        parent_type = sem_api.expr_to_analyzed_type(second_arg)
-        if isinstance(instance := get_proper_type(parent_type), Instance):
-            parent = instance.type
-
-        if parent is None:
+        if not isinstance(parent_type, Instance):
             if ctx.api.final_iteration:
-                ctx.api.fail(
-                    f"Failed to locate the model provided to to make {ctx.name}", ctx.call
-                )
-                return None
+                ctx.api.fail(f"Failed to locate the model provided: {ctx.name}", ctx.call)
             else:
                 ctx.api.defer()
-                return None
+
+            return None
 
         type_var_expr = self.make_resolver(ctx=ctx).type_var_expr_for(
-            model=parent,
+            model=parent_type.type,
             name=name,
             fullname=f"{ctx.api.cur_mod_id}.{name}",
             object_type=ctx.api.named_type("builtins.object"),
