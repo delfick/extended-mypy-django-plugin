@@ -103,7 +103,7 @@ class Analyzer:
 
         if not isinstance(arg_node_typ, Instance | UnionType | TypeVarType):
             ctx.api.fail(
-                f"Unsure what to do with the type of the argument given to cast_as_concrete: {arg_node_typ}",
+                f"Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got {type(arg_node_typ)}",
                 ctx.call,
             )
             return None

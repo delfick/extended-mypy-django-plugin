@@ -13,6 +13,7 @@ class TestConcreteAnnotations:
                 from simple.models import Follow1, Follow2
                 from leader.models import Leader
                 from extended_mypy_django_plugin import Concrete
+                from typing import Any
 
                 model: type[Leader] = Follow1
                 # ^ REVEAL ^ type[leader.models.Leader]
@@ -58,6 +59,10 @@ class TestConcreteAnnotations:
                 thing = Concrete.cast_as_concrete(nup)
                 # ^ ERROR(name-defined) ^ Name "nup" is not defined
                 # ^ ERROR(misc) ^ Failed to find a model type represented by "nup"
+
+                a: Any = None
+                thing = Concrete.cast_as_concrete(a)
+                # ^ ERROR(misc) ^ Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got <class 'mypy.types.AnyType'>
                 """,
             )
 
