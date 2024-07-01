@@ -142,15 +142,16 @@ class Analyzer:
                     # a variable typed in terms of Self
                     func.type.arg_types[0] = replacement
 
-        concrete = self.make_resolver(ctx=ctx).resolve(
+        concrete_type = self.make_resolver(ctx=ctx).resolve(
             protocols.KnownAnnotations.CONCRETE,
             TypeType(arg_node_typ) if is_type else arg_node_typ,
         )
-        if not concrete:
+        if not concrete_type:
+            # resolve will already have made a failure if necessary
             return None
 
         # Perform a cast!
-        ctx.call.analyzed = CastExpr(ctx.call.args[0], concrete)
+        ctx.call.analyzed = CastExpr(first_arg, concrete_type)
         ctx.call.analyzed.line = ctx.call.line
         ctx.call.analyzed.column = ctx.call.column
         ctx.call.analyzed.accept(sem_api)
