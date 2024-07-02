@@ -108,7 +108,7 @@ class DeferFunc(Protocol):
     """
     Used to tell mypy to defer and come back later
 
-    Returns True if unable to defer
+    Returns True if was able to defer
     """
 
     def __call__(self) -> bool: ...
