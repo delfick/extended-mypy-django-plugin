@@ -35,6 +35,10 @@ class ShouldDefer(Exception):
     pass
 
 
+class FailedLookup(Exception):
+    pass
+
+
 class AnnotationResolver:
     @classmethod
     def create(
@@ -97,7 +101,11 @@ class AnnotationResolver:
             """
             This is the same regardless of which ctx we have
             """
-            sym = plugin_lookup_fully_qualified(alias)
+            try:
+                sym = plugin_lookup_fully_qualified(alias)
+            except AssertionError:
+                raise FailedLookup(f"Failed to lookup {alias}")
+
             if sym and isinstance(sym.node, PlaceholderNode):
                 yield PlaceholderType(alias, [], sym.node.line)
                 return
@@ -113,7 +121,7 @@ class AnnotationResolver:
                     assert isinstance(found, Instance | PlaceholderType)
                     yield found
             else:
-                raise AssertionError(f"Expected only instances or unions, got {target}")
+                raise FailedLookup(f"Expected only an instance or union for {alias}: got {target}")
 
         fail: protocols.FailFunc
         defer: protocols.DeferFunc
@@ -277,8 +285,10 @@ class AnnotationResolver:
 
             try:
                 yield from self.lookup_alias(alias)
-            except AssertionError:
-                self.fail(f"Failed to create concrete alias instance for '{model}' ({alias})")
+            except FailedLookup as error:
+                self.fail(
+                    f"Failed to create concrete alias instance for '{model}' ({error}) (this is likely a bug in extended_mypy_django_plugin)"
+                )
 
     def resolve(
         self, annotation: protocols.KnownAnnotations, model_type: ProperType
