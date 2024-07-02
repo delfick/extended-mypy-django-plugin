@@ -134,7 +134,8 @@ class NamedTypeOrNone(Protocol):
 class AliasGetter(Protocol):
     """
     Given fullnames to zero or more models return a Mapping of those models to type aliases
-    for the concrete aliases of that model
+    for the concrete aliases of that model where the value in the mapping is None if the alias
+    could not be found.
     """
 
     def __call__(self, *models: str) -> Mapping[str, str | None]: ...
