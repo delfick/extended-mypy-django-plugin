@@ -268,7 +268,7 @@ class AnnotationResolver:
         items: Sequence[UnionType | TypeType | Instance | PlaceholderType]
 
         if is_type:
-            items = [item if isinstance(item, TypeType) else TypeType(item) for item in instances]
+            items = [TypeType(item) for item in instances]
         else:
             items = instances
 
