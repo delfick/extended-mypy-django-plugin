@@ -294,7 +294,7 @@ class AnnotationResolver:
 
     def resolve(
         self, annotation: protocols.KnownAnnotations, model_type: ProperType
-    ) -> Instance | TypeType | UnionType | AnyType | PlaceholderType | None:
+    ) -> Instance | TypeType | UnionType | PlaceholderType | None:
         if annotation is protocols.KnownAnnotations.CONCRETE:
             return self._concrete_for(model_type, self.get_concrete_aliases)
 
