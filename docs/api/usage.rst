@@ -5,8 +5,8 @@ To make use of this plugin in code means using the annotation classes that are
 provided.
 
 The following examples assume there is an abstract model ``AbstractModel``
-with the concrete models ``Concrete1``, ``Concrete2`` and ``Concrete3`` and
-``Concrete2`` has a custom queryset class called ``Concrete2QS``.
+with the concrete models ``Concrete1``, ``Concrete2``, and ``Concrete3``.
+Additionally, ``Concrete2`` has a custom queryset class called ``Concrete2QS``.
 
 Concrete
 --------
@@ -19,7 +19,7 @@ To create a union of the concrete models, use the ``Concrete`` annotation:
 
 
     instance: Concrete[AbstractModel]
-    
+
     # --------------
     # Equivalent to
     # --------------
@@ -74,8 +74,8 @@ model, create a ``TypeVar`` object using ``Concrete.type_var``:
 Concrete.cast_as_concrete
 -------------------------
 
-To type narrow an object as a concrete descendent of that object, the ``Concrete.cast_as_concrete``
-may be used:
+To type narrow an object as a concrete descendent of that object, the
+``Concrete.cast_as_concrete`` may be used:
 
 .. code-block:: python
 
@@ -86,15 +86,15 @@ may be used:
         narrowed = Concrete.cast_as_concrete(model)
         reveal_type(narrowed) # Concrete1 | Concrete2 | Concrete3
 
-    def takes_model_cls(model: type[AbstractModel]) -> None:
-        narrowed = Concrete.cast_as_concrete(model)
+    def takes_model_cls(model_cls: type[AbstractModel]) -> None:
+        narrowed = Concrete.cast_as_concrete(model_cls)
         reveal_type(narrowed) # type[Concrete1] | type[Concrete2] | type[Concrete3]
 
-Note that at runtime this will raise an exception if the passed in object is either not a django
-model class/instance or is an abstract one.
+Note that at runtime this will raise an exception if the passed in object is
+either not a Django model class/instance or is an abstract one.
 
-This may also be used on methods of an Django Model in conjunction with ``typing.Self`` or
-``typing_extensions.Self``:
+This may also be used on methods of an Django Model in conjunction with
+``typing.Self`` or ``typing_extensions.Self``:
 
 .. code-block:: python
 
@@ -140,8 +140,9 @@ This may also be used on methods of an Django Model in conjunction with ``typing
     specific_qs = instance.qs()
     reveal_type(specific_qs) # QuerySet[Concrete1]
 
-This is essentially turns into a cast at static time with an extra type narrowing done inside model methods
-when passing in the first argument of the function (something that is not possible without the mypy plugin).
+This is essentially turns into a cast at static time with an extra type
+narrowing done inside model methods when passing in the first argument of the
+function (something that is not possible without the mypy plugin).
 
 DefaultQuerySet
 ---------------
@@ -199,9 +200,7 @@ It also works on the ``TypeVar`` objects returned by ``Concrete.type_var``:
     # Essentially equivalent to
     # --------------
 
-    from typing import TypeVar, overload
-
-    T_Concrete = TypeVar("T_Concrete", Concrete1, Concrete2, Concrete3)
+    from typing import overload
 
 
     @overload
