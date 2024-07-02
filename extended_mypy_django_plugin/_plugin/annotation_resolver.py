@@ -204,9 +204,6 @@ class AnnotationResolver:
         """
         Given some type that represents a model, and an alias getter, determine an
         Instance if we can from the model_type and use it with the alias getter.
-
-        Return a tuple indicating whether this represents the type of those aliases,
-        and those aliases if we could find any
         """
         is_type: bool = False
 
