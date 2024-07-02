@@ -12,11 +12,11 @@ Abstract and Concrete models
 
 It's useful to first explain what is meant by abstract and concrete models!
 
-In Django ORM, database tables are represented by class that inherit from
+In Django ORM, database tables are represented by classes that inherit from
 ``django.db.models.Model``. These classes will exist under specific Django
-apps and are registered as part of Django initialisation. 
+apps and are registered as part of Django initialisation.
 
-So for example, a Django app will have a ``models.py`` that may look like:
+So for example, a Django app will have a ``models.py`` file that may look like:
 
 .. code-block:: python
 
@@ -28,9 +28,9 @@ So for example, a Django app will have a ``models.py`` that may look like:
 
 In this case the app will have ``myapp.models.MyModel``.
 
-One of the ways that Django lets the developer share code between models is with
-Abstract models. This is where the model gets an ``abstract = True`` in it's
-``Meta`` class:
+One of the ways that Django lets the developer share code between models is
+with Abstract models. This is where the model gets an ``abstract = True`` in
+it's ``Meta`` class:
 
 .. code-block:: python
 
@@ -63,14 +63,14 @@ These concrete models may exist in multiple Django apps. So the developer can
 make a Django app that defines some common abstract class, and then in separate
 Django apps, some concrete models may inherit from this abstract class.
 
-This means to know what models concrete models exist for ``MyAbstractModel``
-the ``mypy`` plugin must know which Django apps are installed and have inherited
+This means to know what concrete models exist for ``MyAbstractModel`` the
+``mypy`` plugin must know which Django apps are installed and have inherited
 from the Abstract model.
 
 The ``objects`` manager
 -----------------------
- 
-To create rows in a database table, these model classes will be a given a
+
+To create rows in a database table, these model classes will be given a
 "manager" to be the bridge between the model class itself and the database. The
 default one given to model classes is given as the ``objects`` attribute.
 
@@ -85,7 +85,8 @@ represents, the developer would say:
 
 Note that because ``MyAbstractModel`` doesn't actually represent any specific
 table, this class does not get the ``objects`` attribute and rows in the
-database cannot be made for these models (as they are by definition, incomplete).
+database cannot be made for these models (as they are by definition,
+incomplete).
 
 This means if we have a function that takes in any of the concrete models for
 that abstract class, this becomes a type error:
@@ -101,9 +102,9 @@ that abstract class, this becomes a type error:
         row = model_cls.objects.create(**kwargs)
         process_row(row)
 
-On this code after ``mypy`` 1.5.0 and ``django-stubs`` 4.2.4, there will be a type
-error because if ``model_cls`` is the ``MyAbstractModel`` class itself, then there
-is no ``objects`` on the class and this code will fail at runtime!
+On this code after ``mypy`` 1.5.0 and ``django-stubs`` 4.2.4, there will be a
+type error because if ``model_cls`` is the ``MyAbstractModel`` class itself,
+then there is no ``objects`` on the class and this code will fail at runtime!
 
 What the developer actually wants to do is:
 
@@ -120,14 +121,14 @@ What the developer actually wants to do is:
 
 However this makes for brittle code because:
 
-* It doesn't communicate to readers the intention of ``model_cls`` (any concrete
-  model of ``MyAbstractModel``)
+* It doesn't communicate to readers the intention of ``model_cls`` (any
+  concrete model of ``MyAbstractModel``).
 * It fails if some of the concrete models are in apps that may or may not be
-  installed in the Django ``INSTALLED_APPS`` setting, or may even be conditionally
-  available to import at all.
+  installed in the Django ``INSTALLED_APPS`` setting, or may even be
+  conditionally available to import at all.
 
-The fundamental part of the solution proposed by this extension to ``django-stubs``
-is to instead say:
+The fundamental part of the solution proposed by this extension to
+``django-stubs`` is to instead say:
 
 .. code-block:: python
 
@@ -172,7 +173,7 @@ Django models may be given a custom queryset using one of two methods:
 Or
 
 .. code-block:: python
-        
+
     from django.db import models
 
     class MyQuerySet(models.QuerySet["MyModel"]):
@@ -187,8 +188,8 @@ Or
 
 In both these cases, the default queryset for ``MyModel`` would be
 ``MyQuerySet`` rather than ``django.db.models.QuerySet[MyModel]``. This matters
-from a typing perspective because when ``mypy`` knows the specific queryset that
-should be used, then it can see any custom methods that were added to that
+from a typing perspective because when ``mypy`` knows the specific queryset
+that should be used, then it can see any custom methods that were added to that
 queryset.
 
 Annotations
