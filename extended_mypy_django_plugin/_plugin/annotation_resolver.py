@@ -60,12 +60,14 @@ class AnnotationResolver:
         def sem_defer(sem_api: SemanticAnalyzer) -> bool:
             """
             The semantic analyzer is the only api that can actually defer
+
+            Return True if was able to defer
             """
             if sem_api.final_iteration:
-                return True
+                return False
             else:
                 sem_api.defer()
-                return False
+                return True
 
         def _lookup_info(sem_api: SemanticAnalyzer | None, fullname: str) -> TypeInfo | None:
             """
@@ -155,7 +157,7 @@ class AnnotationResolver:
                 | FunctionSigContext(api=api)
             ):
                 context = ctx.context
-                defer = lambda: True
+                defer = lambda: False
                 # The interface for the type checker says fail takes ctx
                 # But the implementation of TypeChecker has it as context
                 fail = functools.partial(api.fail, context=context)
@@ -221,7 +223,8 @@ class AnnotationResolver:
             found = model_type.item
 
         if isinstance(found, AnyType):
-            if self._defer():
+            did_defer = self._defer()
+            if not did_defer:
                 self.fail("Tried to use concrete annotations on a typing.Any")
             return None
 
@@ -251,7 +254,7 @@ class AnnotationResolver:
         if not concrete:
             # We found instances, but couldn't get aliases
             # Either defer and we'll try again later or fail if we can't defer
-            did_defer = not self._defer()
+            did_defer = self._defer()
             if not did_defer:
                 self.fail(f"No concrete models found for {names}")
             return None
