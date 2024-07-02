@@ -229,28 +229,30 @@ class AnnotationResolver:
             return None
 
         all_types = list(self._flatten_union(found))
-        all_instances: list[Instance] = []
-        are_not_all_instances: bool = False
+        are_all_instances: bool = True
+        names: list[str] = []
+        concrete: list[Instance | PlaceholderType] = []
+
         for item in all_types:
             if not isinstance(item, Instance):
                 self.fail(
                     f"Expected to operate on specific classes, got a {item.__class__.__name__}: {item}"
                 )
-                are_not_all_instances = True
-            else:
-                all_instances.append(item)
+                are_all_instances = False
+                continue
 
-        if are_not_all_instances:
+            name = item.type.fullname
+            names.append(name)
+            concrete.extend(self._instances_from_aliases(get_aliases, name))
+
+        if not are_all_instances:
             return None
 
-        concrete: list[Instance | PlaceholderType] = []
-        names = ", ".join([item.type.fullname for item in all_instances])
-
-        for item in all_instances:
-            concrete.extend(list(self._instances_from_aliases(get_aliases, item.type.fullname)))
-
         if not concrete:
-            if not self._defer():
+            # We found instances, but couldn't get aliases
+            # Either defer and we'll try again later or fail if we can't defer
+            did_defer = not self._defer()
+            if not did_defer:
                 self.fail(f"No concrete models found for {names}")
             return None
 
