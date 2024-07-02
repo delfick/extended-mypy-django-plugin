@@ -180,7 +180,7 @@ class Resolver(Protocol):
         concrete form.
         """
 
-    def rewrap_type_var(
+    def rewrap_concrete_type(
         self, *, annotation: KnownAnnotations, model_type: ProperType
     ) -> UnboundType | None:
         """
