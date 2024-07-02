@@ -41,7 +41,8 @@ class Analyzer:
         and then we replace the type with an unbound type that wraps a resolved instance because when we
         can resolve the type vars we can't resolve what the type var actually is!
         """
-        if len(args := ctx.type.args) != 1:
+        args = ctx.type.args
+        if len(args) != 1:
             ctx.api.fail("Concrete annotations must contain exactly one argument", ctx.context)
             return ctx.type
 
