@@ -1,6 +1,7 @@
 from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode
 from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext
 from mypy.semanal import SemanticAnalyzer
+from mypy.typeanal import TypeAnalyser
 from mypy.types import (
     CallableType,
     Instance,
@@ -48,15 +49,15 @@ class Analyzer:
 
         model_type = get_proper_type(ctx.api.analyze_type(args[0]))
 
-        if isinstance(model_type, TypeType) and isinstance(model_type.item, TypeVarType):
-            # We want to ignore when extended_mypy_django_plugin.annotations.Concrete is being analyzed
-            if model_type.item.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                return ctx.type
+        def cur_mod_id() -> str:
+            # We have to know that ctx.api is TypeAnalyser to know what the current module is
+            assert isinstance(ctx.api, TypeAnalyser)
+            assert isinstance(ctx.api.api, SemanticAnalyzer)
+            return ctx.api.api.cur_mod_id
 
-        elif isinstance(model_type, TypeVarType):
-            # We want to ignore when extended_mypy_django_plugin.annotations.Concrete is being analyzed
-            if model_type.fullname == "extended_mypy_django_plugin.annotations.T_Parent":
-                return ctx.type
+        if cur_mod_id() == "extended_mypy_django_plugin.annotations":
+            # We don't want to resolve the Concrete annotation where it's defined!
+            return ctx.type
 
         resolver = self.make_resolver(ctx=ctx)
 
