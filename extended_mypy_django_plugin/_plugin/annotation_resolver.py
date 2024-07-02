@@ -314,7 +314,7 @@ class AnnotationResolver:
             default=AnyType(TypeOfAny.from_omitted_generics),
         )
 
-    def rewrap_type_var(
+    def rewrap_concrete_type(
         self, *, annotation: protocols.KnownAnnotations, model_type: ProperType
     ) -> UnboundType | None:
         info = self.lookup_info(annotation.value)
