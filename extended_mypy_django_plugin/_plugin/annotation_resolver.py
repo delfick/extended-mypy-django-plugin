@@ -297,8 +297,10 @@ class AnnotationResolver:
     ) -> Instance | TypeType | UnionType | AnyType | PlaceholderType | None:
         if annotation is protocols.KnownAnnotations.CONCRETE:
             return self._concrete_for(model_type, self.get_concrete_aliases)
+
         elif annotation is protocols.KnownAnnotations.DEFAULT_QUERYSET:
             return self._concrete_for(model_type, self.get_queryset_aliases)
+
         else:
             assert_never(annotation)
 
