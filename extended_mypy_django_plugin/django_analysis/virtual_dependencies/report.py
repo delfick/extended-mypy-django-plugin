@@ -431,7 +431,7 @@ class ReportInstaller:
                 location = pathlib.Path(root) / name
                 if location not in seen:
                     if self._get_report_summary(location) is None:
-                        location.unlink()
+                        location.unlink(missing_ok=True)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
