@@ -269,11 +269,14 @@ class TestConcreteAnnotations:
                 from __future__ import annotations
 
                 from django.db import models
-                from typing import Any
+                from typing import Any, Generic
                 from typing_extensions import Self
                 from extended_mypy_django_plugin import Concrete
 
                 T_Leader = Concrete.type_var("T_Leader", "Leader")
+
+                class LeaderQuerySet(Generic[T_Leader], models.QuerySet[T_Leader]):
+                    ...
 
                 class Leader(models.Model):
                     @classmethod
@@ -292,8 +295,13 @@ class TestConcreteAnnotations:
                         abstract = True
 
 
-                class Follower1(Leader):
+                class Follower1QuerySet(LeaderQuerySet["Follower1"]):
                     ...
+
+                Follower1Manager = models.Manager.from_queryset(Follower1QuerySet)
+
+                class Follower1(Leader):
+                    objects = Follower1Manager()
 
                 class Follower2(Leader):
                     ...
