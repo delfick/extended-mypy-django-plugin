@@ -10,6 +10,7 @@ Changelog
     * Ensure that ``Concrete.type_var`` is only used in the module scope
     * Fixed a bug where it's possible for virtual dependency cleanup to try remove a file
       that doesn't exist
+    * Various small cleanups
 
 .. _release-0.6.3:
 

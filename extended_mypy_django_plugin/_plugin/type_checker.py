@@ -1,15 +1,4 @@
-from mypy.nodes import (
-    SYMBOL_FUNCBASE_TYPES,
-    CallExpr,
-    Decorator,
-    MemberExpr,
-    MypyFile,
-    RefExpr,
-    SymbolNode,
-    SymbolTableNode,
-    TypeInfo,
-    Var,
-)
+from mypy.nodes import CallExpr, Decorator, MemberExpr, MypyFile, SymbolNode, TypeInfo
 from mypy.plugin import (
     AttributeContext,
     FunctionContext,
@@ -22,6 +11,8 @@ from mypy.types import (
     CallableType,
     FunctionLike,
     Instance,
+    Overloaded,
+    ProperType,
     TypeOfAny,
     TypeType,
     UnboundType,
@@ -138,21 +129,31 @@ class ConcreteAnnotationChooser:
         self._is_function = is_function
         self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
 
-    def _get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | SymbolTableNode | None:
+    def _get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | None:
+        """
+        Find the symbol representing the function or method we are analyzing.
+
+        When analyzing a method we may find that the method is defined on a parent class
+        and in that case we must assist mypy in finding where that is.
+        """
         sym = self._plugin_lookup_fully_qualified(fullname)
         if sym and sym.node:
             return sym.node
 
+        # Can't find the base class if we don't know the modules
+        if self._modules is None:
+            return None
+
+        # If it's a function it should already have been found
+        # We can only do more work if it's a method
         if self._is_function:
             return None
 
         if fullname.count(".") < 2:
+            # Apparently it's possible for the hook to get something that is not what we expect
             return None
 
-        if self._modules is None:
-            return None
-
-        # We're on a class and couldn't find the sym, it's likely on a base class
+        # We're on a class and couldn't find the symbol, it's likely defined on a base class
         module, class_name, method_name = fullname.rsplit(".", 2)
 
         mod = self._modules.get(module)
@@ -160,47 +161,82 @@ class ConcreteAnnotationChooser:
             return None
 
         class_node = mod.names.get(class_name)
-        if not class_node or not isinstance(class_node.node, TypeInfo):
+        if class_node is None:
             return None
 
-        for parent in class_node.node.bases:
-            if isinstance(parent.type, TypeInfo):
-                if isinstance(found := parent.type.names.get(method_name), SymbolTableNode):
-                    return found
+        if not isinstance(class_node.node, TypeInfo):
+            return None
+
+        # Look at the base classes in mro order till we find the first mention of the method
+        # that we are interested in
+        for parent in class_node.node.mro:
+            found = parent.names.get(method_name)
+            if found:
+                return found.node
 
         return None
 
+    def _returns_annotation(self, typ: ProperType) -> bool:
+        """
+        Given a type, work out if it represents an annotated type.
+        """
+        if isinstance(typ, Overloaded):
+            # Check if any of the overloaded signatures returns an annotation
+            return any(self._returns_annotation(item) for item in typ.items)
+
+        if isinstance(typ, Decorator):
+            # Get the return type of the decorated function
+            typ = typ.type
+
+        if isinstance(typ, CallableType):
+            # If we have a type guard, then ret_type will be a bool
+            # but we wanna check what the type guard is for
+            if typ.type_guard:
+                typ = get_proper_type(typ.type_guard)
+            else:
+                typ = get_proper_type(typ.ret_type)
+
+        # Unwrap a type[...]
+        if isinstance(typ, TypeType):
+            typ = typ.item
+
+        # Unwrap if it's been wrapped by a previous hook
+        if isinstance(typ, UnboundType) and typ.name == "__ConcreteWithTypeVar__":
+            typ = get_proper_type(typ.args[0])
+
+        # Make sure our wrapped type wasn't itself wrapped with type[...]
+        if isinstance(typ, TypeType):
+            typ = typ.item
+
+        if not isinstance(typ, Instance):
+            # Can't be an annotation if we don't have an Instance
+            return False
+
+        return protocols.KnownAnnotations.resolve(typ.type.fullname) is not None
+
     def choose(self) -> bool:
+        """
+        This is called for hooks that work on methods and functions.
+
+        This means the node that we are operating is gonna be a FuncBas
+        """
         sym_node = self._get_symbolnode_for_fullname(self.fullname)
         if not sym_node:
             return False
 
         if isinstance(sym_node, TypeInfo):
+            # If the type is a class, then we are calling it's __call__ method
             if "__call__" not in sym_node.names:
+                # If it doesn't have a __call__, then it's likely failing elsewhere
                 return False
-            ret_type = sym_node.names["__call__"].type
-        elif isinstance(
-            sym_node, (*SYMBOL_FUNCBASE_TYPES, Decorator, SymbolTableNode, Var, RefExpr)
-        ):
-            ret_type = sym_node.type
-        else:
+
+            sym_node = sym_node.names["__call__"].node
+
+        # type will be the return type of the node
+        # if it doesn't have type then it's likely an error somewhere else
+        sym_node_type = getattr(sym_node, "type", None)
+        if not isinstance(sym_node_type, MypyType):
             return False
 
-        ret_type = get_proper_type(ret_type)
-
-        if isinstance(ret_type, CallableType):
-            if ret_type.type_guard:
-                ret_type = get_proper_type(ret_type.type_guard)
-            else:
-                ret_type = get_proper_type(ret_type.ret_type)
-
-        if isinstance(ret_type, TypeType):
-            ret_type = ret_type.item
-
-        if isinstance(ret_type, UnboundType) and ret_type.name == "__ConcreteWithTypeVar__":
-            ret_type = get_proper_type(ret_type.args[0])
-
-        if isinstance(ret_type, Instance):
-            return protocols.KnownAnnotations.resolve(ret_type.type.fullname) is not None
-        else:
-            return False
+        # We only choose functions/methods that return an annotation
+        return self._returns_annotation(get_proper_type(sym_node_type))
