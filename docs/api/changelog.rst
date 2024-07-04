@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.6.4:
 
-0.6.4 - TBD
+0.6.4 - 4 July 2024
     * Improved error messages when using ``Concrete.cast_as_concrete`` and ``Concrete.type_var``
     * Ensure that ``Concrete.type_var`` is only used in the module scope
     * Fixed a bug where it's possible for virtual dependency cleanup to try remove a file
