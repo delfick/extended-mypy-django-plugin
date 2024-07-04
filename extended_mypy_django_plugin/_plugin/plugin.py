@@ -271,7 +271,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return type_checker.ConcreteAnnotationChooser(
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
-                is_function=self.__class__.__name__ == "get_function_hook",
+                is_function="function" in self.__class__.__name__,
                 modules=self.plugin._modules,
             ).choose()
 
@@ -311,7 +311,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return type_checker.ConcreteAnnotationChooser(
                 fullname=self.fullname,
                 plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
-                is_function=self.__class__.__name__ == "get_function_hook",
+                is_function="function" in self.__class__.__name__,
                 modules=self.plugin._modules,
             ).choose()
 
