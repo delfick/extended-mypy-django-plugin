@@ -9,6 +9,57 @@ from pytest_mypy_plugins import OutputChecker
 
 
 class TestErrors:
+    def test_it_complains_if_annotating_a_typevar(self, scenario: Scenario) -> None:
+        @scenario.run_and_check_mypy_after(installed_apps=["example"])
+        def _(expected: OutputBuilder) -> None:
+            scenario.file(expected, "example/__init__.py", "")
+
+            scenario.file(
+                expected,
+                "example/apps.py",
+                """
+                from django.apps import AppConfig
+
+                class Config(AppConfig):
+                    name = "example"
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example/models.py",
+                """
+                from __future__ import annotations
+
+                from django.db import models
+                from typing import TypeVar
+                from typing_extensions import Self
+                from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+
+                T_Leader = TypeVar("T_Leader", bound="Concrete[Leader]")
+
+                class Leader(models.Model):
+                    @classmethod
+                    def new(cls) -> Concrete[Self]:
+                        # ^ ERROR(misc) ^ Using a concrete annotation on a TypeVar is not currently supported
+                        raise NotImplementedError()
+
+                    class Meta:
+                        abstract = True
+
+                class Follower1(Leader):
+                    pass
+
+                def make_leader(model: type[T_Leader]) -> Concrete[T_Leader]:
+                    # ^ ERROR(misc) ^ Using a concrete annotation on a TypeVar is not currently supported
+                    raise NotImplementedError()
+
+                def make_qs(model: type[T_Leader]) -> DefaultQuerySet[T_Leader]:
+                    # ^ ERROR(misc) ^ Using a concrete annotation on a TypeVar is not currently supported
+                    raise NotImplementedError()
+                """,
+            )
+
     def test_gracefully_handles_determine_version_failure_on_startup(
         self, scenario: Scenario, tmp_path: pathlib.Path
     ) -> None:

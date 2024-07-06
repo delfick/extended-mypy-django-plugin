@@ -1,6 +1,4 @@
-from typing import Final
-
-from mypy.nodes import CallExpr, MemberExpr, MypyFile, SymbolNode, TypeInfo
+from mypy.nodes import CallExpr, MemberExpr
 from mypy.plugin import (
     AttributeContext,
     FunctionContext,
@@ -8,10 +6,8 @@ from mypy.plugin import (
 )
 from mypy.types import (
     AnyType,
-    CallableType,
     Instance,
     TypeOfAny,
-    TypeQuery,
     TypeType,
     TypeVarType,
     UnionType,
@@ -19,45 +15,12 @@ from mypy.types import (
 )
 from mypy.types import Type as MypyType
 
-from . import protocols, signature_info
-
-TYPING_SELF: Final[str] = "typing.Self"
-TYPING_EXTENSION_SELF: Final[str] = "typing_extensions.Self"
-
-
-class HasAnnotations(TypeQuery[bool]):
-    """
-    Find where we have a concrete annotation
-    """
-
-    def __init__(self) -> None:
-        super().__init__(any)
-
-    def visit_callable_type(self, t: CallableType) -> bool:
-        if t.type_guard:
-            return t.type_guard.accept(self)
-        else:
-            return t.ret_type.accept(self)
-
-    def visit_instance(self, t: Instance) -> bool:
-        if super().visit_instance(t):
-            return True
-        return protocols.KnownAnnotations.resolve(t.type.fullname) is not None
+from . import protocols
 
 
 class TypeChecking:
     def __init__(self, *, make_resolver: protocols.ResolverMaker) -> None:
         self.make_resolver = make_resolver
-
-    def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        info = signature_info.get_signature_info(ctx, self.make_resolver(ctx=ctx))
-        if info is None:
-            return None
-
-        if info.is_guard:
-            return None
-
-        return info.transformed_ret_type
 
     def modify_cast_as_concrete(self, ctx: FunctionContext | MethodContext) -> MypyType:
         if len(ctx.arg_types) != 1:
@@ -208,98 +171,3 @@ class TypeChecking:
                 ctx.context,
             )
             return AnyType(TypeOfAny.from_error)
-
-
-class ConcreteAnnotationChooser:
-    """
-    Helper for the plugin to tell Mypy to choose the plugin when we find functions/methods that
-    return types using concrete annotations.
-
-    At this point the only ones yet to be resolved should be using type vars.
-    """
-
-    def __init__(
-        self,
-        fullname: str,
-        plugin_lookup_fully_qualified: protocols.LookupFullyQualified,
-        is_function: bool,
-        modules: dict[str, MypyFile] | None,
-    ) -> None:
-        self.fullname = fullname
-        self._modules = modules
-        self._is_function = is_function
-        self._plugin_lookup_fully_qualified = plugin_lookup_fully_qualified
-
-    def _get_symbolnode_for_fullname(self, fullname: str) -> SymbolNode | None:
-        """
-        Find the symbol representing the function or method we are analyzing.
-
-        When analyzing a method we may find that the method is defined on a parent class
-        and in that case we must assist mypy in finding where that is.
-        """
-        sym = self._plugin_lookup_fully_qualified(fullname)
-        if sym and sym.node:
-            return sym.node
-
-        # Can't find the base class if we don't know the modules
-        if self._modules is None:
-            return None
-
-        # If it's a function it should already have been found
-        # We can only do more work if it's a method
-        if self._is_function:
-            return None
-
-        if fullname.count(".") < 2:
-            # Apparently it's possible for the hook to get something that is not what we expect
-            return None
-
-        # We're on a class and couldn't find the symbol, it's likely defined on a base class
-        module, class_name, method_name = fullname.rsplit(".", 2)
-
-        mod = self._modules.get(module)
-        if mod is None:
-            return None
-
-        class_node = mod.names.get(class_name)
-        if class_node is None:
-            return None
-
-        if not isinstance(class_node.node, TypeInfo):
-            return None
-
-        # Look at the base classes in mro order till we find the first mention of the method
-        # that we are interested in
-        for parent in class_node.node.mro:
-            found = parent.names.get(method_name)
-            if found:
-                return found.node
-
-        return None
-
-    def choose(self) -> bool:
-        """
-        This is called for hooks that work on methods and functions.
-
-        This means the node that we are operating is gonna be a FuncBas
-        """
-        sym_node = self._get_symbolnode_for_fullname(self.fullname)
-        if not sym_node:
-            return False
-
-        if isinstance(sym_node, TypeInfo):
-            # If the type is a class, then we are calling it's __call__ method
-            if "__call__" not in sym_node.names:
-                # If it doesn't have a __call__, then it's likely failing elsewhere
-                return False
-
-            sym_node = sym_node.names["__call__"].node
-
-        # type will be the return type of the node
-        # if it doesn't have type then it's likely an error somewhere else
-        sym_node_type = getattr(sym_node, "type", None)
-        if not isinstance(sym_node_type, MypyType):
-            return False
-
-        # Return if our type includes any kind of concrete annotation
-        return sym_node_type.accept(HasAnnotations())

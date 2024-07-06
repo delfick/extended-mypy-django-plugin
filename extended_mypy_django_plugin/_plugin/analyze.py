@@ -41,7 +41,9 @@ class Analyzer:
         resolver = self.make_resolver(ctx=ctx)
 
         if model_type.accept(HasTypeVars()):
-            # We don't have the information to resolve type vars at this point
+            ctx.api.fail(
+                "Using a concrete annotation on a TypeVar is not currently supported", ctx.context
+            )
             return ctx.type
 
         resolved = resolver.resolve(annotation, model_type)

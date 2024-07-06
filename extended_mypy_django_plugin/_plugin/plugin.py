@@ -3,13 +3,7 @@ from typing import Generic, TypeVar
 
 from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
 from mypy.options import Options
-from mypy.plugin import (
-    AnalyzeTypeContext,
-    AttributeContext,
-    FunctionContext,
-    MethodContext,
-    ReportConfigContext,
-)
+from mypy.plugin import AnalyzeTypeContext, AttributeContext, MethodContext, ReportConfigContext
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
 from mypy_django_plugin.transformers.managers import (
@@ -19,10 +13,7 @@ from mypy_django_plugin.transformers.managers import (
 
 from . import analyze, annotation_resolver, config, hook, protocols, type_checker
 
-# Can't re-use the same type var in an embedded class
-# So we make another type var that we can substitute T_Report into
 T_Report = TypeVar("T_Report", bound=protocols.Report)
-T2_Report = TypeVar("T2_Report", bound=protocols.Report)
 
 
 class Hook(
@@ -49,8 +40,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     .. autoattribute:: get_attribute_hook
 
     .. autoattribute:: get_method_hook
-
-    .. autoattribute:: get_function_hook
     """
 
     @classmethod
@@ -195,63 +184,20 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance
             )
 
-    class _get_method_or_function_hook(
-        Generic[T2_Report], Hook[T2_Report, MethodContext | FunctionContext, MypyType]
-    ):
-        def choose(self) -> bool:
-            return type_checker.ConcreteAnnotationChooser(
-                fullname=self.fullname,
-                plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
-                is_function="function" in self.__class__.__name__,
-                modules=self.plugin._modules,
-            ).choose()
-
-        def run(self, ctx: FunctionContext | MethodContext) -> MypyType:
-            result = self.plugin.type_checker.modify_return_type(ctx)
-
-            if result is not None:
-                return result
-
-            if self.super_hook is not None:
-                return self.super_hook(ctx)
-
-            return ctx.default_return_type
-
     @hook.hook
-    class get_method_hook(_get_method_or_function_hook[T_Report]):
+    class get_method_hook(Hook[T_Report, MethodContext, MypyType]):
         """
-        Used to resolve methods that return a concrete annotation of a type variable.
-
-        In this hook we have access to where the function is called and so we can resolve those type variables
-        and ultimately resolve the concrete annotation.
-
-        Also used to ensure Concrete.cast_as_concrete returns the appropriate type.
+        Used to ensure Concrete.cast_as_concrete returns the appropriate type.
         """
-
-        # Used to share information between self.choose and self.run
-        is_cast_as_concrete: bool = False
 
         def choose(self) -> bool:
             class_name, _, method_name = self.fullname.rpartition(".")
             if method_name == "cast_as_concrete":
                 info = self.plugin._get_typeinfo_or_none(class_name)
                 if info and info.has_base(protocols.KnownClasses.CONCRETE.value):
-                    self.is_cast_as_concrete = True
                     return True
 
-            return super().choose()
+            return False
 
-        def run(self, ctx: FunctionContext | MethodContext) -> MypyType:
-            if self.is_cast_as_concrete:
-                return self.plugin.type_checker.modify_cast_as_concrete(ctx)
-
-            return super().run(ctx)
-
-    @hook.hook
-    class get_function_hook(_get_method_or_function_hook[T_Report]):
-        """
-        Used to resolve functions that return a concrete annotation of a type variable.
-
-        In this hook we have access to where the function is called and so we can resolve those type variables
-        and ultimately resolve the concrete annotation.
-        """
+        def run(self, ctx: MethodContext) -> MypyType:
+            return self.plugin.type_checker.modify_cast_as_concrete(ctx)

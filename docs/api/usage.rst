@@ -95,8 +95,7 @@ To type narrow an object as a concrete descendent of that object, the
 Note that at runtime this will raise an exception if the passed in object is
 either not a Django model class/instance or is an abstract one.
 
-This may also be used on methods of an Django Model in conjunction with
-``typing.Self`` or ``typing_extensions.Self``:
+Using Concrete annotations on classmethods would look like:
 
 .. code-block:: python
 
@@ -121,10 +120,11 @@ This may also be used on methods of an Django Model in conjunction with
             # Otherwise the return will make mypy complain that it doesn't match self
             return created
 
-        def qs(self) -> DefaultQuerySet[Self]:
-            concrete = Concrete.cast_as_concrete(self)
-            reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
-            return concrete.__class__.objects.filter(pk=self.pk)
+        # # TODO: this isn't currently possible
+        # def qs(self) -> DefaultQuerySet[Self]:
+        #     concrete = Concrete.cast_as_concrete(self)
+        #     reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
+        #     return concrete.__class__.objects.filter(pk=self.pk)
 
     class Concrete1(AbstractModel):
         pass
@@ -139,14 +139,16 @@ This may also be used on methods of an Django Model in conjunction with
     instance = model.new()
     reveal_type(instance) # Concrete1 | Concrete2 | Concrete3
 
-    qs = instance.qs()
-    reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
+    # # TODO: the qs method specific to which instance isn't possible at the moment
+    # qs = instance.qs()
+    # reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
 
     specific = Concrete1.new()
     reveal_type(specific) # Concrete1
 
-    specific_qs = instance.qs()
-    reveal_type(specific_qs) # QuerySet[Concrete1]
+    # # TODO: the qs method specific to which instance isn't possible at the moment
+    # specific_qs = instance.qs()
+    # reveal_type(specific_qs) # QuerySet[Concrete1]
 
 DefaultQuerySet
 ---------------
