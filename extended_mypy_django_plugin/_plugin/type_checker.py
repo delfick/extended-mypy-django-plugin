@@ -54,7 +54,10 @@ class TypeChecking:
         if info is None:
             return None
 
-        return info.resolve_return_type(ctx)
+        if info.is_guard:
+            return None
+
+        return info.transformed_ret_type
 
     def modify_cast_as_concrete(self, ctx: FunctionContext | MethodContext) -> MypyType:
         if len(ctx.arg_types) != 1:

@@ -30,7 +30,7 @@ T_Report = TypeVar("T_Report", bound="Report")
 CombinedReport = d_protocols.CombinedReport
 VirtualDependencyHandler = d_protocols.VirtualDependencyHandler
 
-TypeVarMap = MutableMapping[TypeVarType | str, Instance | TypeType | UnionType]
+TypeVarMap = MutableMapping[TypeVarType, Instance | TypeType | UnionType]
 
 
 class KnownClasses(enum.Enum):
@@ -208,9 +208,10 @@ class SignatureInfo(Protocol):
         Whether this signature represents a type guard
         """
 
-    def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
+    @property
+    def transformed_ret_type(self) -> ProperType:
         """
-        Return a type that represents the return type of the method/function when we substitute in the type vars
+        The return type of the signature after resolving annotations
         """
 
 
