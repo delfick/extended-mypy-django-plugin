@@ -42,10 +42,7 @@ class Analyzer:
 
         if self._has_typevars(model_type):
             # We don't have the information to resolve type vars at this point
-            # We wrap the result so that we can continue this later without mypy
-            # being sad about how Concrete doesn't match what we resolve it to in the end
-            wrapped = resolver.rewrap_concrete_type(model_type=model_type, annotation=annotation)
-            return ctx.type if wrapped is None else wrapped
+            return ctx.type
 
         resolved = resolver.resolve(annotation, model_type)
         if resolved is None:
