@@ -1,25 +1,25 @@
 from mypy.plugin import AnalyzeTypeContext
-from mypy.types import ProperType, TypeType, TypeVarType, UnionType, get_proper_type
 from mypy.types import Type as MypyType
+from mypy.types import TypeQuery, TypeVarType, get_proper_type
 
 from . import protocols
+
+
+class HasTypeVars(TypeQuery[bool]):
+    """
+    Find where we have a concrete annotation
+    """
+
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return True
 
 
 class Analyzer:
     def __init__(self, make_resolver: protocols.ResolverMaker) -> None:
         self.make_resolver = make_resolver
-
-    def _has_typevars(self, the_type: ProperType) -> bool:
-        if isinstance(the_type, TypeType):
-            the_type = the_type.item
-
-        if isinstance(the_type, TypeVarType):
-            return True
-
-        if not isinstance(the_type, UnionType):
-            return False
-
-        return any(self._has_typevars(get_proper_type(item)) for item in the_type.items)
 
     def analyze_type(
         self, ctx: AnalyzeTypeContext, annotation: protocols.KnownAnnotations
@@ -40,7 +40,7 @@ class Analyzer:
 
         resolver = self.make_resolver(ctx=ctx)
 
-        if self._has_typevars(model_type):
+        if model_type.accept(HasTypeVars()):
             # We don't have the information to resolve type vars at this point
             return ctx.type
 
