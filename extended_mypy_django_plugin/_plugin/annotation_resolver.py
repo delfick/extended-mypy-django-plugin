@@ -2,7 +2,7 @@ import functools
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, cast
 
-from mypy.nodes import Context, PlaceholderNode, TypeAlias, TypeInfo, TypeVarExpr
+from mypy.nodes import Context, PlaceholderNode, TypeAlias, TypeInfo
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
@@ -306,27 +306,6 @@ class AnnotationResolver:
 
         else:
             assert_never(annotation)
-
-    def type_var_expr_for(
-        self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
-    ) -> TypeVarExpr:
-        try:
-            values = list(self._instances_from_aliases(self.get_concrete_aliases, model.fullname))
-        except ShouldDefer:
-            # In this case the type var will be analyzed again and given values
-            # or reach the call to fail below
-            values = []
-        else:
-            if not values:
-                self.fail(f"No concrete children found for {model.fullname}")
-
-        return TypeVarExpr(
-            name=name,
-            fullname=fullname,
-            values=list(values),
-            upper_bound=object_type,
-            default=AnyType(TypeOfAny.from_omitted_generics),
-        )
 
     def rewrap_concrete_type(
         self, *, annotation: protocols.KnownAnnotations, model_type: ProperType

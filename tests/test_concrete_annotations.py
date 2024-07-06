@@ -274,11 +274,11 @@ class TestConcreteAnnotations:
                 from __future__ import annotations
 
                 from django.db import models
-                from typing import Any
+                from typing import Any, TypeVar
                 from typing_extensions import Self
                 from extended_mypy_django_plugin import Concrete
 
-                T_Leader = Concrete.type_var("T_Leader", "Leader")
+                T_Leader = TypeVar("T_Leader", bound=Concrete["Leader"])
 
                 class Leader(models.Model):
                     @classmethod
@@ -308,10 +308,10 @@ class TestConcreteAnnotations:
                     ...
 
                 def make_instance(cls: type[T_Leader]) -> T_Leader:
-                    cls
-                    # ^ REVEAL ^ type[example.models.Follower1]
-                    # ^ REVEAL ^ type[example.models.Follower2]
-                    return cls.new()
+                    created = cls.new()
+                    # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                    assert isinstance(created, cls)
+                    return created
                 """,
             )
 
@@ -526,7 +526,7 @@ class TestConcreteAnnotations:
                 from django.db import models
                 from collections.abc import Callable
                 from typing_extensions import Self
-                from typing import Protocol
+                from typing import Protocol, TypeVar
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
                 class Leader(models.Model):
@@ -537,7 +537,7 @@ class TestConcreteAnnotations:
                     all_concrete: Concrete[Leader]
                     # ^ REVEAL[leader-concrete-where-leader-defined] ^ Union[example.models.Follower1, example.models.Follower2]
 
-                T_Leader = Concrete.type_var("T_Leader", Leader)
+                T_Leader = TypeVar("T_Leader", bound=Concrete[Leader])
 
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
@@ -569,13 +569,16 @@ class TestConcreteAnnotations:
                 """
                 from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
                 from extended_mypy_django_plugin import Concrete
+                from typing import TypeVar
                 from example import models
 
-                # Test Concrete.type_var can be made with "models.Leader" (as in with a MemberExpr)
-                T_Leader = Concrete.type_var("T_Leader", models.Leader)
+                # Test can be made with "models.Leader" (as in with a MemberExpr)
+                T_Leader = TypeVar("T_Leader", bound=Concrete[models.Leader])
 
                 def get_leader(cls: type[T_Leader]) -> T_Leader:
-                    return cls.objects.create()
+                    created = cls.objects.create()
+                    assert isinstance(created, cls)
+                    return created
 
                 made = get_leader(Follower1)
                 # ^ REVEAL ^ example.models.Follower1
