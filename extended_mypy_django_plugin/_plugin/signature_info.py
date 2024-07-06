@@ -1,16 +1,15 @@
 import dataclasses
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Final, cast
 
 from mypy.checker import TypeChecker
 from mypy.nodes import CallExpr, Expression, IndexExpr
 from mypy.plugin import FunctionContext, MethodContext
 from mypy.types import (
-    AnyType,
     CallableType,
     Instance,
     ProperType,
-    TypeOfAny,
+    TypeAliasType,
+    TypeTranslator,
     TypeType,
     TypeVarType,
     UnionType,
@@ -25,6 +24,58 @@ TYPING_SELF: Final[str] = "typing.Self"
 TYPING_EXTENSION_SELF: Final[str] = "typing_extensions.Self"
 
 
+class ResolveAnnotations(TypeTranslator):
+    """
+    Use visitor pattern to recursively resolve concrete annotations
+    """
+
+    def __init__(
+        self,
+        ctx: MethodContext | FunctionContext,
+        resolver: protocols.Resolver,
+        type_vars_map: protocols.TypeVarMap,
+    ) -> None:
+        self.ctx = ctx
+        self.resolver = resolver
+        self.type_vars_map = type_vars_map
+
+    def visit_instance(self, t: Instance) -> MypyType:
+        item = get_proper_type(super().visit_instance(t))
+        if not isinstance(item, Instance):
+            return item
+
+        t = item
+
+        annotation = protocols.KnownAnnotations.resolve(t.type.fullname)
+        if not annotation:
+            return item
+
+        if len(t.args) != 1:
+            # Would be an error elsewhere
+            return t
+
+        inner = get_proper_type(t.args[0])
+
+        resolved = self.resolver.resolve(annotation, inner)
+        # Already put out an error if we couldn't resolve
+        if resolved is None:
+            return t
+
+        return resolved
+
+    def visit_type_var(self, t: TypeVarType) -> MypyType:
+        if self.type_vars_map is None:
+            return t
+
+        if t in self.type_vars_map:
+            return self.type_vars_map[t].accept(self)
+        else:
+            return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> MypyType:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
+
 @dataclasses.dataclass
 class _SignatureTypeInfo:
     """
@@ -34,19 +85,17 @@ class _SignatureTypeInfo:
     """
 
     func: CallableType
-
-    is_type: bool
     is_guard: bool
-
-    ret_types: Sequence[
-        tuple[protocols.KnownAnnotations | None, ProperType, bool, TypeVarType | None]
-    ]
-
-    resolver: protocols.Resolver
+    transformed_ret_type: ProperType
 
     @classmethod
-    def create(cls, *, func: CallableType, resolver: protocols.Resolver) -> Self:
-        is_type: bool = False
+    def create(
+        cls,
+        *,
+        ctx: MethodContext | FunctionContext,
+        func: CallableType,
+        resolver: protocols.Resolver,
+    ) -> Self:
         is_guard: bool = False
 
         if func.type_guard:
@@ -55,85 +104,51 @@ class _SignatureTypeInfo:
         else:
             item = func.ret_type
 
-        item = get_proper_type(item)
-        if isinstance(item, TypeType):
-            is_type = True
-            item = item.item
+        type_vars_map = cls._map_type_vars(func=func, ctx=ctx)
+        transformer = ResolveAnnotations(ctx=ctx, resolver=resolver, type_vars_map=type_vars_map)
+        ret_type = get_proper_type(item.accept(transformer))
 
-        if isinstance(item, TypeType):
-            is_type = True
-            item = item.item
+        return cls(func=func, is_guard=is_guard, transformed_ret_type=ret_type)
 
-        if isinstance(item, UnionType):
-            found_ret_types = tuple(get_proper_type(i) for i in item.items)
-        else:
-            found_ret_types = (item,)
-
-        ret_types: list[
-            tuple[protocols.KnownAnnotations | None, ProperType, bool, TypeVarType | None]
-        ] = []
-
-        # We want to represent ret types as a list, given we may have a union we want to collapse
-        for found in found_ret_types:
-            type_var: TypeVarType | None = None
-            found_is_type: bool = False
-            annotation: protocols.KnownAnnotations | None = None
-
-            bare: ProperType = found
-            if isinstance(found, TypeType):
-                found_is_type = True
-                bare = found.item
-
-            if isinstance(bare, Instance):
-                annotation = protocols.KnownAnnotations.resolve(bare.type.fullname)
-
-                if annotation:
-                    bare = get_proper_type(bare.args[0])
-
-            if isinstance(bare, TypeVarType):
-                type_var = bare
-
-            ret_types.append((annotation, bare, found_is_type, type_var))
-
-        return cls(
-            func=func, is_type=is_type, is_guard=is_guard, resolver=resolver, ret_types=ret_types
-        )
-
-    def _map_type_vars(self, ctx: MethodContext | FunctionContext) -> protocols.TypeVarMap:
+    @classmethod
+    def _map_type_vars(
+        cls, *, func: CallableType, ctx: MethodContext | FunctionContext
+    ) -> protocols.TypeVarMap:
         result: protocols.TypeVarMap = {}
 
-        formal_by_name = {arg.name: arg.typ for arg in self.func.formal_arguments()}
+        if isinstance(ctx, MethodContext | FunctionContext):
+            formal_by_name = {arg.name: arg.typ for arg in func.formal_arguments()}
 
-        for arg_name, arg_type in zip(ctx.callee_arg_names, ctx.arg_types):
-            if arg_name not in formal_by_name:
-                # arg isn't typed so can't be a type var!
-                continue
+            for arg_name, arg_type in zip(ctx.callee_arg_names, ctx.arg_types):
+                if arg_name not in formal_by_name:
+                    # arg isn't typed so can't be a type var!
+                    continue
 
-            underlying = get_proper_type(formal_by_name[arg_name])
-            if isinstance(underlying, TypeType):
-                underlying = underlying.item
+                underlying = get_proper_type(formal_by_name[arg_name])
+                if isinstance(underlying, TypeType):
+                    underlying = underlying.item
 
-            if isinstance(underlying, TypeVarType):
-                found_type = get_proper_type(arg_type[0])
+                if isinstance(underlying, TypeVarType):
+                    found_type = get_proper_type(arg_type[0])
 
-                if isinstance(found_type, CallableType):
-                    found_type = get_proper_type(found_type.ret_type)
+                    if isinstance(found_type, CallableType):
+                        found_type = get_proper_type(found_type.ret_type)
 
-                if isinstance(found_type, TypeType):
-                    found_type = found_type.item
+                    if isinstance(found_type, TypeType):
+                        found_type = found_type.item
 
-                if isinstance(found_type, UnionType):
-                    found_type = UnionType(
-                        tuple(
-                            item
-                            if not isinstance(item := get_proper_type(it), TypeType)
-                            else item.item
-                            for it in found_type.items
+                    if isinstance(found_type, UnionType):
+                        found_type = UnionType(
+                            tuple(
+                                item
+                                if not isinstance(item := get_proper_type(it), TypeType)
+                                else item.item
+                                for it in found_type.items
+                            )
                         )
-                    )
 
-                if isinstance(found_type, Instance | UnionType):
-                    result[underlying] = found_type
+                    if isinstance(found_type, Instance | UnionType):
+                        result[underlying] = found_type
 
         if isinstance(ctx, MethodContext):
             ctx_type = ctx.type
@@ -148,83 +163,14 @@ class _SignatureTypeInfo:
                 ctx_type = ctx_type.item
 
             if isinstance(ctx_type, Instance):
-                for self_name in [TYPING_EXTENSION_SELF, TYPING_SELF]:
-                    result[self_name] = ctx_type
-
-        for _, _, is_type, type_var in self.ret_types:
-            if type_var is None:
-                continue
-
-            found: ProperType | None = None
-            if type_var in result:
-                found = result[type_var]
-            else:
-                choices = [
-                    v
-                    for k, v in result.items()
-                    if (isinstance(k, TypeVarType) and k.name == type_var.name)
-                    or (k == TYPING_SELF and type_var.name == "Self")
-                ]
-                if len(choices) == 1:
-                    result[type_var] = choices[0]
-                else:
-                    ctx.api.fail(
-                        f"Failed to find an argument that matched the type var {type_var}",
-                        ctx.context,
-                    )
-
-            if found is not None:
-                if is_type:
-                    result[type_var] = TypeType(found)
+                if (
+                    func.variables
+                    and isinstance(func.variables[0], TypeVarType)
+                    and func.variables[0].name == "Self"
+                ):
+                    result[func.variables[0]] = ctx_type
 
         return result
-
-    def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        if self.is_guard:
-            # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard
-            # when it's for a concrete annotation that uses a type var
-            return None
-
-        final: list[MypyType] = []
-        type_vars_map = self._map_type_vars(ctx)
-
-        for annotation, item, is_type, type_var in self.ret_types:
-            replaced: MypyType
-            if type_var is None and annotation is None:
-                replaced = item
-            else:
-                if type_var is None:
-                    replaced = item
-                elif type_var in type_vars_map:
-                    replaced = type_vars_map[type_var]
-                elif type_var.fullname in [TYPING_EXTENSION_SELF, TYPING_SELF] or (
-                    type_var.name == "Self" and TYPING_SELF in type_vars_map
-                ):
-                    replaced = type_vars_map[TYPING_SELF]
-                else:
-                    ctx.api.fail(f"Failed to work out type for type var {type_var}", ctx.context)
-                    return AnyType(TypeOfAny.from_error)
-
-            if annotation is not None:
-                resolved = self.resolver.resolve(annotation, replaced)
-                if resolved is None:
-                    ctx.api.fail(
-                        f"Got an unexpected item in the concrete annotation, {replaced}",
-                        ctx.context,
-                    )
-                    return AnyType(TypeOfAny.from_error)
-                else:
-                    replaced = resolved
-
-            if is_type or self.is_type:
-                final.append(TypeType(replaced))
-            else:
-                final.append(replaced)
-
-        if len(final) == 1:
-            return final[0]
-        else:
-            return UnionType(tuple(final))
 
 
 def get_signature_info(
@@ -261,7 +207,7 @@ def get_signature_info(
     if not isinstance(func, CallableType):
         return None
 
-    return _SignatureTypeInfo.create(func=func, resolver=resolver)
+    return _SignatureTypeInfo.create(ctx=ctx, func=func, resolver=resolver)
 
 
 if TYPE_CHECKING:
