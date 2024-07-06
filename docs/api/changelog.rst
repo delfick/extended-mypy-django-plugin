@@ -19,6 +19,7 @@ Changelog
     * Previous versions would create an implicit ``# type: ignore[return-value]`` on the
       return statement of methods/functions that returned a concrete annotation of a
       type var. This is no longer the case.
+    * Removed the ability to annotate type vars
 
 .. _release-0.6.4:
 
