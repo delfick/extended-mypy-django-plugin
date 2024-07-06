@@ -21,7 +21,6 @@ from mypy.types import (
     ProperType,
     TypeOfAny,
     TypeType,
-    UnboundType,
     UnionType,
     get_proper_type,
 )
@@ -306,25 +305,6 @@ class AnnotationResolver:
 
         else:
             assert_never(annotation)
-
-    def rewrap_concrete_type(
-        self, *, annotation: protocols.KnownAnnotations, model_type: ProperType
-    ) -> UnboundType | None:
-        info = self.lookup_info(annotation.value)
-        if info is None:
-            self.fail(f"Couldn't find information for {annotation.value}")
-            return None
-
-        # By returning this unbound type, mypy won't get confused that an Instance of Concrete does not
-        # match the interface we end up resolving it to.
-        # It's still important to resolve the instance here though because we don't have the ability to do
-        # that where the analysis of this continues later on
-        return UnboundType(
-            "__ConcreteWithTypeVar__",
-            [Instance(info, [model_type])],
-            line=self.context.line,
-            column=self.context.column,
-        )
 
 
 make_resolver = AnnotationResolver.create

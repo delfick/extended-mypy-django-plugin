@@ -20,7 +20,6 @@ from mypy.types import (
     ProperType,
     TypeType,
     TypeVarType,
-    UnboundType,
     UnionType,
 )
 from mypy.types import Type as MypyType
@@ -181,14 +180,6 @@ class Resolver(Protocol):
         concrete form.
         """
 
-    def rewrap_concrete_type(
-        self, *, annotation: KnownAnnotations, model_type: ProperType
-    ) -> UnboundType | None:
-        """
-        Given some annotation and type inside the annotation, create an unbound type that can be
-        recognised at a later stage where more information is available to continue analysis
-        """
-
 
 ValidContextForAnnotationResolver = (
     DynamicClassDefContext
@@ -225,13 +216,6 @@ class SignatureInfo(Protocol):
     def returns_concrete_annotation_with_type_var(self) -> bool:
         """
         Boolean indicating if the signature is returning a concrete annotation that is dependant on a typevar
-        """
-
-    @property
-    def unwrapped_type_guard(self) -> ProperType | None:
-        """
-        When the signature is returning a type guard, this will be the type the type guard is
-        representing.
         """
 
     def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:

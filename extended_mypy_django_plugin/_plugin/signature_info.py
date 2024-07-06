@@ -44,7 +44,6 @@ class _SignatureTypeInfo:
     ]
 
     resolver: protocols.Resolver
-    unwrapped_type_guard: ProperType | None
 
     @classmethod
     def create(cls, *, func: CallableType, resolver: protocols.Resolver) -> Self:
@@ -61,14 +60,6 @@ class _SignatureTypeInfo:
         if isinstance(item, TypeType):
             is_type = True
             item = item.item
-
-        unwrapped_type_guard: ProperType | None = None
-        # Check if this was a wrapped annotation of a TypeVar from the semantic analyzing pass
-        if isinstance(item, UnboundType) and item.name == "__ConcreteWithTypeVar__":
-            item = get_proper_type(item.args[0])
-            unwrapped_type_guard = item
-            if is_type:
-                unwrapped_type_guard = TypeType(unwrapped_type_guard)
 
         if isinstance(item, TypeType):
             is_type = True
@@ -106,12 +97,7 @@ class _SignatureTypeInfo:
             ret_types.append((annotation, bare, found_is_type, type_var))
 
         return cls(
-            func=func,
-            is_type=is_type,
-            is_guard=is_guard,
-            resolver=resolver,
-            ret_types=ret_types,
-            unwrapped_type_guard=unwrapped_type_guard,
+            func=func, is_type=is_type, is_guard=is_guard, resolver=resolver, ret_types=ret_types
         )
 
     @property

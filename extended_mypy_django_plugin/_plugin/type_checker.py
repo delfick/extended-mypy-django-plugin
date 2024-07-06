@@ -64,9 +64,6 @@ class TypeChecking:
                 ctx.context,
             )
 
-            if info.unwrapped_type_guard:
-                return ctx.default_signature.copy_modified(type_guard=info.unwrapped_type_guard)
-
         return None
 
     def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
