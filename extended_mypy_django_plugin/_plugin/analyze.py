@@ -1,16 +1,7 @@
-from mypy.nodes import GDEF, AssignmentStmt, CastExpr, NameExpr, SymbolTableNode
+from mypy.nodes import GDEF, AssignmentStmt, NameExpr, SymbolTableNode
 from mypy.plugin import AnalyzeTypeContext, DynamicClassDefContext
 from mypy.semanal import SemanticAnalyzer
-from mypy.typeanal import TypeAnalyser
-from mypy.types import (
-    CallableType,
-    Instance,
-    ProperType,
-    TypeType,
-    TypeVarType,
-    UnionType,
-    get_proper_type,
-)
+from mypy.types import Instance, ProperType, TypeType, TypeVarType, UnionType, get_proper_type
 from mypy.types import Type as MypyType
 
 from . import protocols
@@ -49,16 +40,6 @@ class Analyzer:
 
         model_type = get_proper_type(ctx.api.analyze_type(args[0]))
 
-        def cur_mod_id() -> str:
-            # We have to know that ctx.api is TypeAnalyser to know what the current module is
-            assert isinstance(ctx.api, TypeAnalyser)
-            assert isinstance(ctx.api.api, SemanticAnalyzer)
-            return ctx.api.api.cur_mod_id
-
-        if cur_mod_id() == "extended_mypy_django_plugin.annotations":
-            # We don't want to resolve the Concrete annotation where it's defined!
-            return ctx.type
-
         resolver = self.make_resolver(ctx=ctx)
 
         if self._has_typevars(model_type):
@@ -73,92 +54,6 @@ class Analyzer:
             return ctx.type
         else:
             return resolved
-
-    def transform_cast_as_concrete(self, ctx: DynamicClassDefContext) -> None:
-        if len(ctx.call.args) != 1:
-            ctx.api.fail("Concrete.cast_as_concrete takes exactly one argument", ctx.call)
-            return None
-
-        first_arg = ctx.call.args[0]
-        if not isinstance(first_arg, NameExpr):
-            # It seems too difficult to support anything more complicated from this hook
-            ctx.api.fail(
-                "cast_as_concrete can only take variable names."
-                " Create a variable with what you're passing in and pass in that variable instead",
-                ctx.call,
-            )
-            return None
-
-        node = ctx.api.lookup_qualified(first_arg.name, ctx.call)
-        if not node or not node.node or not (arg_type := getattr(node.node, "type", None)):
-            ctx.api.fail(
-                f'Failed to find a model type represented by "{first_arg.name}"', ctx.call
-            )
-            return None
-
-        arg_node_typ: ProperType = get_proper_type(arg_type)
-
-        is_type: bool = False
-        if isinstance(arg_node_typ, TypeType):
-            is_type = True
-            arg_node_typ = arg_node_typ.item
-
-        if not isinstance(arg_node_typ, Instance | UnionType | TypeVarType):
-            ctx.api.fail(
-                f"Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got {type(arg_node_typ)}",
-                ctx.call,
-            )
-            return None
-
-        # We need much more than is on the interface unfortunately
-        assert isinstance(ctx.api, SemanticAnalyzer)
-        sem_api = ctx.api
-
-        # The only type var we support is Self
-        if isinstance(arg_node_typ, TypeVarType):
-            func = sem_api.scope.function
-            if func is None or arg_node_typ.name != "Self":
-                ctx.api.fail(
-                    f"Resolving type variables for cast_as_concrete only implement for the Self type: {arg_node_typ}",
-                    ctx.call,
-                )
-                return
-
-            replacement: Instance | TypeType | None = ctx.api.named_type_or_none(
-                func.info.fullname
-            )
-            if not replacement:
-                # This is one of those "no possible to reach in practise" branches
-                # because mypy fails before we get here anyways
-                ctx.api.fail("The Self type only makes sense on class methods", ctx.call)
-                return None
-
-            arg_node_typ = replacement
-            if is_type:
-                replacement = TypeType(replacement)
-
-            # Need to convince mypy that we can change the type of the first argument
-            if isinstance(func.type, CallableType):
-                if func.type.arg_names[0] == ctx.name:
-                    # Avoid getting an assignment error trying to assign a union of the concrete types to
-                    # a variable typed in terms of Self
-                    func.type.arg_types[0] = replacement
-
-        concrete_type = self.make_resolver(ctx=ctx).resolve(
-            protocols.KnownAnnotations.CONCRETE,
-            TypeType(arg_node_typ) if is_type else arg_node_typ,
-        )
-        if not concrete_type:
-            # resolve will already have made a failure if necessary
-            return None
-
-        # Perform a cast!
-        ctx.call.analyzed = CastExpr(first_arg, concrete_type)
-        ctx.call.analyzed.line = ctx.call.line
-        ctx.call.analyzed.column = ctx.call.column
-        ctx.call.analyzed.accept(sem_api)
-
-        return None
 
     def transform_type_var_classmethod(self, ctx: DynamicClassDefContext) -> None:
         if len(ctx.call.args) != 2:

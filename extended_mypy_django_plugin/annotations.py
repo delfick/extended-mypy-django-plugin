@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Generic, TypeVar, overload
+from typing import Generic, TypeVar
 
 from django.db import models
 
 T_Parent = TypeVar("T_Parent")
+T_Obj = TypeVar("T_Obj")
 
 
 class Concrete(Generic[T_Parent]):
@@ -26,17 +27,7 @@ class Concrete(Generic[T_Parent]):
     """
 
     @classmethod
-    @overload
-    def cast_as_concrete(cls, obj: type[T_Parent]) -> type[Concrete[T_Parent]]: ...
-
-    @classmethod
-    @overload
-    def cast_as_concrete(cls, obj: T_Parent) -> Concrete[T_Parent]: ...
-
-    @classmethod
-    def cast_as_concrete(
-        cls, obj: type[T_Parent] | T_Parent
-    ) -> type[Concrete[T_Parent]] | Concrete[T_Parent]:
+    def cast_as_concrete(cls, obj: T_Obj) -> T_Obj:
         """
         This can be used to change the type of an abstract django model to be only
         a concrete decedent.
@@ -53,12 +44,12 @@ class Concrete(Generic[T_Parent]):
                     abstract = True
 
                 @classmethod
-                def new(cls) -> Concrete[Self]:
+                def new(cls) -> Self:
                     cls = Concrete.cast_as_concrete(cls)
                     reveal_type(cls) # type[Concrete1] | type[Concrete2] | type[Concrete3] | ...
                     ...
 
-                def get_self(self) -> Concrete[Self]:
+                def get_self(self) -> Self:
                     self = Concrete.cast_as_concrete(self)
                     reveal_type(self) # Concrete1 | Concrete2 | Concrete3 | ...
                     ...

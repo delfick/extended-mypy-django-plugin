@@ -3,6 +3,18 @@
 Changelog
 ---------
 
+.. _release-0.7.0:
+
+0.7.0 - TBD
+
+    * The ``Concrete.cast_as_concrete`` helper is now handled by a different mypy plugin
+      hook. This lets the helper understand type vars and it lets it handle more
+      complicated inputs.
+
+      However it means that in methods when using it to override ``self`` and ``cls``
+      that we can no longer override those variables. In these cases use a different
+      variable name as the result.
+
 .. _release-0.6.4:
 
 0.6.4 - 4 July 2024

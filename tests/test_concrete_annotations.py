@@ -1,5 +1,3 @@
-import importlib
-
 import pytest
 from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
 
@@ -26,11 +24,11 @@ class TestConcreteAnnotations:
                         self.model = model
 
                 found = Concrete.cast_as_concrete(Thing(model=model).model)
-                # ^ ERROR(misc) ^ cast_as_concrete can only take variable names. Create a variable with what you're passing in and pass in that variable instead
+                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
 
                 thing = Thing(model=model)
                 found = Concrete.cast_as_concrete(thing.model)
-                # ^ ERROR(misc) ^ cast_as_concrete can only take variable names. Create a variable with what you're passing in and pass in that variable instead
+                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
 
                 model = Concrete.cast_as_concrete(model)
                 # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
@@ -60,32 +58,39 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ leader.models.Leader
 
                 thing = Concrete.cast_as_concrete(nup)
+                # ^ ERROR(misc) ^ Failed to determine the type of the first argument
                 # ^ ERROR(name-defined) ^ Name "nup" is not defined
-                # ^ ERROR(misc) ^ Failed to find a model type represented by "nup"
 
                 a: Any = None
                 thing = Concrete.cast_as_concrete(a)
-                # ^ ERROR(misc) ^ Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got <class 'mypy.types.AnyType'>
+                # ^ ERROR(misc) ^ Failed to determine the type of the first argument
 
                 T_LeaderNormal = TypeVar("T_LeaderNormal", bound=Leader)
 
                 def myfunc(model: type[T_LeaderNormal]) -> T_LeaderNormal:
-                    model = Concrete.cast_as_concrete(model)
-                    # ^ ERROR(misc) ^ Resolving type variables for cast_as_concrete only implement for the Self type: T_LeaderNormal`-1
-                    return model.objects.create()
-                    # ^ ERROR(attr-defined) ^ "type[Concrete?[T_Parent?]]" has no attribute "objects"
+                    concrete = Concrete.cast_as_concrete(model)
+                    # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                    created = concrete.objects.create()
+                    assert isinstance(created, model)
+                    return created
 
-                def myfunc2(model: type[Self]) -> Self:
+                T_Choices = TypeVar("T_Choices", Follow1, Follow2)
+
+                def myfunc2(model: type[T_Choices]) -> T_Choices:
+                    concrete = Concrete.cast_as_concrete(model)
+                    # ^ REVEAL ^ type[simple.models.Follow1]
+                    # ^ REVEAL ^ type[simple.models.Follow2]
+                    created = concrete.objects.create()
+                    assert isinstance(created, model)
+                    return created
+
+                def myfunc3(model: type[Self]) -> Self:
                     # ^ ERROR(misc) ^ Self type is only allowed in annotations within class definition
                     model = Concrete.cast_as_concrete(model)
-                    # ^ ERROR(misc) ^ Expected first argument to Concrete.cast_as_concrete to have a type referencing a model, got <class 'mypy.types.AnyType'>
+                    # ^ ERROR(misc) ^ cast_as_concrete must take a variable with a clear type, got Any: (<class 'mypy.types.AnyType'>)
                     return model.objects.create()
-                    # ^ ERROR(attr-defined)[not-in-1.4] ^ "type[Concrete?[T_Parent?]]" has no attribute "objects"
                 """,
             )
-
-            if importlib.metadata.version("mypy") == "1.4.0":
-                expected.on("main.py").remove_errors("not-in-1.4")
 
     def test_simple_annotation(self, scenario: Scenario) -> None:
         @scenario.run_and_check_mypy_after
@@ -277,16 +282,20 @@ class TestConcreteAnnotations:
 
                 class Leader(models.Model):
                     @classmethod
-                    def new(cls) -> Concrete[Self]:
-                        cls = Concrete.cast_as_concrete(cls)
+                    def new(cls) -> Self:
+                        concrete = Concrete.cast_as_concrete(cls)
                         # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
-                        return cls.objects.create()
+                        created = concrete.objects.create()
+                        assert isinstance(created, cls)
+                        return created
 
                     @classmethod
-                    def new_with_kwargs(cls, **kwargs: Any) -> Concrete[Self]:
-                        cls = Concrete.cast_as_concrete(cls)
+                    def new_with_kwargs(cls, **kwargs: Any) -> Self:
+                        concrete = Concrete.cast_as_concrete(cls)
                         # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
-                        return cls.objects.create(**kwargs)
+                        created = concrete.objects.create(**kwargs)
+                        assert isinstance(created, cls)
+                        return created
 
                     class Meta:
                         abstract = True
@@ -364,15 +373,17 @@ class TestConcreteAnnotations:
 
                 class Leader(models.Model):
                     @classmethod
-                    def new(cls) -> Concrete[Self]:
-                        cls = Concrete.cast_as_concrete(cls)
+                    def new(cls) -> Self:
+                        concrete = Concrete.cast_as_concrete(cls)
                         # ^ REVEAL[cls-all] ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
-                        return cls.objects.create()
+                        created = concrete.objects.create()
+                        assert isinstance(created, cls)
+                        return created
 
                     def qs(self) -> DefaultQuerySet[Self]:
-                        self = Concrete.cast_as_concrete(self)
+                        concrete = Concrete.cast_as_concrete(self)
                         # ^ REVEAL[self-all] ^ Union[example.models.Follower1, example.models.Follower2]
-                        return self.__class__.objects.filter(pk=self.pk)
+                        return concrete.__class__.objects.filter(pk=self.pk)
 
                     class Meta:
                         abstract = True
@@ -401,8 +412,8 @@ class TestConcreteAnnotations:
                 from example.models import Leader, Follower1, Follower2
                 from extended_mypy_django_plugin import Concrete
 
-                model: type[Leader] = Follower1
-                # ^ REVEAL ^ type[example.models.Leader]
+                model: type[Concrete[Leader]]
+                # ^ REVEAL[model] ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
 
                 leader = model.new()
                 # ^ REVEAL[leader-new] ^ Union[example.models.Follower1, example.models.Follower2]
@@ -472,6 +483,10 @@ class TestConcreteAnnotations:
 
             (
                 expected.on("main.py")
+                .add_revealed_type(
+                    "model",
+                    "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]",
+                )
                 .add_revealed_type(
                     "leader-new",
                     "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
