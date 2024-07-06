@@ -8,9 +8,7 @@ from mypy.plugin import (
     AttributeContext,
     DynamicClassDefContext,
     FunctionContext,
-    FunctionSigContext,
     MethodContext,
-    MethodSigContext,
 )
 from mypy.semanal import SemanticAnalyzer
 from mypy.typeanal import TypeAnalyser
@@ -148,13 +146,7 @@ class AnnotationResolver:
                 fail = functools.partial(sem_api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, sem_api)
                 named_type_or_none = sem_api.named_type_or_none
-            case (
-                AttributeContext(api=api)
-                | MethodContext(api=api)
-                | FunctionContext(api=api)
-                | MethodSigContext(api=api)
-                | FunctionSigContext(api=api)
-            ):
+            case AttributeContext(api=api) | MethodContext(api=api) | FunctionContext(api=api):
                 context = ctx.context
                 defer = lambda: False
                 # The interface for the type checker says fail takes ctx

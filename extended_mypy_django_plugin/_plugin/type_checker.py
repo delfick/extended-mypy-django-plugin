@@ -4,14 +4,11 @@ from mypy.nodes import CallExpr, MemberExpr, MypyFile, SymbolNode, TypeInfo
 from mypy.plugin import (
     AttributeContext,
     FunctionContext,
-    FunctionSigContext,
     MethodContext,
-    MethodSigContext,
 )
 from mypy.types import (
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     TypeOfAny,
     TypeQuery,
@@ -51,20 +48,6 @@ class HasAnnotations(TypeQuery[bool]):
 class TypeChecking:
     def __init__(self, *, make_resolver: protocols.ResolverMaker) -> None:
         self.make_resolver = make_resolver
-
-    def check_typeguard(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike | None:
-        info = signature_info.get_signature_info(ctx, self.make_resolver(ctx=ctx))
-        if info is None:
-            return None
-
-        if info.is_guard and info.returns_concrete_annotation_with_type_var:
-            # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard when it's for a concrete annotation that uses a type var
-            ctx.api.fail(
-                "Can't use a TypeGuard that uses a Concrete Annotation that uses type variables",
-                ctx.context,
-            )
-
-        return None
 
     def modify_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
         info = signature_info.get_signature_info(ctx, self.make_resolver(ctx=ctx))
