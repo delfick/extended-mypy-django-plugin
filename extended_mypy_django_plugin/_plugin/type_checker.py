@@ -1,6 +1,6 @@
 from typing import Final
 
-from mypy.nodes import CallExpr, Decorator, MemberExpr, MypyFile, SymbolNode, TypeInfo
+from mypy.nodes import CallExpr, MemberExpr, MypyFile, SymbolNode, TypeInfo
 from mypy.plugin import (
     AttributeContext,
     FunctionContext,
@@ -13,12 +13,10 @@ from mypy.types import (
     CallableType,
     FunctionLike,
     Instance,
-    Overloaded,
-    ProperType,
     TypeOfAny,
+    TypeQuery,
     TypeType,
     TypeVarType,
-    UnboundType,
     UnionType,
     get_proper_type,
 )
@@ -28,6 +26,26 @@ from . import protocols, signature_info
 
 TYPING_SELF: Final[str] = "typing.Self"
 TYPING_EXTENSION_SELF: Final[str] = "typing_extensions.Self"
+
+
+class HasAnnotations(TypeQuery[bool]):
+    """
+    Find where we have a concrete annotation
+    """
+
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if t.type_guard:
+            return t.type_guard.accept(self)
+        else:
+            return t.ret_type.accept(self)
+
+    def visit_instance(self, t: Instance) -> bool:
+        if super().visit_instance(t):
+            return True
+        return protocols.KnownAnnotations.resolve(t.type.fullname) is not None
 
 
 class TypeChecking:
@@ -276,44 +294,6 @@ class ConcreteAnnotationChooser:
 
         return None
 
-    def _returns_annotation(self, typ: ProperType) -> bool:
-        """
-        Given a type, work out if it represents an annotated type.
-        """
-        if isinstance(typ, Overloaded):
-            # Check if any of the overloaded signatures returns an annotation
-            return any(self._returns_annotation(item) for item in typ.items)
-
-        if isinstance(typ, Decorator):
-            # Get the return type of the decorated function
-            typ = typ.type
-
-        if isinstance(typ, CallableType):
-            # If we have a type guard, then ret_type will be a bool
-            # but we wanna check what the type guard is for
-            if typ.type_guard:
-                typ = get_proper_type(typ.type_guard)
-            else:
-                typ = get_proper_type(typ.ret_type)
-
-        # Unwrap a type[...]
-        if isinstance(typ, TypeType):
-            typ = typ.item
-
-        # Unwrap if it's been wrapped by a previous hook
-        if isinstance(typ, UnboundType) and typ.name == "__ConcreteWithTypeVar__":
-            typ = get_proper_type(typ.args[0])
-
-        # Make sure our wrapped type wasn't itself wrapped with type[...]
-        if isinstance(typ, TypeType):
-            typ = typ.item
-
-        if not isinstance(typ, Instance):
-            # Can't be an annotation if we don't have an Instance
-            return False
-
-        return protocols.KnownAnnotations.resolve(typ.type.fullname) is not None
-
     def choose(self) -> bool:
         """
         This is called for hooks that work on methods and functions.
@@ -338,5 +318,5 @@ class ConcreteAnnotationChooser:
         if not isinstance(sym_node_type, MypyType):
             return False
 
-        # We only choose functions/methods that return an annotation
-        return self._returns_annotation(get_proper_type(sym_node_type))
+        # Return if our type includes any kind of concrete annotation
+        return sym_node_type.accept(HasAnnotations())
