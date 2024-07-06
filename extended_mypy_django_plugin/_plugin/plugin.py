@@ -1,4 +1,3 @@
-import enum
 import functools
 from typing import Generic, TypeVar
 
@@ -7,7 +6,6 @@ from mypy.options import Options
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
-    DynamicClassDefContext,
     FunctionContext,
     FunctionSigContext,
     MethodContext,
@@ -21,7 +19,6 @@ from mypy_django_plugin.transformers.managers import (
     resolve_manager_method,
     resolve_manager_method_from_instance,
 )
-from typing_extensions import assert_never
 
 from . import analyze, annotation_resolver, config, hook, protocols, type_checker
 
@@ -49,8 +46,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     .. automethod:: report_config_data
 
     .. automethod:: get_additional_deps
-
-    .. autoattribute:: get_dynamic_class_hook
 
     .. autoattribute:: get_type_analyze_hook
 
@@ -169,54 +164,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 super_deps=super().get_additional_deps(file),
             )
         )
-
-    @hook.hook
-    class get_dynamic_class_hook(Hook[T_Report, DynamicClassDefContext, None]):
-        """
-        This is used to find special methods on the ``Concrete`` class and do appropriate actions.
-
-        For ``Concrete.type_var`` we turn the result into a ``TypeVar`` that can only be one of
-        the concrete descendants of the specified class.
-
-        So say we find::
-
-            T_Child = Concrete.type_var("T_Child", Parent)
-
-        Then we turn that into::
-
-            T_Child = TypeVar("T_Child", Child1, Child2, Child3)
-        """
-
-        class KnownConcreteMethods(enum.Enum):
-            """
-            These are the methods that we care about in this plugin
-
-            Expressed as an enum given Mypy forces us to split up choosing from running the hook
-            """
-
-            type_var = "type_var"
-
-        # Used to pass on information from choose to run
-        # so that we don't repeat the logic we run in choose
-        # if we tell Mypy to use this hook
-        method_name: KnownConcreteMethods
-
-        def choose(self) -> bool:
-            class_name, _, method_name = self.fullname.rpartition(".")
-            if method_name == self.KnownConcreteMethods.type_var.value:
-                self.method_name = self.KnownConcreteMethods.type_var
-
-            else:
-                return False
-
-            info = self.plugin._get_typeinfo_or_none(class_name)
-            return bool(info and info.has_base(protocols.KnownClasses.CONCRETE.value))
-
-        def run(self, ctx: DynamicClassDefContext) -> None:
-            if self.method_name is self.KnownConcreteMethods.type_var:
-                return self.plugin.analyzer.transform_type_var_classmethod(ctx)
-            else:
-                assert_never(self.method_name)
 
     @hook.hook
     class get_type_analyze_hook(Hook[T_Report, AnalyzeTypeContext, MypyType]):

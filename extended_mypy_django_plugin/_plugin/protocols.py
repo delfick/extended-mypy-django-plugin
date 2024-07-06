@@ -3,7 +3,7 @@ from collections.abc import Iterator, Mapping, MutableMapping, Sequence, Set
 from typing import TYPE_CHECKING, Optional, Protocol, TypeVar
 
 from mypy import errorcodes
-from mypy.nodes import SymbolTableNode, TypeInfo, TypeVarExpr
+from mypy.nodes import SymbolTableNode, TypeInfo
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
@@ -187,13 +187,6 @@ class Resolver(Protocol):
         """
         Given some annotation and type inside the annotation, create an unbound type that can be
         recognised at a later stage where more information is available to continue analysis
-        """
-
-    def type_var_expr_for(
-        self, *, model: TypeInfo, name: str, fullname: str, object_type: Instance
-    ) -> TypeVarExpr:
-        """
-        Return the TypeVarExpr that represents the result of Concrete.type_var
         """
 
 

@@ -14,6 +14,8 @@ Changelog
       However it means that in methods when using it to override ``self`` and ``cls``
       that we can no longer override those variables. In these cases use a different
       variable name as the result.
+    * Removed Concrete.type_var. Can use
+      ``TypeVar("T_Model", bound=Concrete[Model])`` instead
 
 .. _release-0.6.4:
 

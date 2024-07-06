@@ -13,15 +13,9 @@ class Concrete(Generic[T_Parent]):
     The ``Concrete`` annotation exists as a class with functionality for both
     runtime and static type checking time.
 
-    At runtime it can be used to create special ``TypeVar`` objects that may
-    represent any one of the concrete children of some abstract class and
-    it can be used to find those concrete children.
-
     At static type checking time (specifically with ``mypy``) it is used to create
     a type that represents the Union of all the concrete children of some
     abstract model.
-
-    .. automethod:: type_var
 
     .. automethod:: cast_as_concrete
     """
@@ -70,15 +64,6 @@ class Concrete(Generic[T_Parent]):
             raise RuntimeError("Expected a concrete instance")
 
         return obj
-
-    @classmethod
-    def type_var(cls, name: str, parent: type[models.Model] | str) -> TypeVar:
-        """
-        This returns an empty ``TypeVar`` at runtime, but the ``mypy`` plugin will
-        recognise that this ``TypeVar`` represents a choice of all the concrete
-        children of the specified model.
-        """
-        return TypeVar(name)
 
 
 class DefaultQuerySet(Generic[T_Parent]):

@@ -9,34 +9,6 @@ from pytest_mypy_plugins import OutputChecker
 
 
 class TestErrors:
-    def test_cant_create_concrete_type_var_outside_module_scope(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
-                """
-                from extended_mypy_django_plugin import Concrete
-
-                from myapp.models import Parent
-
-                # No errors
-                T_Parent = Concrete.type_var("T_Parent", Parent)
-
-                class Thing:
-                    T_ClassScopeIsNotModuleScope = Concrete.type_var("T_ClassScopeIsNotModuleScope", Parent)
-                    # ^ ERROR(misc) ^ Can only use Concrete.type_var at module scope, rather than class scope
-
-                    def my_method(self) -> None:
-                        T_MethodScopeIsNotModuleScope = Concrete.type_var("T_MethodScopeIsNotModuleScope", Parent)
-                        # ^ ERROR(misc) ^ Can only use Concrete.type_var at module scope, rather than method scope
-
-                def my_function() -> None:
-                    T_FunctionScopeIsNotModuleScope = Concrete.type_var("T_FunctionScopeIsNotModuleScope", Parent)
-                    # ^ ERROR(misc) ^ Can only use Concrete.type_var at module scope, rather than function scope
-                """,
-            )
-
     def test_cant_use_typevar_concrete_annotation_in_function_or_method_typeguard(
         self, scenario: Scenario
     ) -> None:

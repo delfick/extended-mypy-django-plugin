@@ -42,18 +42,20 @@ This also works for types:
     cls: type[Concrete1 | Concrete2 | Concrete3]
 
 
-Concrete.type_var
------------------
+Concrete TypeVar
+----------------
 
 To create a type var representing any one of the concrete models of an abstract
-model, create a ``TypeVar`` object using ``Concrete.type_var``:
+model, create a ``TypeVar`` object like normal and bind it to the concrete of
+the desired model:
 
 .. code-block:: python
 
     from extended_mypy_django_plugin import Concrete
+    from typing import TypeVar
 
 
-    T_Concrete = Concrete.type_var("T_Concrete", AbstractModel)
+    T_Concrete = TypeVar("T_Concrete", bound=Concrete[AbstractModel])
 
 
     def create_row(cls: type[T_Concrete]) -> T_Concrete:
@@ -65,7 +67,7 @@ model, create a ``TypeVar`` object using ``Concrete.type_var``:
 
     from typing import TypeVar
 
-    T_Concrete = TypeVar("T_Concrete", Concrete1, Concrete2, Concrete3)
+    T_Concrete = TypeVar("T_Concrete", bound=Concrete1 | Concrete2 | Concrete3)
 
 
     def create_row(cls: type[T_Concrete]) -> T_Concrete:
@@ -185,21 +187,22 @@ This also works on the concrete models themselves:
     qs1: models.QuerySet[Concrete1]
     qs2: Concrete2QuerySet
 
-It also works on the ``TypeVar`` objects returned by ``Concrete.type_var``:
+It also works on the ``TypeVar`` objects:
 
 .. code-block:: python
 
     from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+    from typing import TypeVar
 
 
-    T_Concrete = Concrete.type_var("T_Concrete", AbstractModel)
+    T_Concrete = TypeVar("T_Concrete", bound=Concrete[AbstractModel])
 
 
     def get_qs(cls: type[T_Concrete]) -> DefaultQuerySet[T_Concrete]:
         return cls.objects.all()
 
     # --------------
-    # Essentially equivalent to
+    # Essentially (but not literally) equivalent to
     # --------------
 
     from typing import overload

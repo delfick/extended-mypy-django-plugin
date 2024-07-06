@@ -1,14 +1,18 @@
+from typing import TypeVar
+
 from django.http import HttpRequest, HttpResponse, HttpResponseBase
 
 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
 from .exampleapp.models import Child1, Child2, Parent
 
-T_Child = Concrete.type_var("T_Child", Parent)
+T_Child = TypeVar("T_Child", bound=Concrete[Parent])
 
 
 def make_child(child: type[T_Child]) -> T_Child:
-    return child.objects.create()
+    created = child.objects.create()
+    assert isinstance(created, child)
+    return created
 
 
 def make_any_queryset(child: type[Concrete[Parent]]) -> DefaultQuerySet[Parent]:
