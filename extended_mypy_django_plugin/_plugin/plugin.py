@@ -185,9 +185,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         Then we turn that into::
 
             T_Child = TypeVar("T_Child", Child1, Child2, Child3)
-
-        For ``Concrete.cast_as_concrete`` we narrow the target variable to be the concrete equivalent
-        of the argument.
         """
 
         class KnownConcreteMethods(enum.Enum):
@@ -198,7 +195,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             """
 
             type_var = "type_var"
-            cast_as_concrete = "cast_as_concrete"
 
         # Used to pass on information from choose to run
         # so that we don't repeat the logic we run in choose
@@ -210,9 +206,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             if method_name == self.KnownConcreteMethods.type_var.value:
                 self.method_name = self.KnownConcreteMethods.type_var
 
-            elif method_name == self.KnownConcreteMethods.cast_as_concrete.value:
-                self.method_name = self.KnownConcreteMethods.cast_as_concrete
-
             else:
                 return False
 
@@ -222,8 +215,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         def run(self, ctx: DynamicClassDefContext) -> None:
             if self.method_name is self.KnownConcreteMethods.type_var:
                 return self.plugin.analyzer.transform_type_var_classmethod(ctx)
-            elif self.method_name is self.KnownConcreteMethods.cast_as_concrete:
-                return self.plugin.analyzer.transform_cast_as_concrete(ctx)
             else:
                 assert_never(self.method_name)
 
@@ -293,7 +284,28 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         In this hook we have access to where the function is called and so we can resolve those type variables
         and ultimately resolve the concrete annotation.
+
+        Also used to ensure Concrete.cast_as_concrete returns the appropriate type.
         """
+
+        # Used to share information between self.choose and self.run
+        is_cast_as_concrete: bool = False
+
+        def choose(self) -> bool:
+            class_name, _, method_name = self.fullname.rpartition(".")
+            if method_name == "cast_as_concrete":
+                info = self.plugin._get_typeinfo_or_none(class_name)
+                if info and info.has_base(protocols.KnownClasses.CONCRETE.value):
+                    self.is_cast_as_concrete = True
+                    return True
+
+            return super().choose()
+
+        def run(self, ctx: FunctionContext | MethodContext) -> MypyType:
+            if self.is_cast_as_concrete:
+                return self.plugin.type_checker.modify_cast_as_concrete(ctx)
+
+            return super().run(ctx)
 
     @hook.hook
     class get_function_hook(_get_method_or_function_hook[T_Report]):

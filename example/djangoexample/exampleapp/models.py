@@ -1,8 +1,18 @@
 from django.db import models
+from typing_extensions import Self
+
+from extended_mypy_django_plugin import Concrete
 
 
 class Parent(models.Model):
     one = models.CharField(max_length=50)
+
+    @classmethod
+    def new(cls, one: str) -> Self:
+        concrete = Concrete.cast_as_concrete(cls)
+        created = concrete.objects.create(one=one)
+        assert isinstance(created, cls)
+        return created
 
     class Meta:
         abstract = True

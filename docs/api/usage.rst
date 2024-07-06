@@ -98,7 +98,7 @@ This may also be used on methods of an Django Model in conjunction with
 
 .. code-block:: python
 
-    from extended_mypy_django_plugin import Concrete, DefaultQuerySet
+    from extended_mypy_django_plugin import DefaultQuerySet
     from django.db import models
     from typing import Self
 
@@ -108,15 +108,21 @@ This may also be used on methods of an Django Model in conjunction with
             abstract = True
 
         @classmethod
-        def new(cls) -> Concrete[Self]:
-            cls = Concrete.cast_as_concrete(cls)
-            reveal_type(cls) # type[Concrete1] | type[Concrete2] | type[Concrete3]
-            return cls.objects.create()
+        def new(cls) -> Self:
+            concrete = Concrete.cast_as_concrete(cls)
+            reveal_type(concrete) # type[Concrete1] | type[Concrete2] | type[Concrete3]
+            created = cls.objects.create()
+
+            # Note that convincing mypy that created matches self, requires this
+            assert isinstance(created, cls)
+
+            # Otherwise the return will make mypy complain that it doesn't match self
+            return created
 
         def qs(self) -> DefaultQuerySet[Self]:
-            self = Concrete.cast_as_concrete(self)
-            reveal_type(self) # Concrete1 | Concrete2 | Concrete3
-            return self.__class__.objects.filter(pk=self.pk)
+            concrete = Concrete.cast_as_concrete(self)
+            reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
+            return concrete.__class__.objects.filter(pk=self.pk)
 
     class Concrete1(AbstractModel):
         pass
@@ -132,17 +138,13 @@ This may also be used on methods of an Django Model in conjunction with
     reveal_type(instance) # Concrete1 | Concrete2 | Concrete3
 
     qs = instance.qs()
-    reveal_type(qs) # QuerySet[Concrete1] | QuerySet[Concrete2] | QuerySet[Concrete3]
+    reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
 
     specific = Concrete1.new()
     reveal_type(specific) # Concrete1
 
     specific_qs = instance.qs()
     reveal_type(specific_qs) # QuerySet[Concrete1]
-
-This is essentially turns into a cast at static time with an extra type
-narrowing done inside model methods when passing in the first argument of the
-function (something that is not possible without the mypy plugin).
 
 DefaultQuerySet
 ---------------
