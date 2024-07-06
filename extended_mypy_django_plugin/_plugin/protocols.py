@@ -9,9 +9,7 @@ from mypy.plugin import (
     AttributeContext,
     DynamicClassDefContext,
     FunctionContext,
-    FunctionSigContext,
     MethodContext,
-    MethodSigContext,
 )
 from mypy.types import (
     AnyType,
@@ -186,9 +184,7 @@ ValidContextForAnnotationResolver = (
     | AnalyzeTypeContext
     | AttributeContext
     | MethodContext
-    | MethodSigContext
     | FunctionContext
-    | FunctionSigContext
 )
 
 
@@ -210,12 +206,6 @@ class SignatureInfo(Protocol):
     def is_guard(self) -> bool:
         """
         Whether this signature represents a type guard
-        """
-
-    @property
-    def returns_concrete_annotation_with_type_var(self) -> bool:
-        """
-        Boolean indicating if the signature is returning a concrete annotation that is dependant on a typevar
         """
 
     def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:

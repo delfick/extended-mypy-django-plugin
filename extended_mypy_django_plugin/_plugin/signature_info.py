@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Final, cast
 
 from mypy.checker import TypeChecker
 from mypy.nodes import CallExpr, Expression, IndexExpr
-from mypy.plugin import FunctionContext, FunctionSigContext, MethodContext, MethodSigContext
+from mypy.plugin import FunctionContext, MethodContext
 from mypy.types import (
     AnyType,
     CallableType,
@@ -13,7 +13,6 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarType,
-    UnboundType,
     UnionType,
     get_proper_type,
 )
@@ -100,13 +99,6 @@ class _SignatureTypeInfo:
             func=func, is_type=is_type, is_guard=is_guard, resolver=resolver, ret_types=ret_types
         )
 
-    @property
-    def returns_concrete_annotation_with_type_var(self) -> bool:
-        return any(
-            annotation is not None and type_var is not None
-            for annotation, _, _, type_var in self.ret_types
-        )
-
     def _map_type_vars(self, ctx: MethodContext | FunctionContext) -> protocols.TypeVarMap:
         result: protocols.TypeVarMap = {}
 
@@ -188,10 +180,6 @@ class _SignatureTypeInfo:
         return result
 
     def resolve_return_type(self, ctx: MethodContext | FunctionContext) -> MypyType | None:
-        if not self.returns_concrete_annotation_with_type_var:
-            # Nothing to substitute!
-            return None
-
         if self.is_guard:
             # Mypy plugin system doesn't currently provide an opportunity to resolve a type guard
             # when it's for a concrete annotation that uses a type var
@@ -240,8 +228,7 @@ class _SignatureTypeInfo:
 
 
 def get_signature_info(
-    ctx: MethodContext | FunctionContext | MethodSigContext | FunctionSigContext,
-    resolver: protocols.Resolver,
+    ctx: MethodContext | FunctionContext, resolver: protocols.Resolver
 ) -> protocols.SignatureInfo | None:
     def get_expression_type(node: Expression, type_context: MypyType | None = None) -> MypyType:
         # We can remove the assert and switch to self.api.get_expression_type

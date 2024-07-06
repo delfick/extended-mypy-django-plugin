@@ -7,12 +7,9 @@ from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
     FunctionContext,
-    FunctionSigContext,
     MethodContext,
-    MethodSigContext,
     ReportConfigContext,
 )
-from mypy.types import FunctionLike
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
 from mypy_django_plugin.transformers.managers import (
@@ -54,10 +51,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     .. autoattribute:: get_method_hook
 
     .. autoattribute:: get_function_hook
-
-    .. autoattribute:: get_method_signature_hook
-
-    .. autoattribute:: get_function_signature_hook
     """
 
     @classmethod
@@ -261,44 +254,4 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         In this hook we have access to where the function is called and so we can resolve those type variables
         and ultimately resolve the concrete annotation.
-        """
-
-    class _get_method_or_function_signature_hook(
-        Generic[T2_Report], Hook[T2_Report, MethodSigContext | FunctionSigContext, FunctionLike]
-    ):
-        def choose(self) -> bool:
-            return type_checker.ConcreteAnnotationChooser(
-                fullname=self.fullname,
-                plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
-                is_function="function" in self.__class__.__name__,
-                modules=self.plugin._modules,
-            ).choose()
-
-        def run(self, ctx: MethodSigContext | FunctionSigContext) -> FunctionLike:
-            result = self.plugin.type_checker.check_typeguard(ctx)
-
-            if result is not None:
-                return result
-
-            if self.super_hook is not None:
-                return self.super_hook(ctx)
-
-            return ctx.default_signature
-
-    @hook.hook
-    class get_method_signature_hook(_get_method_or_function_signature_hook[T_Report]):
-        """
-        Used to complain about methods that return a TypeGuard for a concrete annotation of a type var.
-
-        In these cases Mypy does not give us an opportunity to change the resolve the concrete annotation
-        and modify the TypeGuard.
-        """
-
-    @hook.hook
-    class get_function_signature_hook(_get_method_or_function_signature_hook[T_Report]):
-        """
-        Used to complain about functions that return a TypeGuard for a concrete annotation of a type var.
-
-        In these cases Mypy does not give us an opportunity to change the resolve the concrete annotation
-        and modify the TypeGuard.
         """
