@@ -464,7 +464,7 @@ class TestBuildingReport:
         made = report.additional_deps(
             file_import_path="django.db.models",
             imports=set(),
-            super_deps=(super_deps := [(10, "one.two", -1), (10, "two", -1)]),
+            super_deps=(super_deps := [(25, "one.two", -1), (25, "two", -1)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )
@@ -492,7 +492,7 @@ class TestBuildingReport:
         made = report.additional_deps(
             file_import_path="some.place",
             imports=set(),
-            super_deps=(super_deps := [(10, "eight.nine", -1), (10, "typing.Protocol", 13)]),
+            super_deps=(super_deps := [(25, "eight.nine", -1), (25, "typing.Protocol", 13)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )
@@ -501,7 +501,7 @@ class TestBuildingReport:
         made = report.additional_deps(
             file_import_path="some.place",
             imports={"one.two"},
-            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            super_deps=(super_deps := [(25, "hello.there", -1), (25, "typing.Protocol", 13)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )
@@ -511,36 +511,36 @@ class TestBuildingReport:
         made = report.additional_deps(
             file_import_path="another.one",
             imports={"one.two"},
-            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            super_deps=(super_deps := [(25, "hello.there", -1), (25, "typing.Protocol", 13)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )
         if using_incremental_cache:
             assert sorted(made) == sorted(
-                [*super_deps, (10, "v_another_one", -1), (10, "my.settings", -1)]
+                [*super_deps, (25, "v_another_one", -1), (25, "my.settings", -1)]
             )
         else:
-            assert sorted(made) == sorted([*super_deps, (10, "v_another_one", -1)])
+            assert sorted(made) == sorted([*super_deps, (25, "v_another_one", -1)])
 
         made = report.additional_deps(
             file_import_path="another.one",
             imports={"one.two.MyModel"},
-            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            super_deps=(super_deps := [(25, "hello.there", -1), (25, "typing.Protocol", 13)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )
         if using_incremental_cache:
             assert sorted(made) == sorted(
-                [*super_deps, (10, "v_another_one", -1), (10, "my.settings", -1)]
+                [*super_deps, (25, "v_another_one", -1), (25, "my.settings", -1)]
             )
         else:
-            assert sorted(made) == sorted([*super_deps, (10, "v_another_one", -1)])
+            assert sorted(made) == sorted([*super_deps, (25, "v_another_one", -1)])
 
         # Also virtual_deps themselves don't add extra
         made = report.additional_deps(
             file_import_path="v_another_one",
             imports={"one.two.MyModel"},
-            super_deps=(super_deps := [(10, "hello.there", -1), (10, "typing.Protocol", 13)]),
+            super_deps=(super_deps := [(25, "hello.there", -1), (25, "typing.Protocol", 13)]),
             django_settings_module="my.settings",
             using_incremental_cache=using_incremental_cache,
         )

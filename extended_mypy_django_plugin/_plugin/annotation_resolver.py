@@ -96,7 +96,7 @@ class AnnotationResolver:
                 return Instance(node, args)
             return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-        def lookup_alias(alias: str) -> Iterator[Instance | PlaceholderType]:
+        def _lookup_alias(line: int, alias: str) -> Iterator[Instance | PlaceholderType]:
             """
             This is the same regardless of which ctx we have
             """
@@ -105,8 +105,8 @@ class AnnotationResolver:
             except AssertionError:
                 raise FailedLookup(f"Failed to lookup {alias}")
 
-            if sym and isinstance(sym.node, PlaceholderNode):
-                yield PlaceholderType(alias, [], sym.node.line)
+            if not sym or isinstance(sym.node, PlaceholderNode):
+                yield PlaceholderType(alias, [], line)
                 return
 
             assert sym and isinstance(sym.node, TypeAlias)
@@ -136,6 +136,7 @@ class AnnotationResolver:
                 defer = functools.partial(sem_defer, sem_api)
                 fail = functools.partial(sem_api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, sem_api)
+                lookup_alias = functools.partial(_lookup_alias, context.line)
                 named_type_or_none = sem_api.named_type_or_none
             case AnalyzeTypeContext(api=api):
                 assert isinstance(api, TypeAnalyser)
@@ -145,6 +146,7 @@ class AnnotationResolver:
                 defer = functools.partial(sem_defer, sem_api)
                 fail = functools.partial(sem_api.fail, ctx=context)
                 lookup_info = functools.partial(_lookup_info, sem_api)
+                lookup_alias = functools.partial(_lookup_alias, context.line)
                 named_type_or_none = sem_api.named_type_or_none
             case AttributeContext(api=api) | MethodContext(api=api) | FunctionContext(api=api):
                 context = ctx.context
@@ -153,6 +155,7 @@ class AnnotationResolver:
                 # But the implementation of TypeChecker has it as context
                 fail = functools.partial(api.fail, context=context)
                 lookup_info = functools.partial(_lookup_info, None)
+                lookup_alias = functools.partial(_lookup_alias, context.line)
                 named_type_or_none = checker_named_type_or_none
             case _:
                 assert_never(ctx)
