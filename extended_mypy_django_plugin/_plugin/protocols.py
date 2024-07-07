@@ -7,6 +7,7 @@ from mypy.nodes import SymbolTableNode, TypeInfo
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
+    ClassDefContext,
     DynamicClassDefContext,
     FunctionContext,
     MethodContext,
@@ -74,6 +75,11 @@ class Report(Protocol):
         and the import path of the django settings module.
 
         It must return the full set of additional deps the mypy plugin should use for this file
+        """
+
+    def is_abstract_model(self, model: str) -> bool:
+        """
+        Return whether this fullname is for an abstract model
         """
 
     def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
@@ -155,6 +161,14 @@ class LookupFullyQualified(Protocol):
     def __call__(self, fullname: str) -> SymbolTableNode | None: ...
 
 
+class IsAbstractModel(Protocol):
+    """
+    Return whether the provided fullname is an abstract model
+    """
+
+    def __call__(self, fullname: str, /) -> bool: ...
+
+
 class ResolveManagerMethodFromInstance(Protocol):
     """
     Used to fold the fix from https://github.com/typeddjango/django-stubs/pull/2027 into the plugin
@@ -181,6 +195,7 @@ class Resolver(Protocol):
 
 ValidContextForAnnotationResolver = (
     DynamicClassDefContext
+    | ClassDefContext
     | AnalyzeTypeContext
     | AttributeContext
     | MethodContext

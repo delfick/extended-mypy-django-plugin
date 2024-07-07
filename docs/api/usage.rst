@@ -95,7 +95,10 @@ To type narrow an object as a concrete descendent of that object, the
 Note that at runtime this will raise an exception if the passed in object is
 either not a Django model class/instance or is an abstract one.
 
-Using Concrete annotations on classmethods would look like:
+Using Concrete annotations on classmethods would look like the following.
+Note that if the plugin notices the use of ``DefaultQuerySet`` in the return type
+of a method on an abstract model it will guide the developer to using the special
+decorator:
 
 .. code-block:: python
 
@@ -103,7 +106,7 @@ Using Concrete annotations on classmethods would look like:
     from django.db import models
     from typing import Self
 
-
+    @Concrete.change_default_queryset_returns
     class AbstractModel(models.Model):
         class Meta:
             abstract = True
@@ -120,18 +123,20 @@ Using Concrete annotations on classmethods would look like:
             # Otherwise the return will make mypy complain that it doesn't match self
             return created
 
-        # # TODO: this isn't currently possible
-        # def qs(self) -> DefaultQuerySet[Self]:
-        #     concrete = Concrete.cast_as_concrete(self)
-        #     reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
-        #     return concrete.__class__.objects.filter(pk=self.pk)
+        def qs(self) -> DefaultQuerySet[Self]:
+            concrete = Concrete.cast_as_concrete(self)
+            reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
+            return concrete.__class__.objects.filter(pk=self.pk)
 
+    @Concrete.change_default_queryset_returns
     class Concrete1(AbstractModel):
         pass
 
+    @Concrete.change_default_queryset_returns
     class Concrete2(AbstractModel):
         pass
 
+    @Concrete.change_default_queryset_returns
     class Concrete3(AbstractModel):
         pass
 
@@ -139,16 +144,14 @@ Using Concrete annotations on classmethods would look like:
     instance = model.new()
     reveal_type(instance) # Concrete1 | Concrete2 | Concrete3
 
-    # # TODO: the qs method specific to which instance isn't possible at the moment
-    # qs = instance.qs()
-    # reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
+    qs = instance.qs()
+    reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
 
     specific = Concrete1.new()
     reveal_type(specific) # Concrete1
 
-    # # TODO: the qs method specific to which instance isn't possible at the moment
-    # specific_qs = instance.qs()
-    # reveal_type(specific_qs) # QuerySet[Concrete1]
+    specific_qs = instance.qs()
+    reveal_type(specific_qs) # QuerySet[Concrete1]
 
 DefaultQuerySet
 ---------------

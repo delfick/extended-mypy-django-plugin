@@ -3,13 +3,20 @@ from typing import Generic, TypeVar
 
 from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
 from mypy.options import Options
-from mypy.plugin import AnalyzeTypeContext, AttributeContext, MethodContext, ReportConfigContext
+from mypy.plugin import (
+    AnalyzeTypeContext,
+    AttributeContext,
+    ClassDefContext,
+    MethodContext,
+    ReportConfigContext,
+)
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
 from mypy_django_plugin.transformers.managers import (
     resolve_manager_method,
     resolve_manager_method_from_instance,
 )
+from mypy_django_plugin.transformers.models import process_model_class
 
 from . import analyze, annotation_resolver, config, hook, protocols, type_checker
 
@@ -167,7 +174,12 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
                 return False
 
         def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            return self.plugin.analyzer.analyze_type(ctx, self.annotation)
+            return self.plugin.analyzer.analyze_type(
+                ctx=ctx,
+                annotation=self.annotation,
+                is_abstract_model=self.plugin.virtual_dependency_report.report.is_abstract_model,
+                plugin_lookup_fully_qualified=self.plugin.lookup_fully_qualified,
+            )
 
     @hook.hook
     class get_attribute_hook(Hook[T_Report, AttributeContext, MypyType]):
@@ -201,3 +213,52 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def run(self, ctx: MethodContext) -> MypyType:
             return self.plugin.type_checker.modify_cast_as_concrete(ctx)
+
+    @hook.hook
+    class get_base_class_hook(Hook[T_Report, ClassDefContext, None]):
+        def choose(self) -> bool:
+            if self.super_hook is None:
+                return False
+
+            return (
+                isinstance(self.super_hook, functools.partial)
+                and self.super_hook.func is process_model_class
+            )
+
+        def run(self, ctx: ClassDefContext) -> None:
+            self.plugin.analyzer.ensure_defaultqueryset_decorator(
+                ctx,
+                is_abstract_model=self.plugin.virtual_dependency_report.report.is_abstract_model,
+            )
+            if self.super_hook:
+                self.super_hook(ctx)
+
+    @hook.hook
+    class get_class_decorator_hook(Hook[T_Report, ClassDefContext, bool]):
+        def choose(self) -> bool:
+            class_name, _, method_name = self.fullname.rpartition(".")
+            if method_name == "change_default_queryset_returns":
+                info = self.plugin._get_typeinfo_or_none(class_name)
+                if info and info.has_base(protocols.KnownClasses.CONCRETE.value):
+                    return True
+
+            return False
+
+        def run(self, ctx: ClassDefContext) -> bool:
+            return self.plugin.analyzer.register_decorated_model(ctx)
+
+    @hook.hook
+    class get_class_decorator_hook_2(Hook[T_Report, ClassDefContext, bool]):
+        def choose(self) -> bool:
+            class_name, _, method_name = self.fullname.rpartition(".")
+            if method_name == "change_default_queryset_returns":
+                info = self.plugin._get_typeinfo_or_none(class_name)
+                if info and info.has_base(protocols.KnownClasses.CONCRETE.value):
+                    return True
+
+            return False
+
+        def run(self, ctx: ClassDefContext) -> bool:
+            return self.plugin.analyzer.propagate_default_queryset_returns(
+                ctx, self.plugin.virtual_dependency_report.report.is_abstract_model
+            )

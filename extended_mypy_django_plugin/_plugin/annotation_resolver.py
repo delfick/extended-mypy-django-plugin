@@ -6,6 +6,7 @@ from mypy.nodes import Context, PlaceholderNode, TypeAlias, TypeInfo
 from mypy.plugin import (
     AnalyzeTypeContext,
     AttributeContext,
+    ClassDefContext,
     DynamicClassDefContext,
     FunctionContext,
     MethodContext,
@@ -132,6 +133,15 @@ class AnnotationResolver:
             case DynamicClassDefContext(api=api):
                 assert isinstance(api, SemanticAnalyzer)
                 context = ctx.call
+                sem_api = api
+                defer = functools.partial(sem_defer, sem_api)
+                fail = functools.partial(sem_api.fail, ctx=context)
+                lookup_info = functools.partial(_lookup_info, sem_api)
+                lookup_alias = functools.partial(_lookup_alias, context.line)
+                named_type_or_none = sem_api.named_type_or_none
+            case ClassDefContext(api=api):
+                assert isinstance(api, SemanticAnalyzer)
+                context = ctx.cls
                 sem_api = api
                 defer = functools.partial(sem_defer, sem_api)
                 fail = functools.partial(sem_api.fail, ctx=context)
