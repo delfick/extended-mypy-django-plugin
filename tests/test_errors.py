@@ -229,3 +229,67 @@ class TestErrors:
         marker.write_text("")
         scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoOutput)
         assert called == [0, 0]
+
+    def test_knowing_types_of_fields_on_parent_classes(self, scenario: Scenario) -> None:
+        """
+        This is a regression test to ensure that get_additional_deps doesn't cause class
+        definitions to not understand parent types
+        """
+
+        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
+        def _(expected: OutputBuilder) -> None:
+            for app in ("example", "example2"):
+                scenario.file(expected, f"{app}/__init__.py", "")
+                scenario.file(
+                    expected,
+                    f"{app}/apps.py",
+                    f"""
+                    from django.apps import AppConfig
+
+                    class Config(AppConfig):
+                        name = "{app}"
+                    """,
+                )
+
+            scenario.file(
+                expected,
+                "example/models/__init__.py",
+                """
+                from .parent import Parent 
+                """,
+            )
+            scenario.file(
+                expected,
+                "example2/models/__init__.py",
+                """
+                from .children import Child
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example/models/parent.py",
+                """
+                from django.db import models
+
+                class Parent(models.Model):
+                    response_body = models.TextField(max_length=12, blank=True)
+
+                    class Meta:
+                        abstract = True
+                """,
+            )
+
+            scenario.file(
+                expected,
+                "example2/models/children.py",
+                """
+                from example import models as common_models
+                from typing import TYPE_CHECKING
+                from django.db import models
+
+                class Child(common_models.Parent):
+                    response_body = models.BooleanField()
+                    # ^ ERROR(assignment) ^ Incompatible types in assignment (expression has type "BooleanField[bool | Combinable, bool]", base class "Parent" defined the type as "TextField[str | Combinable, str]")
+                """,
+            )

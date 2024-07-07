@@ -124,7 +124,7 @@ class Report:
         # The type aliases it provides to resolve concrete annotations
         report_name = self.report_import_path.get(protocols.ImportPath(file_import_path))
         if report_name:
-            extra_dep = (10, report_name, -1)
+            extra_dep = (25, report_name, -1)
             if extra_dep not in super_deps:
                 super_deps = [*super_deps, extra_dep]
 
@@ -133,7 +133,7 @@ class Report:
         # This isn't necessary in daemon mode cause changes to that will make us restart dmypy
         # And when there is no cache everything is from scratch anyways
         if report_name and using_incremental_cache:
-            settings_dep = (10, django_settings_module, -1)
+            settings_dep = (25, django_settings_module, -1)
             if settings_dep not in super_deps:
                 super_deps = [*super_deps, settings_dep]
 

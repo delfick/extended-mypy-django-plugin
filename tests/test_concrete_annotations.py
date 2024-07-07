@@ -531,6 +531,8 @@ class TestConcreteAnnotations:
                 from typing import Protocol, TypeVar
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
+                T_Leader = TypeVar("T_Leader", bound=Concrete["Leader"])
+
                 class Leader(models.Model):
                     class Meta:
                         abstract = True
@@ -538,8 +540,6 @@ class TestConcreteAnnotations:
                 def thing() -> None:
                     all_concrete: Concrete[Leader]
                     # ^ REVEAL[leader-concrete-where-leader-defined] ^ Union[example.models.Follower1, example.models.Follower2]
-
-                T_Leader = TypeVar("T_Leader", bound=Concrete[Leader])
 
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
