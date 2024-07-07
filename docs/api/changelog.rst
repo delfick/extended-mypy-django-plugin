@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.7.0:
 
-0.7.0 - TBD
+0.7.0 - 8 July 2024
 
     * The ``Concrete.cast_as_concrete`` helper is now handled by a different mypy plugin
       hook. This lets the helper understand type vars and it lets it handle more
