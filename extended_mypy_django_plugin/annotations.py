@@ -65,6 +65,10 @@ class Concrete(Generic[T_Parent]):
 
         return obj
 
+    @classmethod
+    def change_default_queryset_returns(cls, model: type[T_Parent]) -> type[T_Parent]:
+        return model
+
 
 class DefaultQuerySet(Generic[T_Parent]):
     """

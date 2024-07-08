@@ -371,6 +371,7 @@ class TestConcreteAnnotations:
                 from typing import Protocol, TYPE_CHECKING
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
+                @Concrete.change_default_queryset_returns
                 class Leader(models.Model):
                     @classmethod
                     def new(cls) -> Self:
@@ -385,6 +386,11 @@ class TestConcreteAnnotations:
                         # ^ REVEAL[self-all] ^ Union[example.models.Follower1, example.models.Follower2]
                         return concrete.__class__.objects.filter(pk=self.pk)
 
+                    def qs2(self) -> DefaultQuerySet[Self]:
+                        concrete = Concrete.cast_as_concrete(self)
+                        # ^ REVEAL[self-all2] ^ Union[example.models.Follower1, example.models.Follower2]
+                        return concrete.__class__.objects.filter(pk=self.pk)
+
                     class Meta:
                         abstract = True
 
@@ -393,9 +399,11 @@ class TestConcreteAnnotations:
 
                 Follower1Manager = models.Manager.from_queryset(Follower1QuerySet)
 
+                @Concrete.change_default_queryset_returns
                 class Follower1(Leader):
                     objects = Follower1Manager()
 
+                @Concrete.change_default_queryset_returns
                 class Follower2(Leader):
                     ...
 
@@ -425,9 +433,10 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Follower1
 
                 qs3 = Follower2.new().qs()
-                # TODO: Make this work
-                # we want just Follower2, but we get everything
-                # django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+                # ^ REVEAL ^ django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+
+                qs4 = Follower2.new().qs2()
+                # ^ REVEAL ^ django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 other: Leader = Follower1.new()
                 # ^ REVEAL ^ example.models.Leader
@@ -459,7 +468,9 @@ class TestConcreteAnnotations:
                 "example2/models.py",
                 """
                 from example.models import Leader
+                from extended_mypy_django_plugin import Concrete
 
+                @Concrete.change_default_queryset_returns
                 class Follower3(Leader):
                     pass
                 """,
@@ -475,6 +486,10 @@ class TestConcreteAnnotations:
                 )
                 .add_revealed_type(
                     "self-all",
+                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
+                )
+                .add_revealed_type(
+                    "self-all2",
                     "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
                 )
                 .add_revealed_type(

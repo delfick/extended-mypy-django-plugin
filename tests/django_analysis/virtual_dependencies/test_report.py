@@ -224,7 +224,7 @@ class TestBuildingReport:
 
         def register_parent(self, report: virtual_dependencies.Report) -> None:
             report.register_model(
-                model_import_path=self.parent.import_path,
+                model=self.parent,
                 virtual_import_path=ImportPath(f"virtual.{self.parent.module_import_path}"),
                 concrete_name="Concrete__Parent",
                 concrete_queryset_name="QuerySet__Parent",
@@ -245,7 +245,7 @@ class TestBuildingReport:
 
         def register_model1(self, report: virtual_dependencies.Report) -> None:
             report.register_model(
-                model_import_path=self.model1.import_path,
+                model=self.model1,
                 virtual_import_path=ImportPath(f"virtual.{self.model1.module_import_path}"),
                 concrete_name="Concrete__Model1",
                 concrete_queryset_name="QuerySet__Model1",
@@ -277,7 +277,7 @@ class TestBuildingReport:
 
         def register_model2(self, report: virtual_dependencies.Report) -> None:
             report.register_model(
-                model_import_path=self.model2.import_path,
+                model=self.model2,
                 virtual_import_path=ImportPath(f"virtual.{self.model2.module_import_path}"),
                 concrete_name="Concrete__Model2",
                 concrete_queryset_name="QuerySet__Model2",
@@ -304,7 +304,7 @@ class TestBuildingReport:
 
         def register_model3(self, report: virtual_dependencies.Report) -> None:
             report.register_model(
-                model_import_path=self.model3.import_path,
+                model=self.model3,
                 virtual_import_path=ImportPath(f"virtual.{self.model3.module_import_path}"),
                 concrete_name="Concrete__Model3",
                 concrete_queryset_name="QuerySet__Model3",

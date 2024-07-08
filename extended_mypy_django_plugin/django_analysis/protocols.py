@@ -450,7 +450,7 @@ class Report(Protocol):
     def register_model(
         self,
         *,
-        model_import_path: ImportPath,
+        model: Model,
         virtual_import_path: ImportPath,
         concrete_name: str,
         concrete_queryset_name: str,

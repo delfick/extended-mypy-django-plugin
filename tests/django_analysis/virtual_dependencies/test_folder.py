@@ -355,7 +355,7 @@ class TestVirtualDependencyInstaller:
             def register_model(
                 self,
                 *,
-                model_import_path: protocols.ImportPath,
+                model: protocols.Model,
                 virtual_import_path: protocols.ImportPath,
                 concrete_name: str,
                 concrete_queryset_name: str,

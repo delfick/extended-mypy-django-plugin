@@ -62,6 +62,9 @@ class Report:
     report_import_path: MutableMapping[protocols.ImportPath, protocols.ImportPath] = (
         dataclasses.field(default_factory=dict)
     )
+    abstract_models: MutableMapping[protocols.ImportPath, bool] = dataclasses.field(
+        default_factory=dict
+    )
 
     def register_module(
         self,
@@ -74,20 +77,25 @@ class Report:
     def register_model(
         self,
         *,
-        model_import_path: protocols.ImportPath,
+        model: protocols.Model,
         virtual_import_path: protocols.ImportPath,
         concrete_name: str,
         concrete_queryset_name: str,
         concrete_models: Sequence[protocols.Model],
     ) -> None:
-        module_import_path, name = ImportPath.split(model_import_path)
+        module_import_path, name = ImportPath.split(model.import_path)
 
-        self.concrete_annotations[model_import_path] = ImportPath(
+        self.concrete_annotations[model.import_path] = ImportPath(
             f"{virtual_import_path}.{concrete_name}"
         )
-        self.concrete_querysets[model_import_path] = ImportPath(
+        self.concrete_querysets[model.import_path] = ImportPath(
             f"{virtual_import_path}.{concrete_queryset_name}"
         )
+        if model.is_abstract:
+            self.abstract_models[model.import_path] = True
+
+    def is_abstract_model(self, model: str) -> bool:
+        return model in self.abstract_models
 
     def get_concrete_aliases(self, *models: str) -> Mapping[str, str | None]:
         result: dict[str, str | None] = {}
@@ -302,7 +310,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 annotations.add(f"{queryset_name} = {' | '.join(querysets)}")
 
             report.register_model(
-                model_import_path=model,
+                model=self.virtual_dependency.module.defined_models[model],
                 virtual_import_path=virtual_import_path,
                 concrete_queryset_name=queryset_name,
                 concrete_name=concrete_name,
@@ -341,6 +349,7 @@ class ReportCombiner(Generic[T_Report]):
             final.concrete_annotations.update(report.concrete_annotations)
             final.concrete_querysets.update(report.concrete_querysets)
             final.report_import_path.update(report.report_import_path)
+            final.abstract_models.update(report.abstract_models)
 
         return CombinedReport(
             version=version, report=final, write_empty_virtual_dep=write_empty_virtual_dep
