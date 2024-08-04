@@ -16,9 +16,16 @@ from . import analyze, annotation_resolver, config, hook, protocols, type_checke
 T_Report = TypeVar("T_Report", bound=protocols.Report)
 
 
-class Hook(
+class PlainHook(
     Generic[T_Report, hook.T_Ctx, hook.T_Ret],
-    hook.Hook["ExtendedMypyStubs[T_Report]", hook.T_Ctx, hook.T_Ret],
+    hook.PlainHook["ExtendedMypyStubs[T_Report]", hook.T_Ctx, hook.T_Ret],
+):
+    pass
+
+
+class HookWithExtra(
+    Generic[T_Report, hook.T_Ctx, hook.T_Extra, hook.T_Ret],
+    hook.HookWithExtra["ExtendedMypyStubs[T_Report]", hook.T_Ctx, hook.T_Extra, hook.T_Ret],
 ):
     pass
 
@@ -148,36 +155,43 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         )
 
     @hook.hook
-    class get_type_analyze_hook(Hook[T_Report, AnalyzeTypeContext, MypyType]):
+    class get_type_analyze_hook(
+        HookWithExtra[T_Report, AnalyzeTypeContext, protocols.KnownAnnotations, MypyType]
+    ):
         """
         Resolve classes annotated with ``Concrete`` or ``DefaultQuerySet``.
         """
 
-        # Used to pass on information from choose to run
-        # so that we don't repeat the logic we run in choose
-        # if we tell Mypy to use this hook
-        annotation: protocols.KnownAnnotations
-
-        def choose(self) -> bool:
-            annotation = protocols.KnownAnnotations.resolve(self.fullname)
+        def choose(
+            self, *, fullname: str, super_hook: hook.MypyHook[AnalyzeTypeContext, MypyType]
+        ) -> hook.Choice[protocols.KnownAnnotations]:
+            annotation = protocols.KnownAnnotations.resolve(fullname)
             if annotation is not None:
-                self.annotation = annotation
-                return True
+                return True, annotation
             else:
                 return False
 
-        def run(self, ctx: AnalyzeTypeContext) -> MypyType:
-            return self.plugin.analyzer.analyze_type(ctx, self.annotation)
+        def run(
+            self,
+            ctx: AnalyzeTypeContext,
+            *,
+            fullname: str,
+            super_hook: hook.MypyHook[AnalyzeTypeContext, MypyType],
+            extra: protocols.KnownAnnotations,
+        ) -> MypyType:
+            return self.plugin.analyzer.analyze_type(ctx, extra)
 
     @hook.hook
-    class get_attribute_hook(Hook[T_Report, AttributeContext, MypyType]):
+    class get_attribute_hook(PlainHook[T_Report, AttributeContext, MypyType]):
         """
         An implementation of the change found in
         https://github.com/typeddjango/django-stubs/pull/2027
         """
 
-        def choose(self) -> bool:
-            return self.super_hook is resolve_manager_method
+        def choose(
+            self, *, fullname: str, super_hook: hook.MypyHook[AttributeContext, MypyType]
+        ) -> bool:
+            return super_hook is resolve_manager_method
 
         def run(self, ctx: AttributeContext) -> MypyType:
             return self.plugin.type_checker.extended_get_attribute_resolve_manager_method(
@@ -185,13 +199,15 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             )
 
     @hook.hook
-    class get_method_hook(Hook[T_Report, MethodContext, MypyType]):
+    class get_method_hook(PlainHook[T_Report, MethodContext, MypyType]):
         """
         Used to ensure Concrete.cast_as_concrete returns the appropriate type.
         """
 
-        def choose(self) -> bool:
-            class_name, _, method_name = self.fullname.rpartition(".")
+        def choose(
+            self, *, fullname: str, super_hook: hook.MypyHook[MethodContext, MypyType]
+        ) -> bool:
+            class_name, _, method_name = fullname.rpartition(".")
             if method_name == "cast_as_concrete":
                 info = self.plugin._get_typeinfo_or_none(class_name)
                 if info and info.has_base(protocols.KnownClasses.CONCRETE.value):
