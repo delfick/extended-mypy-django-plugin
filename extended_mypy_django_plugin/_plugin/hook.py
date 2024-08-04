@@ -1,5 +1,6 @@
 """
-This exists as a helper for defining the mypy plugin.
+The helpers under ``extended_mypy_django_plugin.plugin.hooks`` exist as a helper
+for defining hooks on a mypy plugin.
 
 The way a mypy plugin works is there is a class that inherits from
 ``mypy.plugin.Plugin`` with specific hooks that take in a string and returns
@@ -23,62 +24,64 @@ descriptors that do the correct thing.
     from typing import Generic
     from mypy.plugin import Plugin, AttributeContext
     from mypy.types import Type as MypyType
-    from extended_mypy_django_plugin.plugin import _hook
-
-
-
-    class Hook(
-        Generic[_hook.T_Ctx, _hook.T_Ret], _hook.Hook["MyPlugin", _hook.T_Ctx, _hook.T_Ret]
-    ): ...
+    from extended_mypy_django_plugin.plugin import hook
 
 
     class MyPlugin(Plugin):
-        @_hook.hook
-        class get_attribute_hook(Hook[AttributeContext, MypyType]):
-            def choose(self) -> bool:
+        @hook.hook
+        class get_attribute_hook(hook.Hook["MyPlugin", AttributeContext, MypyType]):
+            def choose(
+                self, *, fullname: str, super_hook: hook.MypyHook[AttributeContext, MypyType]
+            ) -> bool:
                 # return True if we want to use the run method for ``self.fullname``.
+                # With super_hook being the result of `super().get_attribute_hook(fullname)` on the plugin
                 return self.fullname.endswith(".blah")
 
             def run(self, ctx: AttributeContext) -> MypyType:
                 # Do stuff
                 return ...
 
-The hook has ``choose`` which is essentially what would be on the plugin itself
-in normal situations. It can find the string that would be passed in as
-``self.fullname``. It returns ``True`` if we want to handle this string, otherwise
-``False``.
+The :class:`extended_mypy_django_plugin.plugin.hook.hook` decorator turns that
+attribute into a descriptor that will cache an instance
+of the ``Hook`` with the instance of the plugin and that hook on the parent class
+(useful when the mypy plugin is subclassing an existing mypy plugin)
 
-If the hook is chosen, then ``run`` is ran with the specified context class and
-needs to return what is needed from it.
+The descriptor will then return the ``hook`` method on the Hook, which matches the required
+signature for the hook.
 
-The hook has access to it:
+There are two default implementations of this Hook class:
 
-plugin
-    The plugin instance itself.
+.. autoclass:: PlainHook
 
-fullname
-    The string that was passed into the plugin's hook
+.. autoclass:: HookWithExtra
 
-super_hook
-    What would have been returned by the class the plugin is inheriting from.
+And they must be used with the ``hook`` decorator:
+
+.. autoclass:: hook(hook_kls: type[Hook[T_Plugin, T_Ctx, T_Ret]])
 """
 
 from __future__ import annotations
 
 import abc
+import dataclasses
+import functools
 from collections.abc import Callable
-from typing import Generic, TypeAlias, TypeVar, overload
+from typing import Generic, Literal, TypeVar, overload
 
 from mypy.plugin import Plugin
 
 T_Ctx = TypeVar("T_Ctx")
 T_Ret = TypeVar("T_Ret")
+T_Extra = TypeVar("T_Extra")
 T_Plugin = TypeVar("T_Plugin", bound=Plugin)
 
 
-_HookChooser: TypeAlias = Callable[[str], Callable[[T_Ctx], T_Ret] | None]
+Choice = Literal[False] | tuple[Literal[True], T_Extra]
+MypyHook = Callable[[T_Ctx], T_Ret] | None
+MypyHookMaker = Callable[[str], MypyHook[T_Ctx, T_Ret]]
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class Hook(Generic[T_Plugin, T_Ctx, T_Ret], abc.ABC):
     """
     Class used to represent both the choosing and running logic for a hook
@@ -87,83 +90,187 @@ class Hook(Generic[T_Plugin, T_Ctx, T_Ret], abc.ABC):
     This is to be used with the ``hook`` descriptor defined below. See the
     docstring on the module for more information.
 
-    Concrete subclasses of this must implement ``choose`` and ``run``.
-
-    The ``choose`` method will be used to determine if this hook should be used
-    by mypy to do something.
-
-    The ``run`` method will take in the context provided by mypy if this hook
-    was chosen. The type of that context and what needs to be returned is defined
-    by the specific mypy hook being implemented, and should be specified as
-    type vars when defining the implementation of the hook.
+    Concrete subclasses of this must implement ``hook``.
     """
 
-    def __init__(
-        self,
-        plugin: T_Plugin,
-        fullname: str,
-        super_hook: Callable[[T_Ctx], T_Ret] | None,
-    ) -> None:
-        self.plugin = plugin
-        self.fullname = fullname
-        self.super_hook = super_hook
-        self.extra_init()
+    plugin: T_Plugin
+    super_hook_maker: MypyHookMaker[T_Ctx, T_Ret]
 
-    def extra_init(self) -> None: ...
+    @abc.abstractmethod
+    def hook(self, fullname: str) -> MypyHook[T_Ctx, T_Ret]:
+        """
+        This is the function that mypy ends up calling when asking the plugin
+        if it should handle something.
+        """
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class HookWithExtra(
+    Generic[T_Plugin, T_Ctx, T_Extra, T_Ret], Hook[T_Plugin, T_Ctx, T_Ret], abc.ABC
+):
+    """
+    This is an implementation of Hook that allows passing information from the choose
+    method into the run method.
+
+    Mypy plugins work by implementing methods that take in a string and either return a callable
+    that takes action, or returns None. Whichever plugin returns a function first wins.
+
+    This hook class splits the two parts into two methods: deciding if we should choose this hook
+    and the running of the logic.
+
+    This implementation in particular also allows passing information from the choosing part into the running
+    part:
+
+    .. code-block:: python
+
+        from typing import Generic
+        from mypy.plugin import Plugin, AttributeContext
+        from mypy.types import Type as MypyType
+        from extended_mypy_django_plugin.plugin import hook
+
+
+        class MyPlugin(Plugin):
+            @hook.hook
+            class get_attribute_hook(hook.HookWithExtra["MyPlugin", AttributeContext, str, MypyType]):
+                def choose(
+                    self, *, fullname: str, super_hook: hook.MypyHook[AttributeContext, MypyType]
+                ) -> hook.Choice[str]:
+                    if fullname.startswith("things"):
+                        return True, "one"
+                    elif fullname.startswith("other"):
+                        return True, "two"
+                    else:
+                        return False
+
+                def run(
+                    self,
+                    ctx: AttributeContext,
+                    *,
+                    fullname: str,
+                    super_hook: hook.MypyHook[AttributeContext, MypyType],
+                    extra: str,
+                ) -> MypyType:
+                    # at this point, extra will either be "one" or "two"
+
+                    # Do stuff
+                    return ...
+
+    The type of the data passed between ``choose`` and ``run`` is specified when filling out the Generic.
+
+    When the plugin runs the ``hook`` method on this implementation, it will determine what
+    the parent class would return from this hook, get a result from ``choose`` from the ``fullname``
+    and that ``super_hook`` and either return ``super_hook`` if the ``choose`` returned ``False``
+    or return ``functools.partial(self.run, fullname=fullname, super_hook=super_hook, extra=extra)``
+    where extra is the second item in a ``(True, extra)`` tuple returned from ``choose``.
+    """
+
+    @abc.abstractmethod
+    def run(
+        self,
+        ctx: T_Ctx,
+        *,
+        fullname: str,
+        super_hook: MypyHook[T_Ctx, T_Ret],
+        extra: T_Extra,
+    ) -> T_Ret: ...
+
+    @abc.abstractmethod
+    def choose(self, *, fullname: str, super_hook: MypyHook[T_Ctx, T_Ret]) -> Choice[T_Extra]: ...
+
+    def hook(self, fullname: str) -> MypyHook[T_Ctx, T_Ret]:
+        """
+        This is the function that mypy ends up calling when asking the plugin
+        if it should handle something.
+        """
+        super_hook = self.super_hook_maker(fullname)
+        result = self.choose(fullname=fullname, super_hook=super_hook)
+        if result is False:
+            return super_hook
+        else:
+            return functools.partial(
+                self.run, fullname=fullname, super_hook=super_hook, extra=result[1]
+            )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class PlainHook(Hook[T_Plugin, T_Ctx, T_Ret], abc.ABC):
+    """
+    This is an implementation of ``Hook`` that does the bare minimum.
+
+    It's ``hook`` method will determine what would have been returned for this hook from
+    the parent class and pass the ``fullname`` and that ``super_hook`` to ``choose``.
+
+    If ``choose`` returns ``False``, then ``hook`` returns the ``super_hook``, otherwise
+    it returns ``self.run``.
+    """
 
     @abc.abstractmethod
     def run(self, ctx: T_Ctx) -> T_Ret: ...
 
     @abc.abstractmethod
-    def choose(self) -> bool: ...
+    def choose(self, *, fullname: str, super_hook: MypyHook[T_Ctx, T_Ret]) -> bool: ...
 
-    def hook(self) -> Callable[[T_Ctx], T_Ret] | None:
+    def hook(self, fullname: str) -> MypyHook[T_Ctx, T_Ret]:
         """
         This is the function that mypy ends up calling when asking the plugin
         if it should handle something.
         """
-        if self.choose():
-            return self.run
+        super_hook = self.super_hook_maker(fullname)
+        result = self.choose(fullname=fullname, super_hook=super_hook)
+        if result is False:
+            return super_hook
         else:
-            return self.super_hook
+            return self.run
 
 
+@dataclasses.dataclass
 class hook(Generic[T_Plugin, T_Ctx, T_Ret]):
     """
-    This is a descriptor classes used to return a callable object that takes in
+    This is a class decorator used to return a callable object that takes in
     a string and either returns a function that mypy can use to perform an action,
     or return None if this hook does not need to do anything in that instance.
+
+    It is used as a decorator for a subclass of ``Hook`` and will cache an instance
+    of that hook between multiple access of the descriptor
     """
 
-    def __init__(self, hook: type[Hook[T_Plugin, T_Ctx, T_Ret]]) -> None:
-        self.hook = hook
-        self.__doc__ = hook.__doc__
+    hook_kls: type[Hook[T_Plugin, T_Ctx, T_Ret]]
 
-    name: str
+    name: str = dataclasses.field(init=False)
+    owner: type = dataclasses.field(init=False)
+
+    _hook_instance: Hook[T_Plugin, T_Ctx, T_Ret] | None = dataclasses.field(
+        default=None, init=False
+    )
 
     def __set_name__(self, owner: type, name: str) -> None:
         self.name = name
         self.owner = owner
+        self.__doc__ = self.hook_kls.__doc__
 
     @overload
     def __get__(self, instance: None, owner: None) -> hook[T_Plugin, T_Ctx, T_Ret]: ...
 
     @overload
-    def __get__(self, instance: T_Plugin, owner: type[T_Plugin]) -> _HookChooser[T_Ctx, T_Ret]: ...
+    def __get__(
+        self, instance: T_Plugin, owner: type[T_Plugin]
+    ) -> MypyHookMaker[T_Ctx, T_Ret]: ...
 
     def __get__(
         self, instance: T_Plugin | None, owner: type[T_Plugin] | None = None
-    ) -> hook[T_Plugin, T_Ctx, T_Ret] | _HookChooser[T_Ctx, T_Ret]:
+    ) -> hook[T_Plugin, T_Ctx, T_Ret] | MypyHookMaker[T_Ctx, T_Ret]:
         if instance is None:
             return self
 
-        super_hook = getattr(super(self.owner, instance), self.name)
-
-        def result(fullname: str) -> Callable[[T_Ctx], T_Ret] | None:
-            return self.hook(
+        if self._hook_instance is None:
+            self._hook_instance = self.hook_kls(
+                # We use self.owner cause we want the class where the descriptor was used
+                # Rather than the class of the instance the attribute was accessed on
                 plugin=instance,
-                fullname=fullname,
-                super_hook=super_hook(fullname),
-            ).hook()
+                super_hook_maker=getattr(super(self.owner, instance), self.name),
+            )
 
-        return result
+        return self._hook_instance.hook
+
+
+__all__ = ["Hook", "PlainHook", "HookWithExtra", "hook", "Choice", "MypyHook", "MypyHookMaker"]
