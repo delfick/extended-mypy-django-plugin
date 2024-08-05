@@ -3,6 +3,13 @@
 Changelog
 ---------
 
+.. _release-0.7.1:
+
+0.7.1 - 5 August 2024
+
+    * The machinery this plugin uses for implementing mypy plugin hooks will now do less
+      work unnecessarily instantiating classes.
+
 .. _release-0.7.0:
 
 0.7.0 - 8 July 2024
