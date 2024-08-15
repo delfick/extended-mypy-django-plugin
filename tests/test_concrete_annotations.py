@@ -1,14 +1,17 @@
+import textwrap
+
 import pytest
-from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
+from extended_mypy_django_plugin_test_driver import Scenario, ScenarioBuilder, ScenarioRunner
+from pytest_typing_runner import expectations, notices, runners
 
 
 class TestConcreteAnnotations:
-    def test_cast_as_concrete(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["leader", "simple"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_cast_as_concrete(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_and_copy_installed_apps("leader", "simple")
+            builder.on("main.py").set(
                 """
                 from simple.models import Follow1, Follow2
                 from leader.models import Leader
@@ -92,12 +95,11 @@ class TestConcreteAnnotations:
                 """,
             )
 
-    def test_simple_annotation(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_simple_annotation(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_and_copy_installed_apps("myapp", "myapp2")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
                 from typing import cast, TypeGuard
@@ -173,14 +175,13 @@ class TestConcreteAnnotations:
                 """,
             )
 
-    def test_can_reference_concrete_model_across_apps(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
-        def _(expected: OutputBuilder) -> None:
+    def test_can_reference_concrete_model_across_apps(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example", "example2")
             for app in ("example", "example2"):
-                scenario.file(expected, f"{app}/__init__.py", "")
-                scenario.file(
-                    expected,
-                    f"{app}/apps.py",
+                builder.on(f"{app}/__init__.py").set("")
+                builder.on(f"{app}/apps.py").set(
                     f"""
                     from django.apps import AppConfig
 
@@ -189,24 +190,18 @@ class TestConcreteAnnotations:
                     """,
                 )
 
-            scenario.file(
-                expected,
-                "example/models/__init__.py",
+            builder.on("example/models/__init__.py").set(
                 """
                 from .parent import Parent 
-                """,
+                """
             )
-            scenario.file(
-                expected,
-                "example2/models/__init__.py",
+            builder.on("example2/models/__init__.py").set(
                 """
                 from .children import Child, DTO 
-                """,
+                """
             )
 
-            scenario.file(
-                expected,
-                "example/models/parent.py",
+            builder.on("example/models/parent.py").set(
                 """
                 from django.db import models
 
@@ -216,9 +211,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example2/models/children.py",
+            builder.on("example2/models/children.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete
                 from example import models as common_models
@@ -234,9 +227,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "main.py",
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete
                 from typing import cast
@@ -251,14 +242,13 @@ class TestConcreteAnnotations:
                 """,
             )
 
-    def test_can_use_type_var_before_class_is_defined(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["example"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example/__init__.py", "")
+    def test_can_use_type_var_before_class_is_defined(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example")
+            builder.on("example/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example/apps.py",
+            builder.on("example/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -267,9 +257,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example/models.py",
+            builder.on("example/models.py").set(
                 """
                 from __future__ import annotations
 
@@ -315,9 +303,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "main.py",
+            builder.on("main.py").set(
                 """
                 from example.models import Leader, Follower1, Follower2, make_instance
                 from extended_mypy_django_plugin import Concrete
@@ -342,15 +328,14 @@ class TestConcreteAnnotations:
             )
 
     def test_using_concrete_annotation_on_class_used_in_annotation(
-        self, scenario: Scenario
+        self, builder: ScenarioBuilder
     ) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["example"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example/__init__.py", "")
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example")
+            builder.on("example/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example/apps.py",
+            builder.on("example/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -359,9 +344,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example/models.py",
+            builder.on("example/models.py").set(
                 """
                 from __future__ import annotations
 
@@ -405,9 +388,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "main.py",
+            builder.on("main.py").set(
                 """
                 from example.models import Leader, Follower1, Follower2
                 from extended_mypy_django_plugin import Concrete
@@ -439,13 +420,12 @@ class TestConcreteAnnotations:
                 """,
             )
 
-        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example2/__init__.py", "")
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example", "example2")
+            builder.on("example2/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example2/apps.py",
+            builder.on("example2/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -454,9 +434,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example2/models.py",
+            builder.on("example2/models.py").set(
                 """
                 from example.models import Leader
 
@@ -465,52 +443,70 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            expected.daemon_should_restart()
+            builder.daemon_should_restart()
 
-            (
-                expected.on("example/models.py")
-                .add_revealed_type(
-                    "cls-all",
-                    "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]",
-                )
-                .add_revealed_type(
-                    "self-all",
-                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-                )
-                .add_revealed_type(
-                    "base-all",
-                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-                )
+            builder.on("example/models.py").expect(
+                notices.AddRevealedTypes(
+                    name="cls-all",
+                    revealed=[
+                        "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="self-all",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="base-all",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
+                ),
             )
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    "model",
-                    "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]",
-                )
-                .add_revealed_type(
-                    "leader-new",
-                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-                )
-                .add_revealed_type(
-                    "all-qs",
-                    "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]]",
-                )
-                .add_revealed_type(
-                    "narrowed",
-                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-                )
+            builder.on("main.py").expect(
+                notices.AddRevealedTypes(
+                    name="model",
+                    revealed=[
+                        "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="leader-new",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="all-qs",
+                    revealed=[
+                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="narrowed",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
+                ),
             )
 
-    def test_resolving_concrete_type_vars(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["example"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example/__init__.py", "")
+    def test_resolving_concrete_type_vars(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example")
+            builder.on("example/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example/apps.py",
+            builder.on("example/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -519,9 +515,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example/models.py",
+            builder.on("example/models.py").set(
                 """
                 from __future__ import annotations
 
@@ -565,9 +559,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "main.py",
+            builder.on("main.py").set(
                 """
                 from example.models import Leader, Follower1, Follower2, functions, functions2, make_queryset
                 from extended_mypy_django_plugin import Concrete
@@ -609,13 +601,12 @@ class TestConcreteAnnotations:
                 """,
             )
 
-        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example2/__init__.py", "")
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("example", "example2")
+            builder.on("example2/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example2/apps.py",
+            builder.on("example2/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -624,9 +615,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example2/models.py",
+            builder.on("example2/models.py").set(
                 """
                 from __future__ import annotations
 
@@ -644,119 +633,165 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            expected.daemon_should_restart()
-            expected.on("example/models.py").add_revealed_type(
-                "leader-concrete-where-leader-defined",
-                "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-            )
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    "all-concrete",
-                    "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]",
-                )
-                # TODO: Make these specific to follower1
-                .add_revealed_type(
-                    "all-qs1",
-                    "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]",
-                )
-                .add_revealed_type(
-                    "all-qs2",
-                    "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]",
-                )
-                .add_revealed_type(
-                    "all-qs3",
-                    "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]",
+            builder.daemon_should_restart()
+
+            builder.on("example/models.py").expect(
+                notices.AddRevealedTypes(
+                    name="leader-concrete-where-leader-defined",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
                 )
             )
 
-    def test_restarts_dmypy_if_names_of_known_settings_change(self, scenario: Scenario) -> None:
-        if not scenario.for_daemon:
+            builder.on("main.py").expect(
+                notices.AddRevealedTypes(
+                    name="all-concrete",
+                    revealed=[
+                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                    ],
+                    replace=True,
+                ),
+                # TODO: Make these specific to follower1
+                notices.AddRevealedTypes(
+                    name="all-qs1",
+                    revealed=[
+                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="all-qs2",
+                    revealed=[
+                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="all-qs3",
+                    revealed=[
+                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                    ],
+                    replace=True,
+                ),
+            )
+
+    def test_restarts_dmypy_if_names_of_known_settings_change(
+        self, scenario: Scenario, scenario_runner: ScenarioRunner
+    ) -> None:
+        options = runners.RunOptions.create(scenario_runner)
+        if not options.program_runner_maker.is_daemon:
             pytest.skip("Test only relevant for the daemon")
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            pass
-
-        # New names should restart
-        custom_settings = """
-        ONE: int = 1
-        TWO: str = "2"
-        """
-
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
 
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        settings_path = f"{scenario.info.django_settings_module}.py"
+        original_settings = (scenario.root_dir / settings_path).read_text()
+
+        scenario_runner.file_modification(
+            settings_path,
+            (
+                original_settings
+                + textwrap.dedent(
+                    """
+                    ONE: int = 1
+                    TWO: str = "2"
+                    """
+                )
+            ),
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+
+        scenario.expects.daemon_restarted = True
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
+
+        scenario.expects.daemon_restarted = False
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
 
         # Same names, different types should  restart
-        custom_settings = """
-        ONE: str = "1"
-        TWO: str = "2"
-        """
-
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario_runner.file_modification(
+            settings_path,
+            (
+                original_settings
+                + textwrap.dedent(
+                    """
+                    ONE: str = "1"
+                    TWO: str = "2"
+                    """
+                )
+            ),
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
 
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario.expects.daemon_restarted = True
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+
+        scenario.expects.daemon_restarted = False
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
 
         # Same names, same types, different values should not restart
-        custom_settings = """
-        ONE: str = "3"
-        TWO: str = "4"
-        """
-
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario_runner.file_modification(
+            settings_path,
+            (
+                original_settings
+                + textwrap.dedent(
+                    """
+                    ONE: str = "3"
+                    TWO: str = "4"
+                    """
+                )
+            ),
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
 
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario.expects.daemon_restarted = False
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
 
-        # removed names, same types, different values should not restart
-        custom_settings = """
-        TWO: str = "4"
-        """
-
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        scenario.expects.daemon_restarted = False
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
 
-        @scenario.run_and_check_mypy_after(
-            additional_properties={"custom_settings": custom_settings}
+        # removed names should restart
+        scenario_runner.file_modification(
+            settings_path,
+            (
+                original_settings
+                + textwrap.dedent(
+                    """
+                    TWO: str = "5"
+                    """
+                )
+            ),
         )
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+
+        scenario.expects.daemon_restarted = True
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
+
+        scenario.expects.daemon_restarted = False
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
 
     def test_sees_apps_removed_when_they_still_exist_but_no_longer_installed(
-        self, scenario: Scenario
+        self, builder: ScenarioBuilder
     ) -> None:
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_and_copy_installed_apps("myapp", "myapp2")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -772,30 +807,30 @@ class TestConcreteAnnotations:
 
         # Now let's remove myapp2 from the installed_apps and see that the daemon restarts and myapp2 is removed from the revealed types
 
-        @scenario.run_and_check_mypy_after(installed_apps=["myapp"])
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("myapp")
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .remove_from_revealed_type(
-                    "concrete-parent",
-                    ", myapp2.models.ChildOther",
-                )
-                .remove_from_revealed_type(
-                    "qs-parent",
-                    ", django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]",
-                )
+            builder.on("main.py").expect(
+                notices.RemoveFromRevealedType(
+                    name="concrete-parent",
+                    remove=", myapp2.models.ChildOther",
+                ),
+                notices.RemoveFromRevealedType(
+                    name="qs-parent",
+                    remove=", django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]",
+                ),
             )
 
-    def test_does_not_see_apps_that_exist_but_are_not_installed(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(
-            installed_apps=["myapp"], copied_apps=["myapp", "myapp2"]
-        )
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_does_not_see_apps_that_exist_but_are_not_installed(
+        self, builder: ScenarioBuilder
+    ) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_installed_apps("myapp")
+            builder.copy_django_apps("myapp", "myapp2")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -803,38 +838,50 @@ class TestConcreteAnnotations:
 
                 model: Concrete[Parent]
                 model.concrete_from_myapp
+                # ^ NAME[access1] ^
 
                 qs: DefaultQuerySet[Parent]
                 qs.values("concrete_from_myapp")
+                # ^ NAME[access2] ^
                 """,
             )
 
         # And after installing the app means the types expand
 
-        @scenario.run_and_check_mypy_after(installed_apps=["myapp", "myapp2"])
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_installed_apps("myapp", "myapp2")
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .add_error(
-                    6,
-                    "union-attr",
-                    'Item "ChildOther" of "Child1 | Child2 | Child3 | ChildOther" has no attribute "concrete_from_myapp"',
-                )
-                .add_error(
-                    9,
-                    "misc",
-                    "Cannot resolve keyword 'concrete_from_myapp' into field. Choices are: concrete_from_myapp2, id, one, two",
-                )
+            builder.on("main.py").expect(
+                notices.AddErrors(
+                    name="access1",
+                    errors=[
+                        (
+                            "union-attr",
+                            'Item "ChildOther" of "Child1 | Child2 | Child3 | ChildOther" has no attribute "concrete_from_myapp"',
+                        )
+                    ],
+                    replace=False,
+                ),
+                notices.AddErrors(
+                    name="access2",
+                    errors=[
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'concrete_from_myapp' into field. Choices are: concrete_from_myapp2, id, one, two",
+                        )
+                    ],
+                    replace=False,
+                ),
             )
 
-    def test_sees_models_when_they_are_added_and_installed(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["myapp"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_sees_models_when_they_are_added_and_installed(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_and_copy_installed_apps("myapp")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -845,41 +892,49 @@ class TestConcreteAnnotations:
 
                 qs: DefaultQuerySet[Parent]
                 qs.values("concrete_from_myapp")
-                # ^ TAG[concrete-qs] ^
+                # ^ NAME[concrete-qs] ^
                 """,
             )
 
         # and the models become available after being installed
 
-        @scenario.run_and_check_mypy_after(installed_apps=["myapp", "myapp2"])
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_and_copy_installed_apps("myapp", "myapp2")
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    "concrete-parent",
-                    "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]",
-                )
-                .add_error(
-                    "concrete-qs",
-                    "misc",
-                    "Cannot resolve keyword 'concrete_from_myapp' into field. Choices are: concrete_from_myapp2, id, one, two",
-                )
+            builder.on("main.py").expect(
+                notices.AddRevealedTypes(
+                    name="concrete-parent",
+                    revealed=[
+                        "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddErrors(
+                    name="concrete-qs",
+                    errors=[
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'concrete_from_myapp' into field. Choices are: concrete_from_myapp2, id, one, two",
+                        )
+                    ],
+                    replace=False,
+                ),
             )
 
         # And same output if nothing changes
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.daemon_should_not_restart()
 
-    def test_sees_new_models(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_sees_new_models(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_and_copy_installed_apps("myapp", "myapp2")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -887,51 +942,60 @@ class TestConcreteAnnotations:
 
                 models: Concrete[Parent]
                 models.two
+                # ^ NAME[access1] ^
 
                 qs: DefaultQuerySet[Parent]
                 qs.values("two")
+                # ^ NAME[access2] ^
                 """,
             )
 
         # And if we add some more models
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.append_to_file(
-                expected,
-                "myapp2/models.py",
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.on("myapp2/models.py").append(
                 """
                 class Another(Parent):
                     pass
                 """,
             )
 
-            expected.daemon_should_restart()
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .add_error(
-                    6,
-                    "union-attr",
-                    'Item "Another" of "Child1 | Child2 | Child3 | ChildOther | Another" has no attribute "two"',
-                )
-                .add_error(
-                    9, "misc", "Cannot resolve keyword 'two' into field. Choices are: id, one"
-                )
+            builder.on("main.py").expect(
+                notices.AddErrors(
+                    name="access1",
+                    errors=[
+                        (
+                            "union-attr",
+                            'Item "Another" of "Child1 | Child2 | Child3 | ChildOther | Another" has no attribute "two"',
+                        )
+                    ],
+                    replace=False,
+                ),
+                notices.AddErrors(
+                    name="access2",
+                    errors=[
+                        ("misc", "Cannot resolve keyword 'two' into field. Choices are: id, one")
+                    ],
+                    replace=False,
+                ),
             )
 
         # And the new model remains after a rerun
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.daemon_should_not_restart()
 
-    def test_sees_changes_in_custom_querysets_within_app(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_sees_changes_in_custom_querysets_within_app(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_and_copy_installed_apps("leader", "follower1")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -950,11 +1014,9 @@ class TestConcreteAnnotations:
 
         # And then add another model
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "follower1/models/__init__.py",
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.on("follower1/models/__init__.py").set(
                 """
                 from .follower1 import Follower1
                 from .follower2 import Follower2
@@ -963,9 +1025,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "follower1/models/follower2.py",
+            builder.on("follower1/models/follower2.py").set(
                 """
                 from django.db import models
                 from leader.models import Leader
@@ -983,44 +1043,50 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            expected.daemon_should_restart()
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    "concrete-leader",
-                    "Union[follower1.models.follower1.Follower1, follower1.models.follower2.Follower2]",
-                )
-                .add_revealed_type(
-                    "qs-leader",
-                    "Union[follower1.models.follower1.Follower1QuerySet, follower1.models.follower2.Follower2QuerySet]",
-                )
-                .replace_errors(
-                    "error1",
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                    ),
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: good, id",
-                    ),
-                )
+            builder.on("main.py").expect(
+                notices.AddRevealedTypes(
+                    name="concrete-leader",
+                    revealed=[
+                        "Union[follower1.models.follower1.Follower1, follower1.models.follower2.Follower2]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="qs-leader",
+                    revealed=[
+                        "Union[follower1.models.follower1.Follower1QuerySet, follower1.models.follower2.Follower2QuerySet]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddErrors(
+                    name="error1",
+                    errors=[
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                        ),
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: good, id",
+                        ),
+                    ],
+                    replace=True,
+                ),
             )
 
         # And same output, no daemon restart on no change
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.daemon_should_not_restart()
 
         # And removing the method from the queryset
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "follower1/models/follower2.py",
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.on("follower1/models/follower2.py").set(
                 """
                 from django.db import models
                 from leader.models import Leader
@@ -1037,26 +1103,29 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            (
-                expected.on("main.py").replace_errors(
-                    "error1",
-                    (
-                        "union-attr",
-                        'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
-                    ),
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                    ),
-                )
+            builder.on("main.py").expect(
+                notices.AddErrors(
+                    name="error1",
+                    errors=[
+                        (
+                            "union-attr",
+                            'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                        ),
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                        ),
+                    ],
+                    replace=True,
+                ),
             )
 
-    def test_sees_changes_in_custom_querysets_in_new_apps(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "main.py",
+    def test_sees_changes_in_custom_querysets_in_new_apps(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_and_copy_installed_apps("leader", "follower1")
+            builder.on("main.py").set(
                 """
                 from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
@@ -1075,13 +1144,12 @@ class TestConcreteAnnotations:
 
         # Let's then add a new app with new models
 
-        @scenario.run_and_check_mypy_after(installed_apps=["leader", "follower1", "follower2"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "follower2/__init__.py", "")
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.set_and_copy_installed_apps("leader", "follower1", "follower2")
+            builder.on("follower2/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "follower2/apps.py",
+            builder.on("follower2/apps.py").set(
                 """
                 from django.apps import AppConfig
                 class Config(AppConfig):
@@ -1089,9 +1157,7 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "follower2/models.py",
+            builder.on("follower2/models.py").set(
                 """
                 from django.db import models
                 from leader.models import Leader
@@ -1109,44 +1175,50 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            expected.daemon_should_restart()
+            builder.daemon_should_restart()
 
-            (
-                expected.on("main.py")
-                .add_revealed_type(
-                    "concrete-leader",
-                    "Union[follower1.models.follower1.Follower1, follower2.models.Follower2]",
-                )
-                .add_revealed_type(
-                    "qs-leader",
-                    "Union[follower1.models.follower1.Follower1QuerySet, follower2.models.Follower2QuerySet]",
-                )
-                .replace_errors(
-                    "error1",
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                    ),
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: good, id",
-                    ),
-                )
+            builder.on("main.py").expect(
+                notices.AddRevealedTypes(
+                    name="concrete-leader",
+                    revealed=[
+                        "Union[follower1.models.follower1.Follower1, follower2.models.Follower2]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddRevealedTypes(
+                    name="qs-leader",
+                    revealed=[
+                        "Union[follower1.models.follower1.Follower1QuerySet, follower2.models.Follower2QuerySet]"
+                    ],
+                    replace=True,
+                ),
+                notices.AddErrors(
+                    name="error1",
+                    errors=[
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                        ),
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: good, id",
+                        ),
+                    ],
+                    replace=True,
+                ),
             )
 
         # And everything stays the same on rerun
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            expected.daemon_should_not_restart()
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.daemon_should_not_restart()
 
         # And it sees where custom queryset gets queryset manager removed
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(
-                expected,
-                "follower2/models.py",
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.on("follower2/models.py").set(
                 """
                 from django.db import models
                 from leader.models import Leader
@@ -1163,16 +1235,19 @@ class TestConcreteAnnotations:
                 """,
             )
 
-            (
-                expected.on("main.py").replace_errors(
-                    "error1",
-                    (
-                        "union-attr",
-                        'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
-                    ),
-                    (
-                        "misc",
-                        "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
-                    ),
+            builder.on("main.py").expect(
+                notices.AddErrors(
+                    name="error1",
+                    errors=[
+                        (
+                            "union-attr",
+                            'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                        ),
+                        (
+                            "misc",
+                            "Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id",
+                        ),
+                    ],
+                    replace=True,
                 )
             )

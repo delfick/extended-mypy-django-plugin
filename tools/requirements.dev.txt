@@ -12,5 +12,3 @@ ujson
 
 docstring-to-markdown
 python-lsp-jsonrpc<2.0.0,>=1.1.0
-
-git+https://github.com/delfick/pytest-mypy-plugins@scenarios/followups#egg=pytest-mypy-plugins

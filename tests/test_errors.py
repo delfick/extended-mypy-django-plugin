@@ -1,22 +1,61 @@
+import dataclasses
 import pathlib
+import re
 import sys
 import textwrap
 
 import pytest
-import pytest_mypy_plugins.utils
-from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario, assertions
-from pytest_mypy_plugins import OutputChecker
+from extended_mypy_django_plugin_test_driver import (
+    Scenario,
+    ScenarioBuilder,
+    ScenarioRunner,
+    assertions,
+)
+from pytest_typing_runner import expectations, protocols, runners
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class SimpleExpectation:
+    options: protocols.RunOptions[Scenario]
+
+    @dataclasses.dataclass(frozen=True, kw_only=True)
+    class Expectation:
+        result: protocols.RunResult
+        notice_checker: protocols.NoticeChecker[Scenario]
+
+        def check(self) -> None:
+            raise NotImplementedError()
+
+    expectation: type[Expectation]
+
+    @classmethod
+    def setup(cls, expectation: type[Expectation], /) -> protocols.ExpectationsSetup[Scenario]:
+        def make(
+            *, options: protocols.RunOptions[Scenario]
+        ) -> protocols.ExpectationsMaker[Scenario]:
+            return cls(expectation=expectation, options=options)
+
+        return make
+
+    def __call__(self) -> protocols.Expectations[Scenario]:
+        Expectation = self.expectation
+
+        class Expected:
+            def check(self, *, notice_checker: protocols.NoticeChecker[Scenario]) -> None:
+                Expectation(notice_checker=notice_checker, result=notice_checker.result).check()
+
+        return Expected()
 
 
 class TestErrors:
-    def test_it_complains_if_annotating_a_typevar(self, scenario: Scenario) -> None:
-        @scenario.run_and_check_mypy_after(installed_apps=["example"])
-        def _(expected: OutputBuilder) -> None:
-            scenario.file(expected, "example/__init__.py", "")
+    def test_it_complains_if_annotating_a_typevar(self, builder: ScenarioBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_installed_apps("example")
+            builder.on("example/__init__.py").set("")
 
-            scenario.file(
-                expected,
-                "example/apps.py",
+            builder.on("example/apps.py").set(
                 """
                 from django.apps import AppConfig
 
@@ -25,9 +64,7 @@ class TestErrors:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example/models.py",
+            builder.on("example/models.py").set(
                 """
                 from __future__ import annotations
 
@@ -61,9 +98,13 @@ class TestErrors:
             )
 
     def test_gracefully_handles_determine_version_failure_on_startup(
-        self, scenario: Scenario, tmp_path: pathlib.Path
+        self,
+        scenario: Scenario,
+        scenario_runner: ScenarioRunner,
+        tmp_path: pathlib.Path,
     ) -> None:
-        if not scenario.for_daemon:
+        options = runners.RunOptions.create(scenario_runner)
+        if not options.program_runner_maker.is_daemon:
             pytest.skip("Test only relevant for the daemon")
 
         plugin_provider = tmp_path / "plugin.py"
@@ -88,41 +129,45 @@ class TestErrors:
             """)
         )
 
-        scenario.scenario.additional_mypy_config = textwrap.dedent(
+        scenario.info.mypy_configuration_content = textwrap.dedent(
             f"""
             [mypy]
             plugins = {plugin_provider}
+            mypy_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/test
 
             [mypy.plugins.django-stubs]
             django_settings_module = mysettings
+            scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/test
             """
         )
 
-        with pytest.raises(pytest_mypy_plugins.utils.TypecheckAssertionError) as err:
+        @dataclasses.dataclass(frozen=True, kw_only=True)
+        class CheckFails(SimpleExpectation.Expectation):
+            def check(self) -> None:
+                assert self.result.exit_code != 0
 
-            @scenario.run_and_check_mypy_after
-            def _(expected: OutputBuilder) -> None:
-                pass
+                assertions.assert_glob_lines(
+                    self.result.stdout + self.result.stderr,
+                    f"""
+                Error constructing plugin instance of Plugin
+                
+                Daemon crashed!
+                Traceback (most recent call last):
+                File "*extended_mypy_django_plugin/_plugin/plugin.py", line *, in make_virtual_dependency_report
+                File "{plugin_provider}", line *, in make_project
+                ValueError: Computer says no
+                """,
+                )
 
-        assert err.value.mypy_output is not None
-
-        assertions.assert_glob_lines(
-            err.value.mypy_output,
-            f"""
-            Error constructing plugin instance of Plugin
-            
-            Daemon crashed!
-            Traceback (most recent call last):
-            File "*extended_mypy_django_plugin/_plugin/plugin.py", line *, in make_virtual_dependency_report
-            File "{plugin_provider}", line *, in make_project
-            ValueError: Computer says no
-            """,
+        scenario_runner.run_and_check(
+            setup_expectations=SimpleExpectation.setup(CheckFails), options=options
         )
 
     def test_gracefully_handles_determine_version_failure_on_subsequent_run(
-        self, scenario: Scenario, tmp_path: pathlib.Path
+        self, scenario: Scenario, scenario_runner: ScenarioRunner, tmp_path: pathlib.Path
     ) -> None:
-        if not scenario.for_daemon:
+        options = runners.RunOptions.create(scenario_runner)
+        if not options.program_runner_maker.is_daemon:
             pytest.skip("Test only relevant for the daemon")
 
         plugin_provider = tmp_path / "plugin.py"
@@ -141,10 +186,10 @@ class TestErrors:
             import pathlib
 
             from extended_mypy_django_plugin.django_analysis import Project
-            from extended_mypy_django_plugin.main import PluginProvider, VirtualDependencyHandler, ExtendedMypyStubs
+            from extended_mypy_django_plugin import main
 
 
-            class VirtualDependencyHandler(VirtualDependencyHandler):
+            class VirtualDependencyHandler(main.VirtualDependencyHandler):
                 @classmethod
                 def make_project(
                     cls, *, project_root: pathlib.Path, django_settings_module: str
@@ -169,40 +214,43 @@ class TestErrors:
                     raise ValueError("Computer says no")
 
 
-            plugin = PluginProvider(ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
+            plugin = main.PluginProvider(main.ExtendedMypyStubs, VirtualDependencyHandler.create_report, locals())
         """)
         )
 
-        scenario.scenario.additional_mypy_config = textwrap.dedent(
+        scenario.info.mypy_configuration_content = textwrap.dedent(
             f"""
             [mypy]
             plugins = {plugin_provider}
+            mypy_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/test
 
             [mypy.plugins.django-stubs]
             django_settings_module = mysettings
+            scratch_path = $MYPY_CONFIG_FILE_DIR/.mypy_django_scratch/test
             """
         )
 
-        @scenario.run_and_check_mypy_after
-        def _(expected: OutputBuilder) -> None:
-            pass
+        scenario_runner.run_and_check(
+            setup_expectations=expectations.Expectations.setup_for_success, options=options
+        )
 
         called: list[int] = []
 
-        class CheckNoCrashShowsFailure(OutputChecker):
-            def check(self, ret_code: int, stdout: str, stderr: str) -> None:
-                called.append(ret_code)
+        @dataclasses.dataclass(frozen=True, kw_only=True)
+        class CheckNoCrashShowsFailure(SimpleExpectation.Expectation):
+            def check(self) -> None:
+                called.append(self.result.exit_code)
 
-                assert ret_code == 0
+                assert self.result.exit_code == 0
                 command = (
                     f"{sys.executable} -m extended_mypy_django_plugin.scripts.determine_django_state"
-                    f" --config-file {scenario.scenario.execution_path}/mypy.ini"
+                    f" --config-file mypy.ini"
                     f" --mypy-plugin {plugin_provider}"
                     " --version-file *"
                 )
 
                 assertions.assert_glob_lines(
-                    stdout + stderr,
+                    self.result.stdout + self.result.stderr,
                     f"""
                     Failed to determine information about the django setup
 
@@ -216,33 +264,43 @@ class TestErrors:
                     """,
                 )
 
-        scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoCrashShowsFailure)
+        scenario_runner.run_and_check(
+            setup_expectations=SimpleExpectation.setup(CheckNoCrashShowsFailure), options=options
+        )
         assert called == [0]
 
-        class CheckNoOutput(OutputChecker):
-            def check(self, ret_code: int, stdout: str, stderr: str) -> None:
-                called.append(ret_code)
+        @dataclasses.dataclass(frozen=True, kw_only=True)
+        class CheckNoOutput(SimpleExpectation.Expectation):
+            def check(self) -> None:
+                called.append(self.result.exit_code)
 
-                assert ret_code == 0
-                assert stdout + stderr == ""
+                assert self.result.exit_code == 0
+                assert re.match(
+                    "Success: no issues found in \d+ source files",
+                    (self.result.stdout + self.result.stderr).strip(),
+                )
 
         marker.write_text("")
-        scenario.run_and_check_mypy(scenario.expected, OutputCheckerKls=CheckNoOutput)
+        scenario_runner.run_and_check(
+            setup_expectations=SimpleExpectation.setup(CheckNoOutput), options=options
+        )
         assert called == [0, 0]
 
-    def test_knowing_types_of_fields_on_parent_classes(self, scenario: Scenario) -> None:
+    def test_knowing_types_of_fields_on_parent_classes(
+        self, scenario: Scenario, builder: ScenarioBuilder
+    ) -> None:
         """
         This is a regression test to ensure that get_additional_deps doesn't cause class
         definitions to not understand parent types
         """
 
-        @scenario.run_and_check_mypy_after(installed_apps=["example", "example2"])
-        def _(expected: OutputBuilder) -> None:
+        @builder.run_and_check_after
+        def _() -> None:
+            builder.expect_failure()
+            builder.set_installed_apps("example", "example2")
             for app in ("example", "example2"):
-                scenario.file(expected, f"{app}/__init__.py", "")
-                scenario.file(
-                    expected,
-                    f"{app}/apps.py",
+                builder.on(f"{app}/__init__.py").set("")
+                builder.on(f"{app}/apps.py").set(
                     f"""
                     from django.apps import AppConfig
 
@@ -251,24 +309,18 @@ class TestErrors:
                     """,
                 )
 
-            scenario.file(
-                expected,
-                "example/models/__init__.py",
+            builder.on("example/models/__init__.py").set(
                 """
                 from .parent import Parent 
-                """,
+                """
             )
-            scenario.file(
-                expected,
-                "example2/models/__init__.py",
+            builder.on("example2/models/__init__.py").set(
                 """
                 from .children import Child
-                """,
+                """
             )
 
-            scenario.file(
-                expected,
-                "example/models/parent.py",
+            builder.on("example/models/parent.py").set(
                 """
                 from django.db import models
 
@@ -280,9 +332,7 @@ class TestErrors:
                 """,
             )
 
-            scenario.file(
-                expected,
-                "example2/models/children.py",
+            builder.on("example2/models/children.py").set(
                 """
                 from example import models as common_models
                 from typing import TYPE_CHECKING

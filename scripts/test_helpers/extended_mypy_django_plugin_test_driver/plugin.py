@@ -1,17 +1,38 @@
-import pytest
-from pytest_mypy_plugins import MypyPluginsConfig, MypyPluginsScenario
+import functools
 
-from .scenario import Scenario
+import pytest
+from pytest_typing_runner import parse, protocols
+
+from .scenario import Scenario, ScenarioBuilder, ScenarioFile, ScenarioRunner
 
 
 @pytest.fixture
-def scenario(
-    mypy_plugins_config: MypyPluginsConfig, mypy_plugins_scenario: MypyPluginsScenario
-) -> Scenario:
-    """
-    Polish the sharp edges of the pytest mypy plugin
-    """
-    mypy_plugins_scenario.additional_mypy_config = (
-        "\n[mypy.plugins.django-stubs]\n" "django_settings_module = mysettings"
+def typing_scenario_maker() -> protocols.ScenarioMaker[Scenario]:
+    return Scenario.create
+
+
+@pytest.fixture
+def typing_scenario_runner_maker() -> protocols.ScenarioRunnerMaker[Scenario]:
+    return ScenarioRunner.create
+
+
+@pytest.fixture
+def builder(typing_scenario_runner: ScenarioRunner) -> ScenarioBuilder:
+    return ScenarioBuilder(
+        scenario_runner=typing_scenario_runner,
+        scenario_file_maker=functools.partial(
+            ScenarioFile,
+            file_parser=parse.FileContent().parse,
+            file_modification=typing_scenario_runner.file_modification,
+        ),
     )
-    return Scenario(mypy_plugins_config, mypy_plugins_scenario)
+
+
+@pytest.fixture
+def scenario(typing_scenario_runner: ScenarioRunner) -> Scenario:
+    return typing_scenario_runner.scenario
+
+
+@pytest.fixture
+def scenario_runner(typing_scenario_runner: ScenarioRunner) -> ScenarioRunner:
+    return typing_scenario_runner

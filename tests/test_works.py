@@ -1,12 +1,11 @@
-from extended_mypy_django_plugin_test_driver import OutputBuilder, Scenario
+from extended_mypy_django_plugin_test_driver import ScenarioBuilder
 
 
-def test_works(scenario: Scenario) -> None:
-    @scenario.run_and_check_mypy_after
-    def _(expected: OutputBuilder) -> None:
-        scenario.file(
-            expected,
-            "main.py",
+def test_works(builder: ScenarioBuilder) -> None:
+    @builder.run_and_check_after
+    def _() -> None:
+        builder.set_and_copy_installed_apps("myapp", "myapp2")
+        builder.on("main.py").set(
             """
             from extended_mypy_django_plugin import Concrete, DefaultQuerySet
 
