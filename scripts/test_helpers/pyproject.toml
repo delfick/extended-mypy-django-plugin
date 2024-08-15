@@ -10,7 +10,8 @@ authors = [
     { name = "Stephen Moore", email = "stephen@delfick.com" },
 ]
 dependencies = [
-    "pytest==8.1.1"
+    "pytest==8.1.1",
+    "pytest-typing-runner==0.5.0"
 ]
 
 [tool.hatch.metadata]
@@ -23,6 +24,3 @@ path = "extended_mypy_django_plugin_test_driver/version.py"
 include = [
     "/extended_mypy_django_plugin_test_driver",
 ]
-
-[project.entry-points.pytest11]
-extended_mypy_django_plugin_test_driver = "extended_mypy_django_plugin_test_driver.plugin"

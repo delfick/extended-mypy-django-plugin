@@ -42,14 +42,14 @@ jobs:
           VENVSTARTER_ONLY_MAKE_VENV: "1"
         run: python ./tools/venv
 
-      - name: Run tests
+      - name: Run tests without cache
         shell: bash
-        run: ./test.sh -v --mypy-cache-strategy NO_INCREMENTAL
+        run: ./test.sh -v --typing-strategy MYPY_NO_INCREMENTAL
 
       - name: Run tests incremental
         shell: bash
-        run: ./test.sh -v --mypy-cache-strategy NON_SHARED_INCREMENTAL
+        run: ./test.sh -v --typing-strategy MYPY_INCREMENTAL
 
       - name: Run tests daemon
         shell: bash
-        run: ./test.sh -v --mypy-cache-strategy DAEMON
+        run: ./test.sh -v --typing-strategy MYPY_DAEMON
