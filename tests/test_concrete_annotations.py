@@ -9,7 +9,6 @@ class TestConcreteAnnotations:
     def test_cast_as_concrete(self, builder: ScenarioBuilder) -> None:
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_and_copy_installed_apps("leader", "simple")
             builder.on("main.py").set(
                 """
@@ -850,7 +849,6 @@ class TestConcreteAnnotations:
 
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_installed_apps("myapp", "myapp2")
             builder.daemon_should_restart()
 
@@ -900,7 +898,6 @@ class TestConcreteAnnotations:
 
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_and_copy_installed_apps("myapp", "myapp2")
             builder.daemon_should_restart()
 
@@ -954,7 +951,6 @@ class TestConcreteAnnotations:
 
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.on("myapp2/models.py").append(
                 """
                 class Another(Parent):
@@ -993,7 +989,6 @@ class TestConcreteAnnotations:
     def test_sees_changes_in_custom_querysets_within_app(self, builder: ScenarioBuilder) -> None:
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_and_copy_installed_apps("leader", "follower1")
             builder.on("main.py").set(
                 """
@@ -1123,7 +1118,6 @@ class TestConcreteAnnotations:
     def test_sees_changes_in_custom_querysets_in_new_apps(self, builder: ScenarioBuilder) -> None:
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_and_copy_installed_apps("leader", "follower1")
             builder.on("main.py").set(
                 """

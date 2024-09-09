@@ -74,6 +74,7 @@ class Scenario(scenarios.Scenario):
             return [ast.Constant(value=app) for app in value if isinstance(app, str)]
 
         new_settings = file_changers.BasicPythonAssignmentChanger(
+            cwd=options.cwd,
             root_dir=self.root_dir,
             path=settings_path,
             variable_changers={
@@ -168,6 +169,6 @@ class ScenarioBuilder(builders.ScenarioBuilder[Scenario, ScenarioFile]):
 
 
 if TYPE_CHECKING:
-    C_Scenario = Scenario
-
-    _S: protocols.Scenario = cast(C_Scenario, None)
+    _S: protocols.Scenario = cast(Scenario, None)
+    _SF: protocols.P_ScenarioFile = cast(ScenarioFile, None)
+    _SR: protocols.ScenarioRunner[Scenario] = cast(ScenarioRunner, None)
