@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+.. _release-0.7.2:
+
+0.7.2 - TBD
+
+    * Fix a bug where the virtual dependency for a module containing an abstract
+      model wouldn't change if the concrete children changed in a way that
+      didn't also result in changing the abstract model.
+
 .. _release-0.7.1:
 
 0.7.1 - 5 August 2024
