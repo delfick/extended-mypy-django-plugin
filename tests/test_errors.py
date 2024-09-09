@@ -51,7 +51,6 @@ class TestErrors:
     def test_it_complains_if_annotating_a_typevar(self, builder: ScenarioBuilder) -> None:
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_installed_apps("example")
             builder.on("example/__init__.py").set("")
 
@@ -276,7 +275,7 @@ class TestErrors:
 
                 assert self.result.exit_code == 0
                 assert re.match(
-                    "Success: no issues found in \d+ source files",
+                    "Success: no issues found in \d+ source files?",
                     (self.result.stdout + self.result.stderr).strip(),
                 )
 
@@ -296,7 +295,6 @@ class TestErrors:
 
         @builder.run_and_check_after
         def _() -> None:
-            builder.expect_failure()
             builder.set_installed_apps("example", "example2")
             for app in ("example", "example2"):
                 builder.on(f"{app}/__init__.py").set("")
