@@ -1,7 +1,12 @@
 import ast
 import dataclasses
 import importlib
+import inspect
 import pathlib
+import subprocess
+import sys
+import tempfile
+import textwrap
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, TypeVar, cast
 
@@ -96,6 +101,29 @@ class Scenario(scenarios.Scenario):
 
         return new_settings
 
+    def create_django_settings(
+        self, *, options: protocols.RunOptions[Self], file_modification: protocols.FileModifier
+    ) -> None:
+        file_modification(
+            path=self.info.mypy_configuration_filename,
+            content=(
+                self.info.mypy_configuration_content.format(
+                    django_settings_module=self.info.django_settings_module
+                )
+                + "\n"
+                + self.info.additional_mypy_configuration_content
+            ),
+        )
+
+        settings_path = f"{self.info.django_settings_module}.py"
+        settings_content = self.determine_django_settings_content(
+            options=options, settings_path=settings_path
+        )
+        file_modification(
+            path=settings_path,
+            content=settings_content,
+        )
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ScenarioRunner(scenarios.ScenarioRunner[Scenario]):
@@ -119,26 +147,9 @@ class ScenarioRunner(scenarios.ScenarioRunner[Scenario]):
         else:
             pathlib.Path("/tmp/debug").unlink(missing_ok=True)
 
-        options.scenario_runner.file_modification(
-            path=self.scenario.info.mypy_configuration_filename,
-            content=(
-                self.scenario.info.mypy_configuration_content.format(
-                    django_settings_module=self.scenario.info.django_settings_module
-                )
-                + "\n"
-                + self.scenario.info.additional_mypy_configuration_content
-            ),
+        self.scenario.create_django_settings(
+            options=options, file_modification=self.file_modification
         )
-
-        settings_path = f"{self.scenario.info.django_settings_module}.py"
-        settings_content = self.scenario.determine_django_settings_content(
-            options=options, settings_path=settings_path
-        )
-        options.scenario_runner.file_modification(
-            path=settings_path,
-            content=settings_content,
-        )
-
         return super().execute_static_checking(options=options)
 
 
@@ -166,6 +177,52 @@ class ScenarioBuilder(builders.ScenarioBuilder[Scenario, ScenarioFile]):
         self.set_installed_apps(*apps)
         self.copy_django_apps(*apps)
         return self
+
+    def populate_virtual_deps(self, *, deps_dest: pathlib.Path) -> None:
+        options = self.determine_options()
+        self.scenario_runner.scenario.create_django_settings(
+            options=options, file_modification=self.scenario_runner.file_modification
+        )
+
+        def populate(
+            cwd: pathlib.Path, django_settings_module: str, deps_dest: pathlib.Path
+        ) -> None:
+            from extended_mypy_django_plugin.plugin import VirtualDependencyHandler
+
+            class DependencyHandler(VirtualDependencyHandler):
+                def interface_differentiator(self) -> str:
+                    return "timestamp"
+
+            DependencyHandler.create_report(
+                project_root=cwd,
+                django_settings_module=django_settings_module,
+                virtual_deps_destination=deps_dest,
+            )
+
+        mainline = """
+        if __name__ == "__main__":
+            populate(pathlib.Path(sys.argv[1]), sys.argv[2], pathlib.Path(sys.argv[3]))
+        """
+
+        content = [
+            "import pathlib",
+            "import sys",
+            textwrap.dedent(inspect.getsource(populate)),
+            textwrap.dedent(mainline),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script = pathlib.Path(tmpdir, "script.py")
+            script.write_text("\n".join(content))
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    str(script),
+                    str(options.cwd),
+                    self.scenario_runner.scenario.info.django_settings_module,
+                    str(deps_dest),
+                ]
+            )
 
 
 if TYPE_CHECKING:

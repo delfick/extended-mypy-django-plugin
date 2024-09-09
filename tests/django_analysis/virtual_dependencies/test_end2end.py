@@ -98,7 +98,7 @@ class TestEnd2End:
 
         assert (
             report.version
-            == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:917076629"
+            == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:1749711409"
         )
         assert report.report == make_report(
             concrete_annotations={

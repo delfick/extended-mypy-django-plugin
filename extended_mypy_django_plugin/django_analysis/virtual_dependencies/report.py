@@ -157,6 +157,10 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     make_differentiator: Callable[[], str]
     installed_apps_hash: str
 
+    _summary_hashes: dict[protocols.ImportPath, str] = dataclasses.field(
+        default_factory=dict, init=False
+    )
+
     @classmethod
     def make_empty_virtual_dependency_content(
         cls, *, module_import_path: protocols.ImportPath
@@ -239,7 +243,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
     def _get_summary_hash(self) -> str:
         summary = self.virtual_dependency.summary
 
-        significant = self.hasher(*(info.encode() for info in summary.significant_info))
+        significant = next(self._get_significant(self.virtual_dependency.module.import_path))
 
         return "::".join(
             [
@@ -249,6 +253,46 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 f"significant={significant}",
             ]
         )
+
+    def _get_significant(
+        self,
+        import_path: protocols.ImportPath,
+        /,
+        _visited: set[protocols.ImportPath] | None = None,
+    ) -> Iterator[str]:
+        if _visited is None:
+            _visited = set()
+
+        if import_path in _visited:
+            return
+
+        _visited.add(import_path)
+
+        if import_path not in self._summary_hashes:
+            if import_path not in self.all_virtual_dependencies:
+                return
+
+            dep = self.all_virtual_dependencies[import_path]
+
+            related: set[protocols.ImportPath] = set()
+            for _, concrete_models in dep.concrete_models.items():
+                for model in concrete_models:
+                    related.add(model.module_import_path)
+
+            info: list[bytes] = []
+            for related_mod in sorted(related):
+                if related_mod != import_path:
+                    info.extend(
+                        [
+                            sig.encode()
+                            for sig in self._get_significant(related_mod, _visited=_visited)
+                        ]
+                    )
+
+            info.extend([info.encode() for info in dep.summary.significant_info])
+            self._summary_hashes[import_path] = self.hasher(*info)
+
+        yield self._summary_hashes[import_path]
 
     def _template_virtual_dependency(
         self,
