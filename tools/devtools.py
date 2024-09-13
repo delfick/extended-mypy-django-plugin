@@ -122,6 +122,9 @@ class App:
             else:
                 other_args.append(arg)
 
+        (build_path / "html").mkdir(exist_ok=True, parents=True)
+        (build_path / "doctrees").mkdir(exist_ok=True, parents=True)
+
         os.chdir(docs_path)
 
         run(*command, ".", "_build/html", "-b", "html", "-d", "_build/doctrees", *other_args)

@@ -1,4 +1,4 @@
-sphinx==7.2.6
-sphinx_rtd_theme==2.0.0
-sphinx-autobuild==2024.2.4
-sphinx-toolbox==3.5.0
+sphinx==8.0.2
+sphinx_rtd_theme==3.0.0rc1
+sphinx-autobuild==2024.9.3
+sphinx-toolbox==3.8.0
