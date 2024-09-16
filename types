@@ -9,4 +9,4 @@ if [[ -n $CLEAR_MYPY_CACHE ]]; then
     rm -rf .mypy_cache example/.mypy_cache
 fi
 
-./tools/venv types "$@"
+exec ./dev types "$@"

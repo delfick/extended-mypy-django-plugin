@@ -25,14 +25,14 @@ if [[ "$0" != "${BASH_SOURCE[*]}" ]]; then
         source ./tools/.python/bin/activate
         cd "$cwd" || exit
     else
-        echo "only say \`source run.sh activate\`"
+        echo "only say \`source dev activate\`"
     fi
 fi
 
 if [[ $HANDLED != 1 ]]; then
     if [[ "$#" == "1" && "$1" == "activate" ]]; then
         if [[ "$0" = "${BASH_SOURCE[*]}" ]]; then
-            echo "You need to run as 'source ./run.sh $1'"
+            echo "You need to run as 'source ./dev activate $1'"
             exit 1
         fi
     fi

@@ -27,10 +27,10 @@ To run tests such that breakpoints work::
 
 To activate the ``virtualenv`` in your current shell::
 
-  > source run.sh activate
+  > source dev activate
 
 To build the docs locally::
 
-  > ./run.sh docs view
+  > ./dev docs view
 
 .. _venvstarter: https://venvstarter.readthedocs.io
