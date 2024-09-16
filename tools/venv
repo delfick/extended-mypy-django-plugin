@@ -26,6 +26,14 @@ manager.add_local_dep(
     "{here}",
     "..",
     "scripts",
+    "proper_plugin",
+    name="proper_plugin==0.1.0",
+)
+
+manager.add_local_dep(
+    "{here}",
+    "..",
+    "scripts",
     "test_helpers",
     version_file=("extended_mypy_django_plugin_test_driver", "version.py"),
     name="extended_mypy_django_plugin_test_driver=={version}",
