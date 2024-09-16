@@ -5,6 +5,6 @@ set -e
 cd "$(git rev-parse --show-toplevel)"
 
 # The virtualenv needs to be active for it to find mypy
-source ./run.sh activate
+source ./dev activate
 
-exec ./tools/venv tests "$@"
+exec ./dev tests "$@"
