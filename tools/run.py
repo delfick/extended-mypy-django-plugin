@@ -15,16 +15,12 @@ def run_with_mypy(*args: str, old: bool) -> None:
             "--with",
             "mypy==1.4.0",
             "--with",
-            "django==4.2.9",
-            "--with",
             "django-stubs==4.2.3",
         ]
     else:
         withs = [
             "--with",
             "mypy==1.10.0",
-            "--with",
-            "django==4.2.9",
             "--with",
             "django-stubs==5.0.2",
         ]
