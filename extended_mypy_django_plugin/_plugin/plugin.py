@@ -39,14 +39,19 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
     It implements the following mypy plugin hooks:
 
     .. automethod:: report_config_data
+        :no-index:
 
     .. automethod:: get_additional_deps
+        :no-index:
 
     .. autoattribute:: get_type_analyze_hook
+        :no-index:
 
     .. autoattribute:: get_attribute_hook
+        :no-index:
 
     .. autoattribute:: get_method_hook
+        :no-index:
     """
 
     @classmethod

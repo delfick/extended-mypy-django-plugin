@@ -3,10 +3,9 @@
 Dev Docs
 ========
 
+.. toctree::
+   :maxdepth: 2
 
-Annotations
------------
-
-.. autoclass:: extended_mypy_django_plugin.Concrete
-
-.. autoclass:: extended_mypy_django_plugin.DefaultQuerySet
+   annotations
+   django_analysis
+   plugin
