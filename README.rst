@@ -59,3 +59,51 @@ It also defines a custom ``ReportMaker``, that has some extra logic used by
 ``get_additional_deps`` plugin. This extra logic ensures that any file that
 depends on ``django.conf.settings`` also depends on our base ``django-configurations``
 class defined in ``djangoexample.settings.base``.
+
+Using the VirtualDependencyHandler class
+----------------------------------------
+
+Note that the code in ``virtual_dependencies.py`` can be repurposed in code
+that wants to discover settings/models in the django project.
+
+For example, if the Django project isn't already loaded:
+
+.. code-block:: python
+
+    from example_mypy.virtual_dependencies import VirtualDependencyHandler
+
+    project = VirtualDependencyHandler.make_project(
+        project_root=PROJECT_ROOT, django_settings_module="djangoexample.settings"
+    )
+
+    discovered = project.load_project().perform_discovery()
+
+    # discovered is now an instance of ``extended_mypy_django_plugin.django_analysis.Discovered
+    # and has a number of things on it
+
+Or if inside tests for the django project and Django is already loaded:
+
+.. code-block:: python
+
+    from example_mypy.virtual_dependencies import VirtualDependencyHandler
+    from extended_mypy_django_plugin.django_analysis import Loaded
+    from django.apps import apps
+    from django.conf import settings
+
+    project = VirtualDependencyHandler.make_project(
+        project_root=PROJECT_ROOT, django_settings_module="djangoexample.settings"
+    )
+
+    loaded_project = Loaded(
+        project=project,
+        root_dir=project.root_dir,
+        env_vars=project.env_vars,
+        settings=settings,
+        apps=apps,
+        discovery=project.discovery,
+    )
+
+    discovered = loaded_project.perform_discovery()
+
+What happens during discovery can also be changed. For example, see
+``scripts/ensure_unique_querysets.py``.
