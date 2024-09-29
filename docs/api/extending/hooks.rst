@@ -1,5 +1,4 @@
-Extending this plugin
-=====================
+.. _hooks:
 
 The hook helpers
 ----------------
