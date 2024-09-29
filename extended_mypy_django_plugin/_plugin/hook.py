@@ -52,12 +52,15 @@ signature for the hook.
 There are two default implementations of this Hook class:
 
 .. autoclass:: PlainHook
+    :no-index:
 
 .. autoclass:: HookWithExtra
+    :no-index:
 
 And they must be used with the :class:`hook <hook>` decorator:
 
 .. autoclass:: hook(hook_kls: type[Hook[T_Plugin, T_Ctx, T_Ret]])
+    :no-index:
 """
 
 from __future__ import annotations

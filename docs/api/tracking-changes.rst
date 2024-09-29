@@ -1,3 +1,5 @@
+.. _tracking_changes:
+
 Tracking changes to models
 ==========================
 
@@ -29,3 +31,5 @@ analysis.
     will be used to determine if ``dmypy`` should be restarted before static analysis
     starts. This can be skipped (when the daemon is already running) by placing a
     file in the ``scratch_path`` with the name ``__assume_django_state_unchanged__``.
+
+See :ref:`virtual_dependencies` for more information.
