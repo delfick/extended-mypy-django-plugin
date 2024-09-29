@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "djangoexample"
+dynamic = ["version"]
+description = "Example django project"
+license = { text = "MIT" }
+authors = [
+    { name = "Stephen Moore", email = "stephen@delfick.com" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "django==5.1.1",
+    "django-configurations==2.5.1",
+    "psycopg2-binary==2.9.9",
+]
+
+[tool.hatch.version]
+path = "djangoexample/version.py"
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "/djangoexample",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "example_mypy",
+]
+
+[tool.uv.sources]
+example_mypy = { workspace = true }
+
+[tool.uv.workspace]
+members = ["tools/example-mypy"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 99
