@@ -1,16 +1,13 @@
 Primer
 ======
 
-There are three classes introduced by this plugin (in addition to the rest of
-the functionality in `django-stubs`_) to make it easier to work with abstract
-Django ORM models.
+To explain what this plugin achieves it's useful to first briefly explain
+how Django ORM is essentially a DSL driven by Python class inheritance.
 
 .. _django-stubs: https://github.com/typeddjango/django-stubs
 
 Abstract and Concrete models
 ----------------------------
-
-It's useful to first explain what is meant by abstract and concrete models!
 
 In Django ORM, database tables are represented by classes that inherit from
 ``django.db.models.Model``. These classes will exist under specific Django
@@ -43,7 +40,7 @@ it's ``Meta`` class:
         class Meta:
             abstract = True
 
-This declaration will then not become an actual table in the database, but
+This declaration will not become an actual table in the database, but
 rather becomes shared functionality for models that inherit from it. So a
 concrete class may look like:
 
@@ -123,9 +120,8 @@ However this makes for brittle code because:
 
 * It doesn't communicate to readers the intention of ``model_cls`` (any
   concrete model of ``MyAbstractModel``).
-* It fails if some of the concrete models are in apps that may or may not be
-  installed in the Django ``INSTALLED_APPS`` setting, or may even be
-  conditionally available to import at all.
+* Knowing the full set of concrete models depends on knowing what Django apps are
+  available and including in the ``INSTALLED_APPS`` Django setting.
 
 The fundamental part of the solution proposed by this extension to
 ``django-stubs`` is to instead say:
@@ -142,7 +138,8 @@ The fundamental part of the solution proposed by this extension to
         row = model_cls.objects.create(**kwargs)
         process_row(row)
 
-And let the mypy plugin determine which models will make up that Union type.
+And let the mypy plugin determine which models will make up that Union type when run against a
+specific Django configuration.
 
 Custom managers and querysets
 -----------------------------
@@ -191,10 +188,3 @@ In both these cases, the default queryset for ``MyModel`` would be
 from a typing perspective because when ``mypy`` knows the specific queryset
 that should be used, then it can see any custom methods that were added to that
 queryset.
-
-Annotations
------------
-
-.. autoclass:: extended_mypy_django_plugin.Concrete
-
-.. autoclass:: extended_mypy_django_plugin.DefaultQuerySet
