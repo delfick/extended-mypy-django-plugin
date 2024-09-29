@@ -7,9 +7,9 @@ The way a mypy plugin works is there is a class that inherits from
 a function.
 
 So for example, the ``get_customize_class_mro_hook`` hook will take in the
-``fullname`` representing classes that can be altered, and a function that takes
-in a ``ClassDefContext`` object and returns ``None`` must be returned if
-the plugin wants to do something with that object.
+``fullname`` representing classes that can be altered, and a function must be
+returned if the plugin wants to do something with that object (such that the
+function takes in a single ``ClassDefContext`` object and returns ``None``).
 
 The first plugin that mypy encounters which returns a function will win and no
 other plugins will get to look at that fullname.
@@ -55,7 +55,7 @@ There are two default implementations of this Hook class:
 
 .. autoclass:: HookWithExtra
 
-And they must be used with the ``hook`` decorator:
+And they must be used with the :class:`hook <hook>` decorator:
 
 .. autoclass:: hook(hook_kls: type[Hook[T_Plugin, T_Ctx, T_Ret]])
 """

@@ -11,7 +11,8 @@ Additionally, ``Concrete2`` has a custom queryset class called ``Concrete2QS``.
 Concrete
 --------
 
-To create a union of the concrete models, use the ``Concrete`` annotation:
+To resolve a union of the concrete models, use the
+:class:`Concrete <extended_mypy_django_plugin.Concrete>` annotation:
 
 .. code-block:: python
 
@@ -77,7 +78,8 @@ Concrete.cast_as_concrete
 -------------------------
 
 To type narrow an object as a concrete descendent of that object, the
-``Concrete.cast_as_concrete`` may be used:
+:func:`Concrete.cast_as_concrete <extended_mypy_django_plugin.Concrete.cast_as_concrete>`
+may be used:
 
 .. code-block:: python
 
@@ -120,7 +122,8 @@ Using Concrete annotations on classmethods would look like:
             # Otherwise the return will make mypy complain that it doesn't match self
             return created
 
-        # # TODO: this isn't currently possible
+        # # Note: the following isn't possible
+        # #     : because the annotations cannot be used with TypeVars
         # def qs(self) -> DefaultQuerySet[Self]:
         #     concrete = Concrete.cast_as_concrete(self)
         #     reveal_type(concrete) # Concrete1 | Concrete2 | Concrete3
@@ -139,22 +142,24 @@ Using Concrete annotations on classmethods would look like:
     instance = model.new()
     reveal_type(instance) # Concrete1 | Concrete2 | Concrete3
 
-    # # TODO: the qs method specific to which instance isn't possible at the moment
+    # # NOTE: the qs method specific to which instance isn't possible
     # qs = instance.qs()
     # reveal_type(qs) # QuerySet[Concrete1] | Concrete2QS | QuerySet[Concrete3]
 
     specific = Concrete1.new()
     reveal_type(specific) # Concrete1
 
-    # # TODO: the qs method specific to which instance isn't possible at the moment
+    # # NOTE: the qs method specific to which instance isn't possible
     # specific_qs = instance.qs()
     # reveal_type(specific_qs) # QuerySet[Concrete1]
 
 DefaultQuerySet
 ---------------
 
-To create a union of the default querysets for the concrete models of an
-abstract class, use the ``DefaultQuerySet`` annotation:
+To resolve a union of the default querysets for the concrete models of an
+abstract class, use the
+:class:`DefaultQuerySet <extended_mypy_django_plugin.DefaultQuerySet>`
+annotation:
 
 .. code-block:: python
 

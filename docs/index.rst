@@ -8,5 +8,6 @@
    api/tracking-changes
    api/changelog
    api/extending
+   api/dev/index
 
 .. include:: ../README.rst
