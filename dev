@@ -28,8 +28,10 @@ fi
 # executing a symlink to this script
 # Note the `-h` in the while loop asks if this path is a symlink
 pushd . >'/dev/null'
+DIRECTORY_BEFORE="$(pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+
 find_here() {
-    SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
     while [ -h "$SCRIPT_PATH" ]; do
         cd "$(dirname -- "$SCRIPT_PATH")" || return 1
         SCRIPT_PATH="$(readlink -f -- "$SCRIPT_PATH")"
@@ -68,7 +70,8 @@ fi
 
 if [ "$sourced" = "1" ]; then
     # shellcheck source=/dev/null
-    source ./.venv/bin/activate
+    source .venv/bin/activate
+    cd "$DIRECTORY_BEFORE" || return 1
 else
     exec uv run ./tools/run.py "$@"
 fi
