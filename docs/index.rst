@@ -7,7 +7,7 @@
    api/usage
    api/tracking-changes
    api/changelog
-   api/extending
+   api/extending/index
    api/dev/index
 
 .. include:: ../README.rst
