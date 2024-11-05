@@ -1,4 +1,5 @@
 import functools
+import importlib
 import os
 import pathlib
 
@@ -96,10 +97,17 @@ class TestEnd2End:
 
         report = handler.make_report(virtual_deps_destination=destination)
 
-        assert (
-            report.version
-            == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:1749711409"
-        )
+        if importlib.metadata.version("django") == "4.2.16":
+            assert (
+                report.version
+                == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:2183014887|written_deps:1749711409"
+            )
+        else:
+            assert (
+                report.version
+                == f"__virtual__|plugin:{VERSION}:installed_apps:__installed_apps_hash__|settings_types:3839428117|written_deps:1749711409"
+            )
+
         assert report.report == make_report(
             concrete_annotations={
                 "django.contrib.admin.models.LogEntry": "__virtual__.mod_2456226428.Concrete__LogEntry",

@@ -1,3 +1,5 @@
+import importlib
+
 from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
 
 
@@ -6,7 +8,7 @@ class TestSettingsTypesDiscovery:
         self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:
         settings_types = discovery.NaiveSettingsTypesDiscovery[Project]()(loaded_django_example)
-        assert settings_types == {
+        expected = {
             "ABSOLUTE_URL_OVERRIDES": "<class 'dict'>",
             "ADMINS": "<class 'list'>",
             "ALLOWED_HOSTS": "<class 'list'>",
@@ -22,7 +24,6 @@ class TestSettingsTypesDiscovery:
             "CSRF_COOKIE_AGE": "<class 'int'>",
             "CSRF_COOKIE_DOMAIN": "<class 'NoneType'>",
             "CSRF_COOKIE_HTTPONLY": "<class 'bool'>",
-            "CSRF_COOKIE_MASKED": "<class 'bool'>",
             "CSRF_COOKIE_NAME": "<class 'str'>",
             "CSRF_COOKIE_PATH": "<class 'str'>",
             "CSRF_COOKIE_SAMESITE": "<class 'str'>",
@@ -47,7 +48,6 @@ class TestSettingsTypesDiscovery:
             "DEFAULT_CHARSET": "<class 'str'>",
             "DEFAULT_EXCEPTION_REPORTER": "<class 'str'>",
             "DEFAULT_EXCEPTION_REPORTER_FILTER": "<class 'str'>",
-            "DEFAULT_FILE_STORAGE": "<class 'str'>",
             "DEFAULT_FROM_EMAIL": "<class 'str'>",
             "DEFAULT_INDEX_TABLESPACE": "<class 'str'>",
             "DEFAULT_TABLESPACE": "<class 'str'>",
@@ -138,7 +138,6 @@ class TestSettingsTypesDiscovery:
             "SILENCED_SYSTEM_CHECKS": "<class 'list'>",
             "STATICFILES_DIRS": "<class 'list'>",
             "STATICFILES_FINDERS": "<class 'list'>",
-            "STATICFILES_STORAGE": "<class 'str'>",
             "STATIC_ROOT": "<class 'NoneType'>",
             "STATIC_URL": "<class 'str'>",
             "STORAGES": "<class 'dict'>",
@@ -150,9 +149,7 @@ class TestSettingsTypesDiscovery:
             "TIME_INPUT_FORMATS": "<class 'list'>",
             "TIME_ZONE": "<class 'str'>",
             "UNIQUE_SETTING_TO_EXTENDED_MYPY_PLUGIN_DJANGOEXAMPLE": "<class 'str'>",
-            "USE_DEPRECATED_PYTZ": "<class 'bool'>",
             "USE_I18N": "<class 'bool'>",
-            "USE_L10N": "<class 'bool'>",
             "USE_THOUSAND_SEPARATOR": "<class 'bool'>",
             "USE_TZ": "<class 'bool'>",
             "USE_X_FORWARDED_HOST": "<class 'bool'>",
@@ -161,3 +158,17 @@ class TestSettingsTypesDiscovery:
             "X_FRAME_OPTIONS": "<class 'str'>",
             "YEAR_MONTH_FORMAT": "<class 'str'>",
         }
+        if importlib.metadata.version("django") == "4.2.16":
+            expected.update(
+                {
+                    "USE_L10N": "<class 'bool'>",
+                    "USE_DEPRECATED_PYTZ": "<class 'bool'>",
+                    "STATICFILES_STORAGE": "<class 'str'>",
+                    "DEFAULT_FILE_STORAGE": "<class 'str'>",
+                    "CSRF_COOKIE_MASKED": "<class 'bool'>",
+                }
+            )
+        else:
+            expected.update({"FORMS_URLFIELD_ASSUME_HTTPS": "<class 'bool'>"})
+
+        assert settings_types == expected

@@ -1,6 +1,4 @@
-from mypy.nodes import CallExpr, MemberExpr
 from mypy.plugin import (
-    AttributeContext,
     FunctionContext,
     MethodContext,
 )
@@ -115,59 +113,3 @@ class TypeChecking:
             resolved = TypeType(resolved)
 
         return resolved
-
-    def extended_get_attribute_resolve_manager_method(
-        self,
-        ctx: AttributeContext,
-        *,
-        resolve_manager_method_from_instance: protocols.ResolveManagerMethodFromInstance,
-    ) -> MypyType:
-        """
-        Copied from django-stubs after https://github.com/typeddjango/django-stubs/pull/2027
-
-        A 'get_attribute_hook' that is intended to be invoked whenever the TypeChecker encounters
-        an attribute on a class that has 'django.db.models.BaseManager' as a base.
-        """
-        # Skip (method) type that is currently something other than Any of type `implementation_artifact`
-        default_attr_type = get_proper_type(ctx.default_attr_type)
-        if not isinstance(default_attr_type, AnyType):
-            return default_attr_type
-        elif default_attr_type.type_of_any != TypeOfAny.implementation_artifact:
-            return default_attr_type
-
-        # (Current state is:) We wouldn't end up here when looking up a method from a custom _manager_.
-        # That's why we only attempt to lookup the method for either a dynamically added or reverse manager.
-        if isinstance(ctx.context, MemberExpr):
-            method_name = ctx.context.name
-        elif isinstance(ctx.context, CallExpr) and isinstance(ctx.context.callee, MemberExpr):
-            method_name = ctx.context.callee.name
-        else:
-            ctx.api.fail("Unable to resolve return type of queryset/manager method", ctx.context)
-            return AnyType(TypeOfAny.from_error)
-
-        if isinstance(ctx.type, Instance):
-            return resolve_manager_method_from_instance(
-                instance=ctx.type, method_name=method_name, ctx=ctx
-            )
-        elif isinstance(ctx.type, UnionType) and all(
-            isinstance(get_proper_type(instance), Instance) for instance in ctx.type.items
-        ):
-            items: list[Instance] = []
-            for instance in ctx.type.items:
-                inst = get_proper_type(instance)
-                if isinstance(inst, Instance):
-                    items.append(inst)
-
-            resolved = tuple(
-                resolve_manager_method_from_instance(
-                    instance=inst, method_name=method_name, ctx=ctx
-                )
-                for inst in items
-            )
-            return UnionType(resolved)
-        else:
-            ctx.api.fail(
-                f'Unable to resolve return type of queryset/manager method "{method_name}"',
-                ctx.context,
-            )
-            return AnyType(TypeOfAny.from_error)

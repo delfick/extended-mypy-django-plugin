@@ -3,13 +3,9 @@ from typing import Generic, TypeVar
 
 from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
 from mypy.options import Options
-from mypy.plugin import AnalyzeTypeContext, AttributeContext, MethodContext, ReportConfigContext
+from mypy.plugin import AnalyzeTypeContext, MethodContext, ReportConfigContext
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
-from mypy_django_plugin.transformers.managers import (
-    resolve_manager_method,
-    resolve_manager_method_from_instance,
-)
 
 from . import analyze, annotation_resolver, config, hook, protocols, type_checker
 
@@ -185,23 +181,6 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             extra: protocols.KnownAnnotations,
         ) -> MypyType:
             return self.plugin.analyzer.analyze_type(ctx, extra)
-
-    @hook.hook
-    class get_attribute_hook(PlainHook[T_Report, AttributeContext, MypyType]):
-        """
-        An implementation of the change found in
-        https://github.com/typeddjango/django-stubs/pull/2027
-        """
-
-        def choose(
-            self, *, fullname: str, super_hook: hook.MypyHook[AttributeContext, MypyType]
-        ) -> bool:
-            return super_hook is resolve_manager_method
-
-        def run(self, ctx: AttributeContext) -> MypyType:
-            return self.plugin.type_checker.extended_get_attribute_resolve_manager_method(
-                ctx, resolve_manager_method_from_instance=resolve_manager_method_from_instance
-            )
 
     @hook.hook
     class get_method_hook(PlainHook[T_Report, MethodContext, MypyType]):

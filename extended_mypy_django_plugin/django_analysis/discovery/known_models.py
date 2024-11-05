@@ -5,7 +5,7 @@ import inspect
 import types
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Protocol, cast
+from typing import TYPE_CHECKING, Generic, Protocol, cast
 
 from django.db import models
 
@@ -57,14 +57,7 @@ class DefaultInstalledModulesDiscovery(Generic[protocols.T_Project]):
             result[module_import_path] = entity
 
         for app in loaded_project.apps.get_app_configs():
-
-            def _compat_models_module_is_module_type(
-                models_module: Any,
-            ) -> types.ModuleType | None:
-                # older version of django-stubs typed this wrong
-                return models_module  # type: ignore[no-any-return]
-
-            if models_module := _compat_models_module_is_module_type(app.models_module):
+            if models_module := app.models_module:
                 import_path = ImportPath.from_module(models_module)
                 if import_path not in result:
                     result[import_path] = self.module_creator(

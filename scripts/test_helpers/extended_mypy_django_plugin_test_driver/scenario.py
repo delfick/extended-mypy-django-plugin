@@ -1,6 +1,5 @@
 import ast
 import dataclasses
-import importlib
 import inspect
 import pathlib
 import subprocess
@@ -127,18 +126,6 @@ class Scenario(scenarios.Scenario):
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ScenarioRunner(scenarios.ScenarioRunner[Scenario]):
-    def normalise_program_runner_notice(
-        self, options: protocols.RunOptions[Scenario], notice: protocols.ProgramNotice, /
-    ) -> protocols.ProgramNotice:
-        if importlib.metadata.version("mypy") == "1.4.0":
-            return notice.clone(
-                msg=notice.msg.replace("Type[", "type[")
-                .replace("django.db.models.query._QuerySet", "django.db.models.query.QuerySet")
-                .replace("Type[Concrete?", "type[Concrete?")
-            )
-        else:
-            return notice
-
     def execute_static_checking(
         self, options: protocols.RunOptions[Scenario]
     ) -> protocols.NoticeChecker[Scenario]:
