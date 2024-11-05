@@ -3,6 +3,11 @@
 Changelog
 ---------
 
+.. _release-0.8.0:
+
+0.8.0 - TBD
+    * Dropped support for django-stubs<5.1.1 and mypy<1.13.0
+
 .. _release-0.7.2:
 
 0.7.2 - 9 September 2024

@@ -2,6 +2,8 @@ import functools
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, cast
 
+from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy.nodes import Context, PlaceholderNode, TypeAlias, TypeInfo
 from mypy.plugin import (
     AnalyzeTypeContext,
@@ -151,9 +153,12 @@ class AnnotationResolver:
             case AttributeContext(api=api) | MethodContext(api=api) | FunctionContext(api=api):
                 context = ctx.context
                 defer = lambda: False
-                # The interface for the type checker says fail takes ctx
-                # But the implementation of TypeChecker has it as context
-                fail = functools.partial(api.fail, context=context)
+
+                def checker_fail(msg: str | ErrorMessage, code: ErrorCode | None = None) -> None:
+                    return api.fail(msg, context, code=code)
+
+                fail = checker_fail
+
                 lookup_info = functools.partial(_lookup_info, None)
                 lookup_alias = functools.partial(_lookup_alias, context.line)
                 named_type_or_none = checker_named_type_or_none

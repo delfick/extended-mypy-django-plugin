@@ -62,7 +62,7 @@ def test_works(builder: ScenarioBuilder) -> None:
             # ^ REVEAL ^ myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2]
 
             Child2.objects.all()
-            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
+            # ^ REVEAL ^ myapp.models.Child2QuerySet
 
             make_multiple_queryset(Child1)
             # ^ REVEAL ^ Union[myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]
