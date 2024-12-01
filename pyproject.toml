@@ -13,14 +13,6 @@ authors = [
 ]
 requires-python = ">=3.10"
 
-[tool.uv]
-dev-dependencies = [
-    "tools",
-    "djangoexample",
-    "proper_plugin",
-    "extended_mypy_django_plugin_test_driver",
-]
-
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -40,6 +32,14 @@ extended_mypy_django_plugin_test_driver = { workspace = true }
 
 [tool.uv.workspace]
 members = ["tools", "example", "scripts/test_helpers", "scripts/proper_plugin"]
+
+[dependency-groups]
+dev = [
+    "tools",
+    "djangoexample",
+    "proper_plugin",
+    "extended_mypy_django_plugin_test_driver",
+]
 
 [tool.ruff]
 target-version = "py310"
