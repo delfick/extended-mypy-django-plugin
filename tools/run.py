@@ -18,7 +18,7 @@ def run_with_mypy(*args: str, old: bool) -> None:
     else:
         withs = [
             "--with",
-            "django==5.1.2",
+            "django==5.1.3",
         ]
 
     try:
