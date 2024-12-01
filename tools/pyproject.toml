@@ -6,7 +6,6 @@ dependencies = [
     "click>=8.1.7",
     "ruff==0.5.0",
     "remote-pdb==2.1.0",
-    "django-stubs==5.1.1",
     "mypy==1.13.0"
 ]
 
@@ -16,4 +15,20 @@ docs = [
     "sphinx-rtd-theme==3.0.0rc1",
     "sphinx-toolbox==3.8.0",
     "sphinx==8.0.2",
+]
+old-django = [
+    "django-stubs==5.1.1",
+    "django==4.2.16"
+]
+new-django = [
+    "django-stubs==5.1.1",
+    "django==5.1.3"
+]
+
+[tool.uv]
+conflicts = [
+    [
+      { extra = "old-django" },
+      { extra = "new-django" },
+    ],
 ]

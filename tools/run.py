@@ -11,15 +11,9 @@ here = pathlib.Path(__file__).parent
 
 def run(*args: str, old: bool) -> None:
     if old:
-        withs = [
-            "--with",
-            "django==4.2.16",
-        ]
+        withs = ["--package", "tools", "--extra", "old-django"]
     else:
-        withs = [
-            "--with",
-            "django==5.1.3",
-        ]
+        withs = ["--package", "tools", "--extra", "new-django"]
 
     try:
         subprocess.run(["/bin/bash", str(here / "uv"), "run", *withs, *args], check=True)
@@ -134,8 +128,16 @@ def types(args: list[str], old: bool) -> None:
     run("python", "-m", "mypy", *locations, *args, "--enable-incomplete-feature=Unpack", old=old)
 
     if not specified:
-        os.chdir(here.parent / "example")
-        run("python", "-m", "mypy", ".", *args, old=old)
+        run(
+            "python",
+            "-m",
+            "mypy",
+            str(here.parent / "example"),
+            "--config-file",
+            str(here.parent / "example" / "mypy.ini"),
+            *args,
+            old=old,
+        )
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
