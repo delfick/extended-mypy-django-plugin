@@ -9,7 +9,7 @@ import click
 here = pathlib.Path(__file__).parent
 
 
-def run_with_mypy(*args: str, old: bool) -> None:
+def run(*args: str, old: bool) -> None:
     if old:
         withs = [
             "--with",
@@ -55,7 +55,7 @@ def docs(args: list[str], old: bool) -> None:
     (build_path / "html").mkdir(exist_ok=True, parents=True)
     (build_path / "doctrees").mkdir(exist_ok=True, parents=True)
 
-    run_with_mypy(
+    run(
         "--package",
         "tools",
         "--extra",
@@ -131,13 +131,11 @@ def types(args: list[str], old: bool) -> None:
             os.chdir(example_root)
         locations = [str(path) for path in paths]
 
-    run_with_mypy(
-        "python", "-m", "mypy", *locations, *args, "--enable-incomplete-feature=Unpack", old=old
-    )
+    run("python", "-m", "mypy", *locations, *args, "--enable-incomplete-feature=Unpack", old=old)
 
     if not specified:
         os.chdir(here.parent / "example")
-        run_with_mypy("python", "-m", "mypy", ".", *args, old=old)
+        run("python", "-m", "mypy", ".", *args, old=old)
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
@@ -147,7 +145,7 @@ def tests(args: list[str], old: bool) -> None:
     """
     Run pytest
     """
-    run_with_mypy("python", "-m", "pytest", *args, old=old)
+    run("python", "-m", "pytest", *args, old=old)
 
 
 if __name__ == "__main__":
