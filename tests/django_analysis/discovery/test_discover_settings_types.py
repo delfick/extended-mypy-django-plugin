@@ -1,4 +1,5 @@
 import importlib
+import re
 
 from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
 
@@ -7,6 +8,13 @@ class TestSettingsTypesDiscovery:
     def test_it_looks_at_values_to_determine_types(
         self, loaded_django_example: protocols.Loaded[Project]
     ) -> None:
+        class Regex:
+            def __init__(self, pattern: str) -> None:
+                self._pattern = pattern
+
+            def __eq__(self, o: object) -> bool:
+                return bool(isinstance(o, str) and re.match(self._pattern, o))
+
         settings_types = discovery.NaiveSettingsTypesDiscovery[Project]()(loaded_django_example)
         expected = {
             "ABSOLUTE_URL_OVERRIDES": "<class 'dict'>",
@@ -16,7 +24,7 @@ class TestSettingsTypesDiscovery:
             "AUTHENTICATION_BACKENDS": "<class 'list'>",
             "AUTH_PASSWORD_VALIDATORS": "<class 'list'>",
             "AUTH_USER_MODEL": "<class 'str'>",
-            "BASE_DIR": "<class 'pathlib.PosixPath'>",
+            "BASE_DIR": Regex("<class 'pathlib.*.PosixPath'>"),
             "CACHES": "<class 'dict'>",
             "CACHE_MIDDLEWARE_ALIAS": "<class 'str'>",
             "CACHE_MIDDLEWARE_KEY_PREFIX": "<class 'str'>",
