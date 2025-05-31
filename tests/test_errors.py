@@ -275,7 +275,7 @@ class TestErrors:
 
                 assert self.result.exit_code == 0
                 assert re.match(
-                    "Success: no issues found in \d+ source files?",
+                    r"Success: no issues found in \d+ source files?",
                     (self.result.stdout + self.result.stderr).strip(),
                 )
 
