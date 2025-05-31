@@ -111,7 +111,7 @@ class TestRenamingQuerySet:
                 import child1.models
                 import child2.models
                 import parent.models
-                ConcreteQuerySet__Parent = parent.models.ParentQuerySet | parent.models.ParentQuerySet
+                ConcreteQuerySet__Parent = parent.models.ParentQuerySet
                 Concrete__Parent = child1.models.Child1 | child2.models.Child2
                 """,
         }

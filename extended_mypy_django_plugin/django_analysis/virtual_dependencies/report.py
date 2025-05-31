@@ -329,10 +329,16 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 added_imports.add(conc.import_path)
                 if conc.default_custom_queryset:
                     added_imports.add(conc.default_custom_queryset)
-                    querysets.append(conc.default_custom_queryset)
+                    queryset = str(conc.default_custom_queryset)
                 else:
                     added_imports.add(ImportPath("django.db.models.QuerySet"))
-                    querysets.append(f"django.db.models.QuerySet[{conc.import_path}]")
+                    queryset = f"django.db.models.QuerySet[{conc.import_path}]"
+
+                # Check for existence instead of using a set
+                # So that the order of the querysets matches the order
+                # of the concrete models
+                if queryset not in querysets:
+                    querysets.append(queryset)
 
             ns, name = ImportPath.split(model)
             concrete_name = f"Concrete__{name}"
