@@ -432,7 +432,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pytest", specifier = "==8.1.1" },
-    { name = "pytest-typing-runner", specifier = "==0.6.1" },
+    { name = "pytest-typing-runner", specifier = "==0.6.2" },
 ]
 
 [[package]]
@@ -818,11 +818,11 @@ wheels = [
 
 [[package]]
 name = "pytest-typing-runner"
-version = "0.6.1"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bf/63/34fa9294404aa42f4ef97086753d05495b24dcf75e4f0f22fb43bbdf2d81/pytest_typing_runner-0.6.1.tar.gz", hash = "sha256:bf34294f82cec4fad4bd976b568451b059a450de44a2efba8a29027fc5aad3b9", size = 16917323, upload-time = "2024-10-27T11:36:58.266Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/34/026d4c8490653fbf34d96c969fdc0f33c4883f0f09b4532398f31f2c5bc0/pytest_typing_runner-0.6.2.tar.gz", hash = "sha256:49aee633c6766ef6643e37486f9252694ba5bdc521b230cb4ec875cf30a97dd2", size = 20498879, upload-time = "2025-05-31T01:18:39.419Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/d8/1cf8d123ce3db47907c1995395a227501d64781ee9d02ed948a8b461d0d2/pytest_typing_runner-0.6.1-py3-none-any.whl", hash = "sha256:f946ee22b6ba41711524d4c8b2df20730e387df3ab5a1c5bc403f3aa3f6fbf1c", size = 54071, upload-time = "2024-10-27T11:36:55.781Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/11/8a1cfb9c07b0ce6ef42d3c060defc4e2625fd947fb215963f97838721506/pytest_typing_runner-0.6.2-py3-none-any.whl", hash = "sha256:94c0039a5f1cdc7f5b8995a62c4746cf18a23b67350e4cb629be5fe95ab90b5b", size = 54052, upload-time = "2025-05-31T01:18:37.161Z" },
 ]
 
 [[package]]
