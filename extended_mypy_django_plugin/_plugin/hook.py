@@ -276,4 +276,4 @@ class hook(Generic[T_Plugin, T_Ctx, T_Ret]):
         return self._hook_instance.hook
 
 
-__all__ = ["Hook", "PlainHook", "HookWithExtra", "hook", "Choice", "MypyHook", "MypyHookMaker"]
+__all__ = ["Choice", "Hook", "HookWithExtra", "MypyHook", "MypyHookMaker", "PlainHook", "hook"]

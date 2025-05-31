@@ -5,11 +5,11 @@ from ._plugin.plugin import ExtendedMypyStubs
 from ._plugin.virtual_dependencies import VirtualDependencyHandler, VirtualDependencyHandlerBase
 
 __all__ = [
-    "hook",
-    "protocols",
+    "ExtendedMypyStubs",
     "ExtraOptions",
     "PluginProvider",
-    "ExtendedMypyStubs",
     "VirtualDependencyHandler",
     "VirtualDependencyHandlerBase",
+    "hook",
+    "protocols",
 ]

@@ -94,7 +94,7 @@ class VirtualDependencyInstaller(Generic[protocols.T_VirtualDependency, protocol
         in other parts of the codebase.
         """
         virtual_import_path = self.virtual_dependency_namer(module_import_path)
-        location = destination / f'{virtual_import_path.replace(".", os.sep)}.py'
+        location = destination / f"{virtual_import_path.replace('.', os.sep)}.py"
         if location.exists():
             return None
 

@@ -7,16 +7,16 @@ from .modules import Module
 from .project import Discovered, Loaded, Project, replaced_env_vars_and_sys_path
 
 __all__ = [
-    "protocols",
-    "discovery",
-    "virtual_dependencies",
+    "Discovered",
     "Field",
     "ImportPath",
-    "adler32_hash",
+    "Loaded",
     "Model",
     "Module",
     "Project",
-    "Loaded",
-    "Discovered",
+    "adler32_hash",
+    "discovery",
+    "protocols",
     "replaced_env_vars_and_sys_path",
+    "virtual_dependencies",
 ]
