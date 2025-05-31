@@ -338,6 +338,6 @@ class TestErrors:
 
                 class Child(common_models.Parent):
                     response_body = models.BooleanField()
-                    # ^ ERROR(assignment) ^ Incompatible types in assignment (expression has type "BooleanField[bool | Combinable, bool]", base class "Parent" defined the type as "TextField[str | Combinable, str]")
+                    # ^ ERROR(assignment) ^ Incompatible types in assignment (expression has type "bool", base class "Parent" defined the type as "str")
                 """,
             )
