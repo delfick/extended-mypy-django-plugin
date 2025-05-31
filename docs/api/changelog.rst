@@ -3,6 +3,11 @@
 Changelog
 ---------
 
+.. _release-0.8.1:
+
+0.8.1 - TBD
+    * Dropped support for mypy<1.16.0
+
 .. _release-0.8.0:
 
 0.8.0 - 25 November 2024
