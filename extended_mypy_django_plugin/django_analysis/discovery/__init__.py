@@ -5,11 +5,11 @@ from .known_models import DefaultInstalledModulesDiscovery, make_module_creator
 from .settings_types import NaiveSettingsTypesDiscovery
 
 __all__ = [
+    "ConcreteModelsDiscovery",
+    "DefaultInstalledModulesDiscovery",
     "Discovery",
     "ImportPath",
     "InvalidImportPath",
-    "make_module_creator",
-    "DefaultInstalledModulesDiscovery",
-    "ConcreteModelsDiscovery",
     "NaiveSettingsTypesDiscovery",
+    "make_module_creator",
 ]

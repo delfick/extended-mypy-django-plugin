@@ -15,7 +15,7 @@ class Namer:
     )
 
     def __call__(self, module: protocols.ImportPath, /) -> protocols.ImportPath:
-        return ImportPath(f"{self.namespace}.mod_{module.replace('.','_')}")
+        return ImportPath(f"{self.namespace}.mod_{module.replace('.', '_')}")
 
 
 class TestVirtualDependency:

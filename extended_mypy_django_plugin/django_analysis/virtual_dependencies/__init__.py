@@ -15,19 +15,19 @@ from .report import (
 )
 
 __all__ = [
-    "Report",
     "CombinedReport",
-    "ReportFactory",
+    "RenderedVirtualDependency",
+    "Report",
     "ReportCombiner",
+    "ReportFactory",
     "ReportInstaller",
     "ReportSummaryGetter",
-    "make_report_factory",
+    "VirtualDependency",
+    "VirtualDependencyGenerator",
+    "VirtualDependencyHandler",
+    "VirtualDependencyInstaller",
     "VirtualDependencyNamer",
     "VirtualDependencyScribe",
-    "VirtualDependencyHandler",
-    "VirtualDependency",
     "VirtualDependencySummary",
-    "VirtualDependencyGenerator",
-    "VirtualDependencyInstaller",
-    "RenderedVirtualDependency",
+    "make_report_factory",
 ]
