@@ -2,7 +2,7 @@ def interface____differentiated__7() -> None:
     return None
 
 mod = "djangoexample.relations1.models"
-summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=448140218"
+summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=448140218::v2"
 
 import django.db.models
 import djangoexample.relations1.models

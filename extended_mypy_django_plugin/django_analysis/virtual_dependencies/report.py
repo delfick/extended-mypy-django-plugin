@@ -251,6 +251,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 str(summary.module_import_path),
                 f"installed_apps={self.installed_apps_hash}",
                 f"significant={significant}",
+                "v2",
             ]
         )
 
