@@ -31,7 +31,7 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Install venv
-        run: ./tools/uv sync --extra tools --locked
+        run: ./tools/uv sync --locked
 
       - name: Run tests without cache
         shell: bash
