@@ -7,6 +7,7 @@ Changelog
 
 0.8.1 - TBD
     * Dropped support for mypy<1.16.0
+    * Virtual dependency reports now de-duplicate queryset unions
 
 .. _release-0.8.0:
 
