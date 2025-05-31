@@ -2,7 +2,7 @@ def interface____differentiated__2() -> None:
     return None
 
 mod = "django.contrib.auth.models"
-summary = "__virtual__.mod_2289830437::django.contrib.auth.models::installed_apps=__installed_apps_hash__::significant=1922836542"
+summary = "__virtual__.mod_2289830437::django.contrib.auth.models::installed_apps=__installed_apps_hash__::significant=1922836542::v2"
 
 import django.contrib.auth.models
 import django.db.models

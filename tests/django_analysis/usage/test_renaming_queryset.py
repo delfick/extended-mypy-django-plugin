@@ -70,7 +70,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "django.contrib.contenttypes.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v2"
 
                 import django.contrib.contenttypes.models
                 import django.db.models
@@ -82,7 +82,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "child1.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=967422822"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=967422822::v2"
 
                 import child1.models
                 import parent.models
@@ -94,7 +94,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "child2.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=1344320379"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=1344320379::v2"
 
                 import child2.models
                 import parent.models
@@ -106,7 +106,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "parent.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=309881802"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=309881802::v2"
 
                 import child1.models
                 import child2.models
@@ -172,7 +172,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child1.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2468262588"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2468262588::v2"
 
             import child1.models
             ConcreteQuerySet__Child1 = child1.models.Child1QuerySet
@@ -184,7 +184,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child2.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2877928147"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2877928147::v2"
 
             import child2.models
             ConcreteQuerySet__Child2 = child2.models.Child2QuerySet
@@ -196,7 +196,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "parent.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=3300935593"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=3300935593::v2"
 
             import child1.models
             import child2.models
@@ -283,7 +283,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "django.contrib.contenttypes.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v2"
 
                 import django.contrib.contenttypes.models
                 import django.db.models
@@ -295,7 +295,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "child1.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=1784590644"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=1784590644::v2"
 
                 import child1.models
                 ConcreteQuerySet__Child = child1.models.ChildQuerySet
@@ -306,7 +306,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "child2.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2056565059"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2056565059::v2"
 
                 import child2.models
                 ConcreteQuerySet__Child = child2.models.ChildQuerySet
@@ -317,7 +317,7 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "parent.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1191855927"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1191855927::v2"
 
                 import child1.models
                 import child2.models
@@ -367,7 +367,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child1.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2733879748"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2733879748::v2"
 
             import child1.models
             ConcreteQuerySet__Child = child1.models._Child1QuerySet
@@ -379,7 +379,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child2.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3022762452"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3022762452::v2"
 
             import child2.models
             ConcreteQuerySet__Child = child2.models._Child2QuerySet
@@ -391,7 +391,7 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "parent.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1197557559"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1197557559::v2"
 
             import child1.models
             import child2.models

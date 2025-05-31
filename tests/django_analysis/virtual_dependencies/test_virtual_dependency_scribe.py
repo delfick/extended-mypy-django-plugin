@@ -189,7 +189,7 @@ class TestVirtualDependencyScribe:
                 return None
 
             mod = "djangoexample.exampleapp2.models"
-            summary = "__virtual__.mod_3537308831::djangoexample.exampleapp2.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_great_good__"
+            summary = "__virtual__.mod_3537308831::djangoexample.exampleapp2.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_great_good__::v2"
 
             import django.db.models
             import djangoexample.exampleapp2.models
@@ -204,6 +204,7 @@ class TestVirtualDependencyScribe:
                 "::djangoexample.exampleapp2.models"
                 "::installed_apps=__installed_apps_hash__"
                 "::significant=__hashed_for_great_good__"
+                "::v2"
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
@@ -292,7 +293,7 @@ class TestVirtualDependencyScribe:
                 return None
 
             mod = "djangoexample.relations1.models"
-            summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_greater_good__"
+            summary = "__virtual__.mod_3327724610::djangoexample.relations1.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_greater_good__::v2"
 
             import django.db.models
             import djangoexample.relations1.models
@@ -313,6 +314,7 @@ class TestVirtualDependencyScribe:
                 "::djangoexample.relations1.models"
                 "::installed_apps=__installed_apps_hash__"
                 "::significant=__hashed_for_greater_good__"
+                "::v2"
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
@@ -364,7 +366,7 @@ class TestVirtualDependencyScribe:
                 return None
 
             mod = "djangoexample.empty_models.models"
-            summary = "__virtual__.mod_3808300370::djangoexample.empty_models.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_bad__"
+            summary = "__virtual__.mod_3808300370::djangoexample.empty_models.models::installed_apps=__installed_apps_hash__::significant=__hashed_for_bad__::v2"
             """).strip()
 
             summary_hash = (
@@ -372,6 +374,7 @@ class TestVirtualDependencyScribe:
                 "::djangoexample.empty_models.models"
                 "::installed_apps=__installed_apps_hash__"
                 "::significant=__hashed_for_bad__"
+                "::v2"
             )
 
             written = scenario.scribe(hasher=hasher, virtual_dependency=virtual_dependency)
