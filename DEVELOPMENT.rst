@@ -1,7 +1,7 @@
 Development
 ===========
 
-This project uses `uv` to manage a ``virtualenv``.
+This project uses ``uv`` to manage a ``virtualenv``.
 
 All the commands will only install things locally to this repository.
 
