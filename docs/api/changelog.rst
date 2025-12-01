@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.8.2:
 
-0.8.2 - TBD
+0.8.2 - 2 December 2025
     * Small changes to be compatible with mypy 1.19
       (`#69 <https://github.com/delfick/extended-mypy-django-plugin/pull/69>`_
       and `#70 <https://github.com/delfick/extended-mypy-django-plugin/pull/70>`_)
