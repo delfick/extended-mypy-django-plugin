@@ -1,4 +1,4 @@
-mypy==1.11.2
+mypy==1.19.0
 django-stubs==5.0.2
 sphinx-autobuild==2024.9.19
 sphinx-rtd-theme==3.0.0rc1

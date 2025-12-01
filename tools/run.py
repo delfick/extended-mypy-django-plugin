@@ -125,7 +125,7 @@ def types(args: list[str], old: bool) -> None:
             os.chdir(example_root)
         locations = [str(path) for path in paths]
 
-    run("python", "-m", "mypy", *locations, *args, "--enable-incomplete-feature=Unpack", old=old)
+    run("python", "-m", "mypy", *locations, *args, old=old)
 
     if not specified:
         run(

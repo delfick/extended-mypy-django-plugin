@@ -157,7 +157,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
     @hook.hook
     class get_type_analyze_hook(
-        HookWithExtra[T_Report, AnalyzeTypeContext, protocols.KnownAnnotations, MypyType]
+        HookWithExtra[protocols.Report, AnalyzeTypeContext, protocols.KnownAnnotations, MypyType]
     ):
         """
         Resolve classes annotated with ``Concrete`` or ``DefaultQuerySet``.
@@ -183,7 +183,7 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
             return self.plugin.analyzer.analyze_type(ctx, extra)
 
     @hook.hook
-    class get_method_hook(PlainHook[T_Report, MethodContext, MypyType]):
+    class get_method_hook(PlainHook[protocols.Report, MethodContext, MypyType]):
         """
         Used to ensure Concrete.cast_as_concrete returns the appropriate type.
         """

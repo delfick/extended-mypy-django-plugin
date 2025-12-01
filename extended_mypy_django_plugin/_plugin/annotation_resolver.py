@@ -155,7 +155,7 @@ class AnnotationResolver:
                 defer = lambda: False
 
                 def checker_fail(msg: str | ErrorMessage, code: ErrorCode | None = None) -> None:
-                    return api.fail(msg, context, code=code)
+                    api.fail(msg, context, code=code)
 
                 fail = checker_fail
 

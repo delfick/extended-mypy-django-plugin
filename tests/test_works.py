@@ -39,7 +39,7 @@ def test_works(builder: ScenarioBuilder) -> None:
 
             def ones(model: type[Concrete[Parent]]) -> list[str]:
                 model.objects
-                # ^ REVEAL ^ Union[django.db.models.manager.Manager[myapp.models.Child1], myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2], django.db.models.manager.Manager[myapp.models.Child3], django.db.models.manager.Manager[myapp2.models.ChildOther]]
+                # ^ REVEAL ^ django.db.models.manager.Manager[myapp.models.Child1] | myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2] | django.db.models.manager.Manager[myapp.models.Child3] | django.db.models.manager.Manager[myapp2.models.ChildOther]
                 return list(model.objects.values_list("one", flat=True))
 
 
@@ -47,7 +47,7 @@ def test_works(builder: ScenarioBuilder) -> None:
             # ^ REVEAL ^ myapp.models.Child1
 
             make_any_queryset(Child1)
-            # ^ REVEAL ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+            # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
             make_child1_queryset()
             # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
@@ -65,6 +65,6 @@ def test_works(builder: ScenarioBuilder) -> None:
             # ^ REVEAL ^ myapp.models.Child2QuerySet
 
             make_multiple_queryset(Child1)
-            # ^ REVEAL ^ Union[myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]
+            # ^ REVEAL ^ myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
             """,
         )
