@@ -26,20 +26,20 @@ class TestConcreteAnnotations:
                         self.model = model
 
                 found = Concrete.cast_as_concrete(Thing(model=model).model)
-                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                # ^ REVEAL ^ type[simple.models.Follow1] | type[simple.models.Follow2]
 
                 thing = Thing(model=model)
                 found = Concrete.cast_as_concrete(thing.model)
-                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                # ^ REVEAL ^ type[simple.models.Follow1] | type[simple.models.Follow2]
 
                 model = Concrete.cast_as_concrete(model)
-                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                # ^ REVEAL ^ type[simple.models.Follow1] | type[simple.models.Follow2]
 
                 model2: type[Leader] = Follow1
                 # ^ REVEAL ^ type[leader.models.Leader]
 
                 model3 = Concrete.cast_as_concrete(model2)
-                # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                # ^ REVEAL ^ type[simple.models.Follow1] | type[simple.models.Follow2]
 
                 model2
                 # ^ REVEAL ^ type[leader.models.Leader]
@@ -48,13 +48,13 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ leader.models.Leader
 
                 instance = Concrete.cast_as_concrete(instance)
-                # ^ REVEAL ^ Union[simple.models.Follow1, simple.models.Follow2]
+                # ^ REVEAL ^ simple.models.Follow1 | simple.models.Follow2
 
                 instance2: Leader = Follow1.objects.create()
                 # ^ REVEAL ^ leader.models.Leader
 
                 instance3 = Concrete.cast_as_concrete(instance2)
-                # ^ REVEAL ^ Union[simple.models.Follow1, simple.models.Follow2]
+                # ^ REVEAL ^ simple.models.Follow1 | simple.models.Follow2
 
                 instance2
                 # ^ REVEAL ^ leader.models.Leader
@@ -71,7 +71,7 @@ class TestConcreteAnnotations:
 
                 def myfunc(model: type[T_LeaderNormal]) -> T_LeaderNormal:
                     concrete = Concrete.cast_as_concrete(model)
-                    # ^ REVEAL ^ Union[type[simple.models.Follow1], type[simple.models.Follow2]]
+                    # ^ REVEAL ^ type[simple.models.Follow1] | type[simple.models.Follow2]
                     created = concrete.objects.create()
                     assert isinstance(created, model)
                     return created
@@ -112,26 +112,26 @@ class TestConcreteAnnotations:
                     return True
 
                 models: Concrete[Parent]
-                # ^ REVEAL ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]
+                # ^ REVEAL ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 qs: DefaultQuerySet[Parent]
-                # ^ REVEAL ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
                 cls: type[Parent] = Child1
                 assert check_cls_with_type_guard(cls)
                 cls
-                # ^ REVEAL ^ Union[type[myapp.models.Child1], type[myapp.models.Child2], type[myapp.models.Child3], type[myapp2.models.ChildOther]]
+                # ^ REVEAL ^ type[myapp.models.Child1] | type[myapp.models.Child2] | type[myapp.models.Child3] | type[myapp2.models.ChildOther]
 
                 instance: Parent = cast(Child1, None)
                 assert check_instance_with_type_guard(instance)
                 instance
-                # ^ REVEAL ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]
+                # ^ REVEAL ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 children: Concrete[Parent]
-                # ^ REVEAL ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]
+                # ^ REVEAL ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 children_qs: DefaultQuerySet[Parent]
-                # ^ REVEAL ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
                 child: Concrete[Child1]
                 # ^ REVEAL ^ myapp.models.Child1
@@ -143,10 +143,10 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ myapp.models.Child2QuerySet
 
                 t1_children: type[Concrete[Parent]]
-                # ^ REVEAL ^ Union[type[myapp.models.Child1], type[myapp.models.Child2], type[myapp.models.Child3], type[myapp2.models.ChildOther]]
+                # ^ REVEAL ^ type[myapp.models.Child1] | type[myapp.models.Child2] | type[myapp.models.Child3] | type[myapp2.models.ChildOther]
 
                 t1_children_qs: type[DefaultQuerySet[Parent]]
-                # ^ REVEAL ^ Union[type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]], type[myapp.models.Child2QuerySet], type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]], type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]]
+                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
 
                 t1_child: type[Concrete[Child1]]
                 # ^ REVEAL ^ type[myapp.models.Child1]
@@ -158,10 +158,10 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ type[myapp.models.Child2QuerySet]
 
                 t2_children: Concrete[type[Parent]]
-                # ^ REVEAL ^ Union[type[myapp.models.Child1], type[myapp.models.Child2], type[myapp.models.Child3], type[myapp2.models.ChildOther]]
+                # ^ REVEAL ^ type[myapp.models.Child1] | type[myapp.models.Child2] | type[myapp.models.Child3] | type[myapp2.models.ChildOther]
 
                 t2_children_qs: DefaultQuerySet[type[Parent]]
-                # ^ REVEAL ^ Union[type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]], type[myapp.models.Child2QuerySet], type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]], type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]]
+                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
 
                 t2_child: Concrete[type[Child1]]
                 # ^ REVEAL ^ type[myapp.models.Child1]
@@ -271,7 +271,7 @@ class TestConcreteAnnotations:
                     @classmethod
                     def new(cls) -> Self:
                         concrete = Concrete.cast_as_concrete(cls)
-                        # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        # ^ REVEAL ^ type[example.models.Follower1] | type[example.models.Follower2]
                         created = concrete.objects.create()
                         assert isinstance(created, cls)
                         return created
@@ -279,7 +279,7 @@ class TestConcreteAnnotations:
                     @classmethod
                     def new_with_kwargs(cls, **kwargs: Any) -> Self:
                         concrete = Concrete.cast_as_concrete(cls)
-                        # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        # ^ REVEAL ^ type[example.models.Follower1] | type[example.models.Follower2]
                         created = concrete.objects.create(**kwargs)
                         assert isinstance(created, cls)
                         return created
@@ -296,7 +296,7 @@ class TestConcreteAnnotations:
 
                 def make_instance(cls: type[T_Leader]) -> T_Leader:
                     created = cls.new()
-                    # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                    # ^ REVEAL ^ example.models.Follower1 | example.models.Follower2
                     assert isinstance(created, cls)
                     return created
                 """,
@@ -317,12 +317,12 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Follower1
 
                 model: type[Concrete[Leader]] = Follower1
-                # ^ REVEAL ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                # ^ REVEAL ^ type[example.models.Follower1] | type[example.models.Follower2]
                 """,
                 # TODO: Make this possible
                 # would require generating overload variants on make_instance
                 # instance3 = make_instance(model)
-                # # ^ REVEAL ^ Union[example.models.Follower1, example.models.Follower2]
+                # # ^ REVEAL ^ example.models.Follower1 | example.models.Follower2
                 # """,
             )
 
@@ -357,14 +357,14 @@ class TestConcreteAnnotations:
                     @classmethod
                     def new(cls) -> Self:
                         concrete = Concrete.cast_as_concrete(cls)
-                        # ^ REVEAL[cls-all] ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                        # ^ REVEAL[cls-all] ^ type[example.models.Follower1] | type[example.models.Follower2]
                         created = concrete.objects.create()
                         assert isinstance(created, cls)
                         return created
 
                     def qs(self) -> DefaultQuerySet[Leader]:
                         concrete = Concrete.cast_as_concrete(self)
-                        # ^ REVEAL[self-all] ^ Union[example.models.Follower1, example.models.Follower2]
+                        # ^ REVEAL[self-all] ^ example.models.Follower1 | example.models.Follower2
                         return concrete.__class__.objects.filter(pk=self.pk)
 
                     class Meta:
@@ -383,7 +383,7 @@ class TestConcreteAnnotations:
 
                 if TYPE_CHECKING:
                     _CL: Concrete[Leader]
-                    # ^ REVEAL[base-all] ^ Union[example.models.Follower1, example.models.Follower2]
+                    # ^ REVEAL[base-all] ^ example.models.Follower1 | example.models.Follower2
                 """,
             )
 
@@ -393,13 +393,13 @@ class TestConcreteAnnotations:
                 from extended_mypy_django_plugin import Concrete
 
                 model: type[Concrete[Leader]]
-                # ^ REVEAL[model] ^ Union[type[example.models.Follower1], type[example.models.Follower2]]
+                # ^ REVEAL[model] ^ type[example.models.Follower1] | type[example.models.Follower2]
 
                 leader = model.new()
-                # ^ REVEAL[leader-new] ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL[leader-new] ^ example.models.Follower1 | example.models.Follower2
 
                 qs = leader.qs()
-                # ^ REVEAL[all-qs] ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
+                # ^ REVEAL[all-qs] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 follower1 = Follower1.new()
                 # ^ REVEAL ^ example.models.Follower1
@@ -413,7 +413,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Leader
 
                 narrowed = Concrete.cast_as_concrete(other)
-                # ^ REVEAL[narrowed] ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL[narrowed] ^ example.models.Follower1 | example.models.Follower2
                 other
                 # ^ REVEAL ^ example.models.Leader
                 """,
@@ -448,21 +448,21 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="cls-all",
                     revealed=[
-                        "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]"
+                        "type[example.models.Follower1] | type[example.models.Follower2] | type[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="self-all",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="base-all",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 ),
@@ -472,28 +472,28 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="model",
                     revealed=[
-                        "Union[type[example.models.Follower1], type[example.models.Follower2], type[example2.models.Follower3]]"
+                        "type[example.models.Follower1] | type[example.models.Follower2] | type[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="leader-new",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs",
                     revealed=[
-                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]]"
+                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="narrowed",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 ),
@@ -532,7 +532,7 @@ class TestConcreteAnnotations:
 
                 def thing() -> None:
                     all_concrete: Concrete[Leader]
-                    # ^ REVEAL[leader-concrete-where-leader-defined] ^ Union[example.models.Follower1, example.models.Follower2]
+                    # ^ REVEAL[leader-concrete-where-leader-defined] ^ example.models.Follower1 | example.models.Follower2
 
                 class Follower1QuerySet(models.QuerySet["Follower1"]):
                     ...
@@ -577,7 +577,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ example.models.Follower1
 
                 all_concrete: Concrete[Leader]
-                # ^ REVEAL[all-concrete] ^ Union[example.models.Follower1, example.models.Follower2]
+                # ^ REVEAL[all-concrete] ^ example.models.Follower1 | example.models.Follower2
 
                 follower1 = Follower1.objects.create()
                 # ^ REVEAL ^ example.models.Follower1
@@ -590,13 +590,13 @@ class TestConcreteAnnotations:
                 # TODO: Figure out how to make the queryset line up
                 
                 qs1 = func(follower1)
-                # ^ REVEAL[all-qs1] ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
+                # ^ REVEAL[all-qs1] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 qs2 = func2(follower1)
-                # ^ REVEAL[all-qs2] ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
+                # ^ REVEAL[all-qs2] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 qs5 = make_queryset(follower1)
-                # ^ REVEAL[all-qs3] ^ Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]]
+                # ^ REVEAL[all-qs3] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
                 """,
             )
 
@@ -638,7 +638,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="leader-concrete-where-leader-defined",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 )
@@ -648,7 +648,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="all-concrete",
                     revealed=[
-                        "Union[example.models.Follower1, example.models.Follower2, example2.models.Follower3]"
+                        "example.models.Follower1 | example.models.Follower2 | example2.models.Follower3"
                     ],
                     replace=True,
                 ),
@@ -656,21 +656,21 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="all-qs1",
                     revealed=[
-                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs2",
                     revealed=[
-                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs3",
                     revealed=[
-                        "Union[example.models.Follower1QuerySet, django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2], example2.models.Follower3QuerySet]"
+                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
                     ],
                     replace=True,
                 ),
@@ -797,10 +797,10 @@ class TestConcreteAnnotations:
                 from myapp.models import Parent
 
                 models: Concrete[Parent]
-                # ^ REVEAL[concrete-parent] ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]
+                # ^ REVEAL[concrete-parent] ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 qs: DefaultQuerySet[Parent]
-                # ^ REVEAL[qs-parent] ^ Union[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1], myapp.models.Child2QuerySet, django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3], django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+                # ^ REVEAL[qs-parent] ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
                 """,
             )
 
@@ -814,11 +814,11 @@ class TestConcreteAnnotations:
             builder.on("main.py").expect(
                 notices.RemoveFromRevealedType(
                     name="concrete-parent",
-                    remove=", myapp2.models.ChildOther",
+                    remove=" | myapp2.models.ChildOther",
                 ),
                 notices.RemoveFromRevealedType(
                     name="qs-parent",
-                    remove=", django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]",
+                    remove=" | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]",
                 ),
             )
 
@@ -886,7 +886,7 @@ class TestConcreteAnnotations:
                 from myapp.models import Parent
 
                 models: Concrete[Parent]
-                # ^ REVEAL[concrete-parent] ^ Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3]
+                # ^ REVEAL[concrete-parent] ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3
 
                 qs: DefaultQuerySet[Parent]
                 qs.values("concrete_from_myapp")
@@ -905,7 +905,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="concrete-parent",
                     revealed=[
-                        "Union[myapp.models.Child1, myapp.models.Child2, myapp.models.Child3, myapp2.models.ChildOther]"
+                        "myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther"
                     ],
                     replace=True,
                 ),
@@ -1044,14 +1044,14 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="concrete-leader",
                     revealed=[
-                        "Union[follower1.models.follower1.Follower1, follower1.models.follower2.Follower2]"
+                        "follower1.models.follower1.Follower1 | follower1.models.follower2.Follower2"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="qs-leader",
                     revealed=[
-                        "Union[follower1.models.follower1.Follower1QuerySet, follower1.models.follower2.Follower2QuerySet]"
+                        "follower1.models.follower1.Follower1QuerySet | follower1.models.follower2.Follower2QuerySet"
                     ],
                     replace=True,
                 ),
@@ -1174,15 +1174,13 @@ class TestConcreteAnnotations:
             builder.on("main.py").expect(
                 notices.AddRevealedTypes(
                     name="concrete-leader",
-                    revealed=[
-                        "Union[follower1.models.follower1.Follower1, follower2.models.Follower2]"
-                    ],
+                    revealed=["follower1.models.follower1.Follower1 | follower2.models.Follower2"],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="qs-leader",
                     revealed=[
-                        "Union[follower1.models.follower1.Follower1QuerySet, follower2.models.Follower2QuerySet]"
+                        "follower1.models.follower1.Follower1QuerySet | follower2.models.Follower2QuerySet"
                     ],
                     replace=True,
                 ),
