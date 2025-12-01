@@ -1,20 +1,8 @@
 from mypy.plugin import AnalyzeTypeContext
+from mypy.types import HasTypeVars, get_proper_type
 from mypy.types import Type as MypyType
-from mypy.types import TypeQuery, TypeVarType, get_proper_type
 
 from . import protocols
-
-
-class HasTypeVars(TypeQuery[bool]):
-    """
-    Find where we have a concrete annotation
-    """
-
-    def __init__(self) -> None:
-        super().__init__(any)
-
-    def visit_type_var(self, t: TypeVarType) -> bool:
-        return True
 
 
 class Analyzer:
