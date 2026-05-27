@@ -115,7 +115,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 qs: DefaultQuerySet[Parent]
-                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
+                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet[myapp.models.Child2] | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
                 cls: type[Parent] = Child1
                 assert check_cls_with_type_guard(cls)
@@ -131,7 +131,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 children_qs: DefaultQuerySet[Parent]
-                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
+                # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet[myapp.models.Child2] | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
                 child: Concrete[Child1]
                 # ^ REVEAL ^ myapp.models.Child1
@@ -140,13 +140,13 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
 
                 child2_qs: DefaultQuerySet[Child2]
-                # ^ REVEAL ^ myapp.models.Child2QuerySet
+                # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
 
                 t1_children: type[Concrete[Parent]]
                 # ^ REVEAL ^ type[myapp.models.Child1] | type[myapp.models.Child2] | type[myapp.models.Child3] | type[myapp2.models.ChildOther]
 
                 t1_children_qs: type[DefaultQuerySet[Parent]]
-                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet[myapp.models.Child2]] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
 
                 t1_child: type[Concrete[Child1]]
                 # ^ REVEAL ^ type[myapp.models.Child1]
@@ -155,13 +155,13 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]
 
                 t1_child2_qs: type[DefaultQuerySet[Child2]]
-                # ^ REVEAL ^ type[myapp.models.Child2QuerySet]
+                # ^ REVEAL ^ type[myapp.models.Child2QuerySet[myapp.models.Child2]]
 
                 t2_children: Concrete[type[Parent]]
                 # ^ REVEAL ^ type[myapp.models.Child1] | type[myapp.models.Child2] | type[myapp.models.Child3] | type[myapp2.models.ChildOther]
 
                 t2_children_qs: DefaultQuerySet[type[Parent]]
-                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
+                # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]] | type[myapp.models.Child2QuerySet[myapp.models.Child2]] | type[django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3]] | type[django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]]
 
                 t2_child: Concrete[type[Child1]]
                 # ^ REVEAL ^ type[myapp.models.Child1]
@@ -170,7 +170,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL ^ type[django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]]
 
                 t2_child2_qs: DefaultQuerySet[type[Child2]]
-                # ^ REVEAL ^ type[myapp.models.Child2QuerySet]
+                # ^ REVEAL ^ type[myapp.models.Child2QuerySet[myapp.models.Child2]]
                 """,
             )
 
@@ -399,7 +399,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL[leader-new] ^ example.models.Follower1 | example.models.Follower2
 
                 qs = leader.qs()
-                # ^ REVEAL[all-qs] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+                # ^ REVEAL[all-qs] ^ example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 follower1 = Follower1.new()
                 # ^ REVEAL ^ example.models.Follower1
@@ -486,7 +486,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="all-qs",
                     revealed=[
-                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
+                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
@@ -590,13 +590,13 @@ class TestConcreteAnnotations:
                 # TODO: Figure out how to make the queryset line up
                 
                 qs1 = func(follower1)
-                # ^ REVEAL[all-qs1] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+                # ^ REVEAL[all-qs1] ^ example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 qs2 = func2(follower1)
-                # ^ REVEAL[all-qs2] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+                # ^ REVEAL[all-qs2] ^ example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
 
                 qs5 = make_queryset(follower1)
-                # ^ REVEAL[all-qs3] ^ example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
+                # ^ REVEAL[all-qs3] ^ example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2]
                 """,
             )
 
@@ -622,7 +622,7 @@ class TestConcreteAnnotations:
 
                 from django.db import models
 
-                class Follower3QuerySet(models.QuerySet["Follower3"]):
+                class Follower3QuerySet[T_Follower3: Follower3 = Follower3](models.QuerySet[T_Follower3]):
                     ...
 
                 Follower3Manager = models.Manager.from_queryset(Follower3QuerySet)
@@ -656,21 +656,21 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="all-qs1",
                     revealed=[
-                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
+                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs2",
                     revealed=[
-                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
+                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs3",
                     revealed=[
-                        "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet"
+                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
@@ -800,7 +800,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL[concrete-parent] ^ myapp.models.Child1 | myapp.models.Child2 | myapp.models.Child3 | myapp2.models.ChildOther
 
                 qs: DefaultQuerySet[Parent]
-                # ^ REVEAL[qs-parent] ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
+                # ^ REVEAL[qs-parent] ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet[myapp.models.Child2] | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
                 """,
             )
 
@@ -1000,7 +1000,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL[concrete-leader] ^ follower1.models.follower1.Follower1
 
                 qs: DefaultQuerySet[Leader]
-                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet
+                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1]
 
                 qs.good_ones().values("nup")
                 # ^ ERROR(misc)[error1] ^ Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id
@@ -1024,9 +1024,10 @@ class TestConcreteAnnotations:
                 """
                 from django.db import models
                 from leader.models import Leader
+                from typing import Self
 
-                class Follower2QuerySet(models.QuerySet["Follower2"]):
-                    def good_ones(self) -> "Follower2QuerySet":
+                class Follower2QuerySet[T_Follower2: Follower2 = Follower2](models.QuerySet[T_Follower2]):
+                    def good_ones(self) -> Self:
                         return self.filter(good=True)
 
                 Follower2Manager = models.Manager.from_queryset(Follower2QuerySet)
@@ -1051,7 +1052,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="qs-leader",
                     revealed=[
-                        "follower1.models.follower1.Follower1QuerySet | follower1.models.follower2.Follower2QuerySet"
+                        "follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1] | follower1.models.follower2.Follower2QuerySet[follower1.models.follower2.Follower2]"
                     ],
                     replace=True,
                 ),
@@ -1086,7 +1087,7 @@ class TestConcreteAnnotations:
                 from django.db import models
                 from leader.models import Leader
 
-                class Follower2QuerySet(models.QuerySet["Follower2"]):
+                class Follower2QuerySet[T_Follower2: Follower2 = Follower2](models.QuerySet[T_Follower2]):
                     pass
 
                 Follower2Manager = models.Manager.from_queryset(Follower2QuerySet)
@@ -1104,7 +1105,7 @@ class TestConcreteAnnotations:
                     errors=[
                         (
                             "union-attr",
-                            'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                            'Item "Follower2QuerySet[Follower2]" of "Follower1QuerySet[Follower1] | Follower2QuerySet[Follower2]" has no attribute "good_ones"',
                         ),
                         (
                             "misc",
@@ -1129,7 +1130,7 @@ class TestConcreteAnnotations:
                 # ^ REVEAL[concrete-leader] ^ follower1.models.follower1.Follower1
 
                 qs: DefaultQuerySet[Leader]
-                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet
+                # ^ REVEAL[qs-leader] ^ follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1]
 
                 qs.good_ones().values("nup")
                 # ^ ERROR(misc)[error1] ^ Cannot resolve keyword 'nup' into field. Choices are: from_follower1, good, id
@@ -1155,9 +1156,10 @@ class TestConcreteAnnotations:
                 """
                 from django.db import models
                 from leader.models import Leader
+                from typing import Self
 
-                class Follower2QuerySet(models.QuerySet["Follower2"]):
-                    def good_ones(self) -> "Follower2QuerySet":
+                class Follower2QuerySet[T_Follower2: Follower2 = Follower2](models.QuerySet[T_Follower2]):
+                    def good_ones(self) -> Self:
                         return self.filter(good=True)
 
                 Follower2Manager = models.Manager.from_queryset(Follower2QuerySet)
@@ -1180,7 +1182,7 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="qs-leader",
                     revealed=[
-                        "follower1.models.follower1.Follower1QuerySet | follower2.models.Follower2QuerySet"
+                        "follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1] | follower2.models.Follower2QuerySet[follower2.models.Follower2]"
                     ],
                     replace=True,
                 ),
@@ -1215,7 +1217,7 @@ class TestConcreteAnnotations:
                 from django.db import models
                 from leader.models import Leader
 
-                class Follower2QuerySet(models.QuerySet["Follower2"]):
+                class Follower2QuerySet[T_Follower2: Follower2 = Follower2](models.QuerySet[T_Follower2]):
                     pass
 
                 Follower2Manager = models.Manager.from_queryset(Follower2QuerySet)
@@ -1233,7 +1235,7 @@ class TestConcreteAnnotations:
                     errors=[
                         (
                             "union-attr",
-                            'Item "Follower2QuerySet" of "Follower1QuerySet | Follower2QuerySet" has no attribute "good_ones"',
+                            'Item "Follower2QuerySet[Follower2]" of "Follower1QuerySet[Follower1] | Follower2QuerySet[Follower2]" has no attribute "good_ones"',
                         ),
                         (
                             "misc",

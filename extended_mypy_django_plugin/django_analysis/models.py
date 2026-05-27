@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, Self, cast
 
 from django.db import models
-from typing_extensions import Self
 
 from extended_mypy_django_plugin.django_analysis import ImportPath, protocols
 

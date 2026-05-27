@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 from django.db import models
-from typing_extensions import Self
 
 from extended_mypy_django_plugin.django_analysis import ImportPath, protocols
 

@@ -7,10 +7,9 @@ import sys
 import tempfile
 import textwrap
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, Self, TypeVar, cast
 
 from pytest_typing_runner import builders, file_changers, protocols, scenarios
-from typing_extensions import Self
 
 scripts_dir = pathlib.Path(__file__).parent.parent.parent
 

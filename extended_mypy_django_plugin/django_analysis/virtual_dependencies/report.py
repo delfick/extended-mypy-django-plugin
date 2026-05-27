@@ -80,8 +80,6 @@ class Report:
         concrete_queryset_name: str,
         concrete_models: Sequence[protocols.Model],
     ) -> None:
-        module_import_path, name = ImportPath.split(model_import_path)
-
         self.concrete_annotations[model_import_path] = ImportPath(
             f"{virtual_import_path}.{concrete_name}"
         )
@@ -341,7 +339,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 if queryset not in querysets:
                     querysets.append(queryset)
 
-            ns, name = ImportPath.split(model)
+            _, name = ImportPath.split(model)
             concrete_name = f"Concrete__{name}"
             queryset_name = f"ConcreteQuerySet__{name}"
 

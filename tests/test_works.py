@@ -47,24 +47,24 @@ def test_works(builder: ScenarioBuilder) -> None:
             # ^ REVEAL ^ myapp.models.Child1
 
             make_any_queryset(Child1)
-            # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
+            # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1] | myapp.models.Child2QuerySet[myapp.models.Child2] | django.db.models.query.QuerySet[myapp.models.Child3, myapp.models.Child3] | django.db.models.query.QuerySet[myapp2.models.ChildOther, myapp2.models.ChildOther]
 
             make_child1_queryset()
             # ^ REVEAL ^ django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
 
             qs2 = make_child2_queryset()
-            # ^ REVEAL ^ myapp.models.Child2QuerySet
+            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
 
             qs2.all()
-            # ^ REVEAL ^ myapp.models.Child2QuerySet
+            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
 
             Child2.objects
             # ^ REVEAL ^ myapp.models.ManagerFromChild2QuerySet[myapp.models.Child2]
 
             Child2.objects.all()
-            # ^ REVEAL ^ myapp.models.Child2QuerySet
+            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2]
 
             make_multiple_queryset(Child1)
-            # ^ REVEAL ^ myapp.models.Child2QuerySet | django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
+            # ^ REVEAL ^ myapp.models.Child2QuerySet[myapp.models.Child2] | django.db.models.query.QuerySet[myapp.models.Child1, myapp.models.Child1]
             """,
         )

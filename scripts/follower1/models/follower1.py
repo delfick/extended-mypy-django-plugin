@@ -1,9 +1,11 @@
+from typing import Self
+
 from django.db import models
 from leader.models import Leader
 
 
-class Follower1QuerySet(models.QuerySet["Follower1"]):
-    def good_ones(self) -> "Follower1QuerySet":
+class Follower1QuerySet[T_Follower1: Follower1 = Follower1](models.QuerySet[T_Follower1]):
+    def good_ones(self) -> Self:
         return self.filter(good=True)
 
 

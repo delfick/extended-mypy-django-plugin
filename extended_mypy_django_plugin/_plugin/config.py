@@ -1,19 +1,14 @@
 import configparser
 import dataclasses
 import pathlib
-import sys
+import tomllib
 from collections.abc import Mapping
+from typing import Self
 
 from mypy_django_plugin import config as django_stubs_config
-from typing_extensions import Self
 
 from ..django_analysis import ImportPath, protocols
 from ..version import VERSION
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 
 
 @dataclasses.dataclass(frozen=True)
