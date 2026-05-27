@@ -1,9 +1,7 @@
 import dataclasses
 import functools
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Generic, TypedDict, cast
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Generic, Self, TypedDict, cast
 
 from .. import project, protocols
 

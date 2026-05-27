@@ -3,12 +3,11 @@ from __future__ import annotations
 import contextlib
 import pathlib
 from collections.abc import Hashable, Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, NewType, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NewType, Protocol, Self, TypeVar, Union
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
 from django.db import models
-from typing_extensions import Self
 
 if TYPE_CHECKING:
     from django.contrib.contenttypes.fields import GenericForeignKey

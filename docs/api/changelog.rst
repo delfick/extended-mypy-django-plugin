@@ -8,6 +8,7 @@ Changelog
 0.9.0 - TBD
 
     * Dropped support for mypy<2.1.0
+    * Dropped support for python<3.13
 
 .. _release-0.8.2:
 

@@ -1,5 +1,6 @@
+from typing import Self
+
 from django.db import models
-from typing_extensions import Self
 
 from extended_mypy_django_plugin import Concrete
 

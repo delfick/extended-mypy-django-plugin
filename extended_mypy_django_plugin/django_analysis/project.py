@@ -7,11 +7,10 @@ import pathlib
 import sys
 import types
 from collections.abc import Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, Generic, cast
+from typing import TYPE_CHECKING, Generic, Self, cast
 
 from django.apps.registry import Apps
 from django.conf import LazySettings
-from typing_extensions import Self
 
 from . import protocols
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+from typing import Self
 
 import pytest
-from typing_extensions import Self
 
 from extended_mypy_django_plugin.django_analysis import (
     Field,

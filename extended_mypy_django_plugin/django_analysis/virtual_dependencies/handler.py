@@ -3,9 +3,7 @@ import dataclasses
 import pathlib
 import tempfile
 import time
-from typing import TYPE_CHECKING, Generic
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Generic, Self
 
 from ...version import VERSION
 from .. import discovery, hasher, project, protocols

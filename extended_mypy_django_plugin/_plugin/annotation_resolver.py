@@ -1,6 +1,6 @@
 import functools
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, assert_never, cast
 
 from mypy.errorcodes import ErrorCode
 from mypy.message_registry import ErrorMessage
@@ -25,7 +25,6 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.types import Type as MypyType
-from typing_extensions import Self, assert_never
 
 from . import protocols
 

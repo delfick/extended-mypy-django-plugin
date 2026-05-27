@@ -11,7 +11,7 @@ license = { text = "MIT" }
 authors = [
     { name = "Stephen Moore", email = "stephen@delfick.com" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -42,7 +42,7 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py313"
 line-length = 99
 extend-exclude = [
     ".DS_Store",
@@ -68,3 +68,6 @@ select = [
 "example/djangoexample/views.py" = ["F821"]
 "extended_mypy_django_plugin/_plugin/debug.py" = ["T201"]
 "scripts/test_helpers/extended_mypy_django_plugin_test_driver/assertions.py" = ["T201"]
+"*.py" = [
+    "UP046", # https://docs.astral.sh/ruff/rules/non-pep695-generic-class/
+]
