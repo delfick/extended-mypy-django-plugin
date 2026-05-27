@@ -294,83 +294,57 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "4.2.16"
+version = "6.0.5"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.15'",
-    "python_full_version < '3.15'",
-]
 dependencies = [
-    { name = "asgiref", marker = "extra == 'extra-5-tools-old-django'" },
-    { name = "sqlparse", marker = "extra == 'extra-5-tools-old-django'" },
-    { name = "tzdata", marker = "(sys_platform == 'win32' and extra == 'extra-5-tools-old-django') or (extra == 'extra-5-tools-new-django' and extra == 'extra-5-tools-old-django')" },
+    { name = "asgiref" },
+    { name = "sqlparse" },
+    { name = "tzdata", marker = "sys_platform == 'win32' or (extra == 'extra-5-tools-new-django' and extra == 'extra-5-tools-old-django')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/d8/a607ee443b54a4db4ad28902328b906ae6218aa556fb9b3ac45c0bcb313d/Django-4.2.16.tar.gz", hash = "sha256:6f1616c2786c408ce86ab7e10f792b8f15742f7b7b7460243929cb371e7f1dad", size = 10436023, upload-time = "2024-09-03T14:02:02.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/f1/bf85f0d29ef76abf901f193fe8fef4769d3da7794197832bc30151c071d8/django-6.0.5.tar.gz", hash = "sha256:bc6d6872e98a2864c836e42edd644b362db311147dd5aa8d5b82ba7a032f5269", size = 10924131, upload-time = "2026-05-05T13:54:39.329Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/2c/6b6c7e493d5ea789416918658ebfa16be7a64c77610307497ed09a93c8c4/Django-4.2.16-py3-none-any.whl", hash = "sha256:1ddc333a16fc139fd253035a1606bb24261951bbc3a6ca256717fa06cc41a898", size = 7992936, upload-time = "2024-09-03T14:01:55.363Z" },
-]
-
-[[package]]
-name = "django"
-version = "5.1.3"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.15'",
-    "python_full_version < '3.15'",
-]
-dependencies = [
-    { name = "asgiref", marker = "extra == 'extra-5-tools-new-django' or extra != 'extra-5-tools-old-django'" },
-    { name = "sqlparse", marker = "extra == 'extra-5-tools-new-django' or extra != 'extra-5-tools-old-django'" },
-    { name = "tzdata", marker = "(sys_platform == 'win32' and extra == 'extra-5-tools-new-django') or (sys_platform == 'win32' and extra != 'extra-5-tools-old-django') or (extra == 'extra-5-tools-new-django' and extra == 'extra-5-tools-old-django')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/85/ba2c2b83ba8b95354f99ed8344405d9571109ce0175028876209d6b93fba/Django-5.1.3.tar.gz", hash = "sha256:c0fa0e619c39325a169208caef234f90baa925227032ad3f44842ba14d75234a", size = 10698518, upload-time = "2024-11-05T05:24:27.27Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/f6/88ed57e1b3ed54ff18c1da352aecbd6f51784c3e642d97586b61f050f5b1/Django-5.1.3-py3-none-any.whl", hash = "sha256:8b38a9a12da3ae00cb0ba72da985ec4b14de6345046b1e174b1fd7254398f818", size = 8276180, upload-time = "2024-11-05T05:24:21.307Z" },
+    { url = "https://files.pythonhosted.org/packages/94/5b/1328f8b84fce040c404f76822bf8c57d254e368e8cbd8bd67ec2b26d75f5/django-6.0.5-py3-none-any.whl", hash = "sha256:9d58a7cb49244e74c8e161d5e403a46d6209f1009ba40f5a66d6aa0d0786a8f0", size = 8368680, upload-time = "2026-05-05T13:54:33.532Z" },
 ]
 
 [[package]]
 name = "django-stubs"
-version = "5.1.1"
+version = "6.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "django", version = "4.2.16", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-old-django'" },
-    { name = "django", version = "5.1.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-new-django'" },
+    { name = "django" },
     { name = "django-stubs-ext" },
     { name = "types-pyyaml" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/60/1ae90eb6e2e107bc64a3de9de78a5add7f3b85e491113504eed38d6d2c63/django_stubs-5.1.1.tar.gz", hash = "sha256:126d354bbdff4906c4e93e6361197f6fbfb6231c3df6def85a291dae6f9f577b", size = 265624, upload-time = "2024-10-26T19:12:14.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/8a/8946216758eb66c5700a235e230af538d4ea474244c79452159b580425ba/django_stubs-6.0.5.tar.gz", hash = "sha256:7742b8e60afc68a8545158e2bdb103376d5a092f7902c17f370920a9c08eb957", size = 280490, upload-time = "2026-05-25T08:47:02.291Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/c8/3081d5f994351248fcd60f9aab10cb2020bdd7df0f14e80854373e15d7d4/django_stubs-5.1.1-py3-none-any.whl", hash = "sha256:c4dc64260bd72e6d32b9e536e8dd0d9247922f0271f82d1d5132a18f24b388ac", size = 470790, upload-time = "2024-10-26T19:12:12.144Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/09/64ff51a4cf4e8bdf8423d249b32eca0676e69233009ce9cd5478ba2c9635/django_stubs-6.0.5-py3-none-any.whl", hash = "sha256:9fb9eede9b2fc47b36c3dc4a93652eb959dff45466ec4a580e4a22782192d746", size = 544132, upload-time = "2026-05-25T08:47:00.332Z" },
 ]
 
 [[package]]
 name = "django-stubs-ext"
-version = "5.2.8"
+version = "6.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django", version = "4.2.16", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-old-django'" },
-    { name = "django", version = "5.1.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-new-django'" },
+    { name = "django" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/a2/d67f4a5200ff7626b104eddceaf529761cba4ed318a73ffdb0677551be73/django_stubs_ext-5.2.8.tar.gz", hash = "sha256:b39938c46d7a547cd84e4a6378dbe51a3dd64d70300459087229e5fee27e5c6b", size = 6487, upload-time = "2025-12-01T08:12:37.486Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/01/419bc3cd882f3ec645d5a4511085202dd6bd3ef8d385871dcd2d32cc15b3/django_stubs_ext-6.0.5.tar.gz", hash = "sha256:1cc325e991303849bce70e19748981b225ef08b37256f263e113caf97cd3bcc0", size = 6666, upload-time = "2026-05-25T08:46:36.012Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/2d/cb0151b780c3730cf0f2c0fcb1b065a5e88f877cf7a9217483c375353af1/django_stubs_ext-5.2.8-py3-none-any.whl", hash = "sha256:1dd5470c9675591362c78a157a3cf8aec45d0e7a7f0cf32f227a1363e54e0652", size = 9949, upload-time = "2025-12-01T08:12:36.397Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/bf/7ee71071d84ad4e0efcd77e2681afed254a5f65c27524441a9caf8c60467/django_stubs_ext-6.0.5-py3-none-any.whl", hash = "sha256:a9932c8233d6dd4e34ae0b192026379c1a9be8f0b7c27aa1fa09ae215169773e", size = 10362, upload-time = "2026-05-25T08:46:34.467Z" },
 ]
 
 [[package]]
 name = "djangoexample"
 source = { editable = "example" }
 dependencies = [
-    { name = "django", version = "4.2.16", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-old-django'" },
-    { name = "django", version = "5.1.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-5-tools-new-django' or extra != 'extra-5-tools-old-django'" },
+    { name = "django" },
     { name = "psycopg2-binary" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "django", specifier = ">=4.2.16" },
+    { name = "django", specifier = ">=6.0.5" },
     { name = "psycopg2-binary", specifier = "==2.9.12" },
 ]
 
@@ -1202,21 +1176,21 @@ docs = [
     { name = "sphinx-toolbox" },
 ]
 new-django = [
-    { name = "django", version = "5.1.3", source = { registry = "https://pypi.org/simple" } },
+    { name = "django" },
     { name = "django-stubs" },
 ]
 old-django = [
-    { name = "django", version = "4.2.16", source = { registry = "https://pypi.org/simple" } },
+    { name = "django" },
     { name = "django-stubs" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
-    { name = "django", marker = "extra == 'new-django'", specifier = "==5.1.3" },
-    { name = "django", marker = "extra == 'old-django'", specifier = "==4.2.16" },
-    { name = "django-stubs", marker = "extra == 'new-django'", specifier = "==5.1.1" },
-    { name = "django-stubs", marker = "extra == 'old-django'", specifier = "==5.1.1" },
+    { name = "django", marker = "extra == 'new-django'", specifier = "==6.0.5" },
+    { name = "django", marker = "extra == 'old-django'", specifier = "==6.0.5" },
+    { name = "django-stubs", marker = "extra == 'new-django'", specifier = "==6.0.5" },
+    { name = "django-stubs", marker = "extra == 'old-django'", specifier = "==6.0.5" },
     { name = "mypy", specifier = "==2.1.0" },
     { name = "remote-pdb", specifier = "==2.1.0" },
     { name = "ruff", specifier = "==0.15.14" },

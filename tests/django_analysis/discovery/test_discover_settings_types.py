@@ -1,4 +1,3 @@
-import importlib
 import re
 
 from extended_mypy_django_plugin.django_analysis import Project, discovery, protocols
@@ -117,6 +116,8 @@ class TestSettingsTypesDiscovery:
             "SECRET_KEY_FALLBACKS": "<class 'list'>",
             "SECURE_CONTENT_TYPE_NOSNIFF": "<class 'bool'>",
             "SECURE_CROSS_ORIGIN_OPENER_POLICY": "<class 'str'>",
+            "SECURE_CSP": "<class 'dict'>",
+            "SECURE_CSP_REPORT_ONLY": "<class 'dict'>",
             "SECURE_HSTS_INCLUDE_SUBDOMAINS": "<class 'bool'>",
             "SECURE_HSTS_PRELOAD": "<class 'bool'>",
             "SECURE_HSTS_SECONDS": "<class 'int'>",
@@ -149,6 +150,7 @@ class TestSettingsTypesDiscovery:
             "STATIC_ROOT": "<class 'NoneType'>",
             "STATIC_URL": "<class 'str'>",
             "STORAGES": "<class 'dict'>",
+            "TASKS": "<class 'dict'>",
             "TEMPLATES": "<class 'list'>",
             "TEST_NON_SERIALIZED_APPS": "<class 'list'>",
             "TEST_RUNNER": "<class 'str'>",
@@ -157,6 +159,7 @@ class TestSettingsTypesDiscovery:
             "TIME_INPUT_FORMATS": "<class 'list'>",
             "TIME_ZONE": "<class 'str'>",
             "UNIQUE_SETTING_TO_EXTENDED_MYPY_PLUGIN_DJANGOEXAMPLE": "<class 'str'>",
+            "URLIZE_ASSUME_HTTPS": "<class 'bool'>",
             "USE_I18N": "<class 'bool'>",
             "USE_THOUSAND_SEPARATOR": "<class 'bool'>",
             "USE_TZ": "<class 'bool'>",
@@ -166,17 +169,4 @@ class TestSettingsTypesDiscovery:
             "X_FRAME_OPTIONS": "<class 'str'>",
             "YEAR_MONTH_FORMAT": "<class 'str'>",
         }
-        if importlib.metadata.version("django") == "4.2.16":
-            expected.update(
-                {
-                    "USE_L10N": "<class 'bool'>",
-                    "USE_DEPRECATED_PYTZ": "<class 'bool'>",
-                    "STATICFILES_STORAGE": "<class 'str'>",
-                    "DEFAULT_FILE_STORAGE": "<class 'str'>",
-                    "CSRF_COOKIE_MASKED": "<class 'bool'>",
-                }
-            )
-        else:
-            expected.update({"FORMS_URLFIELD_ASSUME_HTTPS": "<class 'bool'>"})
-
         assert settings_types == expected

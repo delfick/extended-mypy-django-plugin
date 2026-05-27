@@ -52,7 +52,7 @@ class Child3(Parent2):
     three = models.CharField(max_length=70)
 
 
-class Child4QuerySet(models.QuerySet["Child2"]):
+class Child4QuerySet[T_Child4: Child4 = Child4](models.QuerySet[T_Child4]):
     pass
 
 
