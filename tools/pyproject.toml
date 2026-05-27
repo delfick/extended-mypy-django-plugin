@@ -6,7 +6,7 @@ dependencies = [
     "click>=8.1.7",
     "ruff==0.15.14",
     "remote-pdb==2.1.0",
-    "mypy==1.19.0"
+    "mypy==2.1.0"
 ]
 
 [project.optional-dependencies]

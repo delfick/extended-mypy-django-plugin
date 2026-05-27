@@ -3,6 +3,12 @@
 Changelog
 ---------
 
+.. _release-0.9.0:
+
+0.9.0 - TBD
+
+    * Dropped support for mypy<2.1.0
+
 .. _release-0.8.2:
 
 0.8.2 - 2 December 2025
@@ -13,12 +19,14 @@ Changelog
 .. _release-0.8.1:
 
 0.8.1 - 2 June 2025
+
     * Dropped support for mypy<1.16.0
     * Virtual dependency reports now de-duplicate queryset unions
 
 .. _release-0.8.0:
 
 0.8.0 - 25 November 2024
+
     * Dropped support for django-stubs<5.1.1 and mypy<1.13.0
 
 .. _release-0.7.2:
