@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -76,7 +76,7 @@ name = "asgiref"
 version = "3.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' or (extra == 'extra-5-tools-new-django' and extra == 'extra-5-tools-old-django')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/b9/4db2509eabd14b4a8c71d1b24c8d5734c52b8560a7b1e1a8b56c8d25568b/asgiref-3.11.0.tar.gz", hash = "sha256:13acff32519542a1736223fb79a715acdebe24286d98e8b164a73085f40da2c4", size = 37969, upload-time = "2025-11-19T15:32:20.106Z" }
 wheels = [
@@ -444,7 +444,7 @@ dev = [
     { name = "djangoexample", editable = "example" },
     { name = "extended-mypy-django-plugin-test-driver", editable = "scripts/test_helpers" },
     { name = "proper-plugin", editable = "scripts/proper_plugin" },
-    { name = "tools", virtual = "tools" },
+    { name = "tools", editable = "tools" },
 ]
 
 [[package]]
@@ -1442,7 +1442,7 @@ wheels = [
 [[package]]
 name = "tools"
 version = "0.1"
-source = { virtual = "tools" }
+source = { editable = "tools" }
 dependencies = [
     { name = "click" },
     { name = "mypy" },
