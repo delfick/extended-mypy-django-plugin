@@ -193,3 +193,34 @@ This also works on the concrete models themselves:
 
     qs1: models.QuerySet[Concrete1]
     qs2: Concrete2QuerySet
+
+Hiding queryset annotations
+---------------------------
+
+Sometimes it can be useful to create a queryset using an annotation that isn't
+useful to callers.
+
+For example:
+
+.. code-block:: python
+
+    def some_filter(qs: MyQuerySet[MyModel]) -> MyQuerySet[MyModel]:
+        # Imagine a useful example
+        # The problem is that this fails because mypy believes the annotated
+        # type this resolves to should result in a `return-value` error here
+        return qs.annotate(max_value=Max("value")).filter(max_value__gt=10)
+
+In this case we can remove the queryset annotations:
+
+.. code-block:: python
+
+    from extended_django_mypy_plugin import hide_queryset_annotations
+
+    def some_filter(qs: MyQuerySet[MyModel]) -> MyQuerySet[MyModel]:
+        return hide_queryset_annotations(
+            qs.annotate(max_value=Max("value")).filter(max_value__gt=10)
+        )
+
+This helper does nothing at runtime and at static times errors will be produced
+if it's given something that isn't an instance of a queryset with a model we
+can determine.

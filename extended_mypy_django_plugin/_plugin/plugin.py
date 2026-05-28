@@ -1,9 +1,16 @@
 import functools
 from typing import Generic, TypeVar
 
+from mypy import checker
 from mypy.nodes import Import, ImportAll, ImportFrom, MypyFile
 from mypy.options import Options
-from mypy.plugin import AnalyzeTypeContext, MethodContext, ReportConfigContext
+from mypy.plugin import (
+    AnalyzeTypeContext,
+    FunctionSigContext,
+    MethodContext,
+    ReportConfigContext,
+)
+from mypy.types import FunctionLike
 from mypy.types import Type as MypyType
 from mypy_django_plugin import main
 
@@ -47,6 +54,9 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
         :no-index:
 
     .. autoattribute:: get_method_hook
+        :no-index:
+
+    .. autoattribute:: get_function_signature_hook
         :no-index:
     """
 
@@ -201,3 +211,26 @@ class ExtendedMypyStubs(Generic[T_Report], main.NewSemanalDjangoPlugin):
 
         def run(self, ctx: MethodContext) -> MypyType:
             return self.plugin.type_checker.modify_cast_as_concrete(ctx)
+
+    @hook.hook
+    class get_function_signature_hook(
+        PlainHook[protocols.Report, FunctionSigContext, FunctionLike]
+    ):
+        """
+        Used to implement the ``hide_queryset_annotations`` helper.
+
+        We use this hook to change the signature of that function where it is used such that it takes in the type it is
+        given and returns the same type minus any django-stubs queryset annotation information.
+        """
+
+        def choose(
+            self, *, fullname: str, super_hook: hook.MypyHook[FunctionSigContext, FunctionLike]
+        ) -> bool:
+            return fullname == "extended_mypy_django_plugin.annotations.hide_queryset_annotations"
+
+        def run(self, ctx: FunctionSigContext) -> FunctionLike:
+            return self.plugin.type_checker.modify_hide_queryset_annotations(
+                ctx=ctx,
+                django_context=self.plugin.django_context,
+                scope=None if not isinstance(ctx.api, checker.TypeChecker) else ctx.api.scope,
+            )

@@ -8,6 +8,33 @@ T_Parent = TypeVar("T_Parent")
 T_Obj = TypeVar("T_Obj")
 
 
+def hide_queryset_annotations[T_QuerySet](queryset: T_QuerySet) -> T_QuerySet:
+    """
+    This helper is seen by the mypy plugin and is used to transform a queryset
+    type with annotations into a queryset type without annotations
+
+    At runtime it does nothing.
+
+    The purpose of this is when a queryset is annotated only for the filter that is
+    immediately applied to it when we don't need to share the annotation outside of
+    that context.
+
+    For example:
+
+    .. code-block::
+
+        from extended_mypy_django_plugin import hide_queryset_annotations
+
+        def filter_my_queryset(qs: MySpecialQuerySet[MyModel]) -> MySpecialQuerySet[MyModel]:
+            # Without the `hide_queryset_annotations` mypy will complain that we are returning
+            # MySpecialQuerySet[Annotated[MyModel, TypedDict({"some_field": ...})]]
+            return hide_queryset_annotations(
+                qs.annotate(some_field=...).filter(some_field__gt=3)
+            )
+    """
+    return queryset
+
+
 class Concrete(Generic[T_Parent]):
     """
     The ``Concrete`` annotation exists as a class with functionality for both
