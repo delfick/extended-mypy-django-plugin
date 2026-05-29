@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.9.0:
 
-0.9.0 - TBD
+0.9.0 - 29 May 2026
 
     * Dropped support for mypy<2.1.0
     * Dropped support for python<3.13
