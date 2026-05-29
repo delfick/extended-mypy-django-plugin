@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.9.1:
 
-0.9.1 - TBD
+0.9.1 - 29 May 2026
 
     * Fixed ``hide_queryset_annotations`` to support django-stubs 6.0.1 and less specific
       value types
