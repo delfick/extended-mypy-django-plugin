@@ -1,10 +1,17 @@
+import mypy_django_plugin.django.context
+import mypy_django_plugin.lib.helpers
+from mypy import checker_shared
 from mypy.plugin import (
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
 )
 from mypy.types import (
     AnyType,
+    FunctionLike,
     Instance,
+    TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarType,
@@ -19,6 +26,89 @@ from . import protocols
 class TypeChecking:
     def __init__(self, *, make_resolver: protocols.ResolverMaker) -> None:
         self.make_resolver = make_resolver
+
+    def modify_hide_queryset_annotations(
+        self,
+        *,
+        ctx: FunctionSigContext,
+        django_context: mypy_django_plugin.django.context.DjangoContext,
+        scope: checker_shared.CheckerScope | None = None,
+    ) -> FunctionLike:
+        # First we need to make sure that what was pased in makes sense
+        # We expect exactly one argument
+        if len(ctx.args) != 1:
+            ctx.api.fail("hide_queryset_annotations takes only one argument", ctx.context)
+            return ctx.default_signature
+
+        # We need mypy to tell us the type of this argument
+        if not ctx.args[0]:
+            ctx.api.fail("Mypy failed to tell us the type of the first argument", ctx.context)
+            return ctx.default_signature
+
+        # At this point it is an expression, but we are at the part of mypy where we can analyze it
+        first_arg = get_proper_type(ctx.api.get_expression_type(ctx.args[0][0]))
+        if isinstance(first_arg, AnyType):
+            ctx.api.fail("Failed to determine the type of the first argument", ctx.context)
+            return ctx.default_signature
+
+        # If it's an alias then resolve what that's pointing to
+        if isinstance(first_arg, TypeAliasType) and first_arg.alias:
+            first_arg = get_proper_type(first_arg.alias.target)
+
+        # We can't get the information we want if we're in a class method
+        # So we only make sure we're passing in a queryset and otherwise ignore it
+        if isinstance(first_arg, TypeVarType) and first_arg.name == "Self":
+            if (
+                scope is None
+                or (enclosing := scope.enclosing_class()) is None
+                or not enclosing.has_base("django.db.models.query.QuerySet")
+            ):
+                ctx.api.fail("First argument must be a queryset", ctx.context)
+
+            return ctx.default_signature
+
+        # We expect a queryset instance, it doesn't make sense to hide annotations on a type
+        if not isinstance(first_arg, Instance):
+            ctx.api.fail("First argument must be an instance", ctx.context)
+            return ctx.default_signature
+
+        # Now we get to something interesting!
+        # We use django-stubs mypy plugin to extract the model type from our queryset
+        # This function returns None if it's not a queryset or it couldn't find the model
+        # We need the model because we want to make an annotation of the model without the annotations!
+        model = mypy_django_plugin.lib.helpers.extract_model_type_from_queryset(first_arg)
+        if model is None:
+            ctx.api.fail(
+                "Failed to determine a django model from the first argument (or it's not a queryset)",
+                ctx.context,
+            )
+            return ctx.default_signature
+
+        # Next we get that type of the model without annotations
+        if not mypy_django_plugin.lib.helpers.is_annotated_model(model.type):
+            django_model = Instance(model.type, [])
+        else:
+            django_model = Instance(model.type.bases[0].type, [])
+
+        # Then we need to make sure we carry across the row type if it's a TypedDict
+        # The second arg of a queryset will be a TypedDict if `.values` or `.values_list` has been used
+        # And this type of queryset is very different than without that so we don't want to lose this information
+        queryset_args: list[MypyType] = [django_model]
+        if len(first_arg.args) == 2:
+            second_arg = get_proper_type(first_arg.args[1])
+            if isinstance(second_arg, TypeAliasType) and second_arg.alias:
+                second_arg = get_proper_type(second_arg.alias.target)
+
+            if isinstance(second_arg, TypedDictType):
+                queryset_args.append(first_arg.args[1])
+
+        # And finally we change the signature of our `hide_queryset_annotations` function at this callsite
+        # Such that it takes in the type that we gave it
+        # And returns an instance of the queryset we were given such that it's in terms
+        # of the un-annotated model and any Values row type that we need to carry through
+        return ctx.default_signature.copy_modified(
+            arg_types=[first_arg], ret_type=Instance(first_arg.type, queryset_args)
+        )
 
     def modify_cast_as_concrete(self, ctx: FunctionContext | MethodContext) -> MypyType:
         if len(ctx.arg_types) != 1:

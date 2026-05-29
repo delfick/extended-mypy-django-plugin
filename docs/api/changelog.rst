@@ -10,6 +10,7 @@ Changelog
     * Dropped support for mypy<2.1.0
     * Dropped support for python<3.13
     * Dropped support for django-stubs<6.0.5,django<6.0.5
+    * Added ``extended_mypy_django_plugin.hide_queryset_annotations`` helper
 
 .. _release-0.8.2:
 
