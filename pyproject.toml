@@ -23,6 +23,10 @@ path = "extended_mypy_django_plugin/version.py"
 include = [
     "/extended_mypy_django_plugin",
 ]
+[tool.hatch.build.targets.sdist]
+include = [
+    "/extended_mypy_django_plugin",
+]
 
 [tool.uv.sources]
 tools = { workspace = true }
