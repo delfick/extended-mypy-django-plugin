@@ -17,7 +17,7 @@ docs = [
     "sphinx==8.0.2",
 ]
 old-django = [
-    "django-stubs==6.0.5",
+    "django-stubs==6.0.1",
     "django==6.0.5"
 ]
 new-django = [

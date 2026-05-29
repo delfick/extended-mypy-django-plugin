@@ -1,8 +1,15 @@
+import importlib.metadata
 import textwrap
 
+import packaging.version
 import pytest
 from extended_mypy_django_plugin_test_driver import Scenario, ScenarioBuilder, ScenarioRunner
 from pytest_typing_runner import expectations, notices, runners
+
+
+def is_old_stubs() -> bool:
+    stubs_version = packaging.version.Version(importlib.metadata.version("django-stubs"))
+    return stubs_version < packaging.version.Version("6.0.2")
 
 
 class TestConcreteAnnotations:
@@ -419,6 +426,14 @@ class TestConcreteAnnotations:
                 """,
             )
 
+            if is_old_stubs():
+                builder.on("main.py").expect(
+                    notices.RemoveFromRevealedType(
+                        name="all-qs",
+                        remove="[example.models.Follower1, example.models.Follower1]",
+                    )
+                )
+
         @builder.run_and_check_after
         def _() -> None:
             builder.set_installed_apps("example", "example2")
@@ -483,13 +498,23 @@ class TestConcreteAnnotations:
                     ],
                     replace=True,
                 ),
-                notices.AddRevealedTypes(
-                    name="all-qs",
-                    revealed=[
-                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
-                    ],
-                    replace=True,
-                ),
+                *[
+                    notices.AddRevealedTypes(
+                        name="all-qs",
+                        revealed=[
+                            "example.models.Follower1QuerySet | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
+                        ],
+                        replace=True,
+                    )
+                    if is_old_stubs()
+                    else notices.AddRevealedTypes(
+                        name="all-qs",
+                        revealed=[
+                            "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | django.db.models.query.QuerySet[example2.models.Follower3, example2.models.Follower3]"
+                        ],
+                        replace=True,
+                    )
+                ],
                 notices.AddRevealedTypes(
                     name="narrowed",
                     revealed=[
@@ -600,6 +625,22 @@ class TestConcreteAnnotations:
                 """,
             )
 
+            if is_old_stubs():
+                builder.on("main.py").expect(
+                    notices.RemoveFromRevealedType(
+                        name="all-qs1",
+                        remove="[example.models.Follower1, example.models.Follower1]",
+                    ),
+                    notices.RemoveFromRevealedType(
+                        name="all-qs2",
+                        remove="[example.models.Follower1, example.models.Follower1]",
+                    ),
+                    notices.RemoveFromRevealedType(
+                        name="all-qs3",
+                        remove="[example.models.Follower1, example.models.Follower1]",
+                    ),
+                )
+
         @builder.run_and_check_after
         def _() -> None:
             builder.set_installed_apps("example", "example2")
@@ -644,6 +685,10 @@ class TestConcreteAnnotations:
                 )
             )
 
+            follower1queryset = "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1]"
+            if is_old_stubs():
+                follower1queryset = "example.models.Follower1QuerySet"
+
             builder.on("main.py").expect(
                 notices.AddRevealedTypes(
                     name="all-concrete",
@@ -656,21 +701,21 @@ class TestConcreteAnnotations:
                 notices.AddRevealedTypes(
                     name="all-qs1",
                     revealed=[
-                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
+                        f"{follower1queryset} | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs2",
                     revealed=[
-                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
+                        f"{follower1queryset} | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),
                 notices.AddRevealedTypes(
                     name="all-qs3",
                     revealed=[
-                        "example.models.Follower1QuerySet[example.models.Follower1, example.models.Follower1] | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
+                        f"{follower1queryset} | django.db.models.query.QuerySet[example.models.Follower2, example.models.Follower2] | example2.models.Follower3QuerySet[example2.models.Follower3]"
                     ],
                     replace=True,
                 ),

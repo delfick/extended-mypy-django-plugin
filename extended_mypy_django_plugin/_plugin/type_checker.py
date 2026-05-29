@@ -1,5 +1,9 @@
+import importlib.metadata
+from typing import Any
+
 import mypy_django_plugin.django.context
 import mypy_django_plugin.lib.helpers
+import packaging.version
 from mypy import checker_shared
 from mypy.plugin import (
     FunctionContext,
@@ -21,6 +25,17 @@ from mypy.types import (
 from mypy.types import Type as MypyType
 
 from . import protocols
+
+
+def _extract_model_type_from_queryset(queryset_type: Instance) -> Instance | None:
+    args: list[Any] = [queryset_type]
+    stubs_version = packaging.version.Version(importlib.metadata.version("django-stubs"))
+    if stubs_version < packaging.version.Version("6.0.3"):
+        # after django-stubs 6.0.3 the second argument was removed cause it is unused
+        # A future version of extended-mypy-django-plugin will assume django-stubs>6.0.5
+        args.append(None)
+
+    return mypy_django_plugin.lib.helpers.extract_model_type_from_queryset(*args)
 
 
 class TypeChecking:
@@ -76,7 +91,8 @@ class TypeChecking:
         # We use django-stubs mypy plugin to extract the model type from our queryset
         # This function returns None if it's not a queryset or it couldn't find the model
         # We need the model because we want to make an annotation of the model without the annotations!
-        model = mypy_django_plugin.lib.helpers.extract_model_type_from_queryset(first_arg)
+        model = _extract_model_type_from_queryset(first_arg)
+
         if model is None:
             ctx.api.fail(
                 "Failed to determine a django model from the first argument (or it's not a queryset)",
@@ -99,7 +115,15 @@ class TypeChecking:
             if isinstance(second_arg, TypeAliasType) and second_arg.alias:
                 second_arg = get_proper_type(second_arg.alias.target)
 
-            if isinstance(second_arg, TypedDictType):
+            if (
+                # If it's a TypedDict
+                isinstance(second_arg, TypedDictType)
+                # Or some kind of mapping because mypy couldn't find a more specific type
+                or (
+                    isinstance(second_arg, Instance) and second_arg.type.has_base("typing.Mapping")
+                )
+            ):
+                # then we have a value queryset and we want to preserve that
                 queryset_args.append(first_arg.args[1])
 
         # And finally we change the signature of our `hide_queryset_annotations` function at this callsite
