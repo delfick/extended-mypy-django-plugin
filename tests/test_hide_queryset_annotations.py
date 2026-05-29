@@ -1,3 +1,6 @@
+import importlib.metadata
+
+import packaging.version
 from extended_mypy_django_plugin_test_driver import ScenarioBuilder
 
 
@@ -25,30 +28,39 @@ class TestHideQuerySetAnnotations:
             )
 
     def test_retains_row_type(self, builder: ScenarioBuilder) -> None:
+        stubs_version = packaging.version.Version(importlib.metadata.version("django-stubs"))
+        if stubs_version < packaging.version.Version("6.0.2"):
+            value_type = "dict[str, Any]"
+            row_type = "dict[str, Any]"
+        else:
+            # It's not till the later django-stubs that it understands the value type correctly
+            value_type = "TypedDict({'good': bool})"
+            row_type = "_Row"
+
         @builder.run_and_check_after
         def _() -> None:
             builder.set_and_copy_installed_apps("leader", "follower1")
             builder.on("main.py").set(
-                """
+                f"""
                 from follower1 import models as f1models
                 from django.db import models
-                from typing import TypedDict
+                from typing import TypedDict, Any
                 from extended_mypy_django_plugin import hide_queryset_annotations
 
                 class _Row(TypedDict):
                     good: bool
 
-                def returning_values() -> models.QuerySet[f1models.Follower1, _Row]:
+                def returning_values() -> models.QuerySet[f1models.Follower1, {row_type}]:
                     qs = f1models.Follower1.objects.all()
 
                     annotated = qs.annotate(value=models.Value(1)).filter(value=1)
-                    # ^ REVEAL ^ follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({'value': Any})], follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({'value': Any})]]
+                    # ^ REVEAL ^ follower1.models.follower1.Follower1QuerySet[follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({{'value': Any}})], follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({{'value': Any}})]]
                     
                     with_values = annotated.values("good")
-                    # ^ REVEAL ^ django.db.models.query.QuerySet[follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({'value': Any})], TypedDict({'good': bool})]
+                    # ^ REVEAL ^ django.db.models.query.QuerySet[follower1.models.follower1.Follower1@AnnotatedWith[TypedDict({{'value': Any}})], {value_type}]
 
                     without_the_annotations = hide_queryset_annotations(with_values)
-                    # ^ REVEAL ^ django.db.models.query.QuerySet[follower1.models.follower1.Follower1, TypedDict({'good': bool})]
+                    # ^ REVEAL ^ django.db.models.query.QuerySet[follower1.models.follower1.Follower1, {value_type}]
 
                     return with_values
                     # it seems django-stubs already is fine with this

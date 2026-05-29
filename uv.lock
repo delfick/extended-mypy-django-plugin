@@ -308,8 +308,31 @@ wheels = [
 
 [[package]]
 name = "django-stubs"
+version = "6.0.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.15'",
+    "python_full_version < '3.15'",
+]
+dependencies = [
+    { name = "django" },
+    { name = "django-stubs-ext" },
+    { name = "types-pyyaml" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ff/9a/78b442ab9254436b3195bffaf4e52d54aa32ac2b47ee1f8481f4614abb01/django_stubs-6.0.1.tar.gz", hash = "sha256:e1ca63634221b57a55e16562b9b6d1849aeee2cabfd0fc026084dbe8aa893366", size = 272906, upload-time = "2026-03-18T08:10:18.366Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/be/e9280ae94339f49d17af63b2ec508c9f11031196426a04cbdec1b0878d4a/django_stubs-6.0.1-py3-none-any.whl", hash = "sha256:d885044bd0876610f3eb969d6b5ed22f386002a879fdcb369cd8efa0502dbbce", size = 535867, upload-time = "2026-03-18T08:10:16.192Z" },
+]
+
+[[package]]
+name = "django-stubs"
 version = "6.0.5"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.15'",
+    "python_full_version < '3.15'",
+]
 dependencies = [
     { name = "django" },
     { name = "django-stubs-ext" },
@@ -1177,11 +1200,11 @@ docs = [
 ]
 new-django = [
     { name = "django" },
-    { name = "django-stubs" },
+    { name = "django-stubs", version = "6.0.5", source = { registry = "https://pypi.org/simple" } },
 ]
 old-django = [
     { name = "django" },
-    { name = "django-stubs" },
+    { name = "django-stubs", version = "6.0.1", source = { registry = "https://pypi.org/simple" } },
 ]
 
 [package.metadata]
@@ -1190,7 +1213,7 @@ requires-dist = [
     { name = "django", marker = "extra == 'new-django'", specifier = "==6.0.5" },
     { name = "django", marker = "extra == 'old-django'", specifier = "==6.0.5" },
     { name = "django-stubs", marker = "extra == 'new-django'", specifier = "==6.0.5" },
-    { name = "django-stubs", marker = "extra == 'old-django'", specifier = "==6.0.5" },
+    { name = "django-stubs", marker = "extra == 'old-django'", specifier = "==6.0.1" },
     { name = "mypy", specifier = "==2.1.0" },
     { name = "remote-pdb", specifier = "==2.1.0" },
     { name = "ruff", specifier = "==0.15.14" },
