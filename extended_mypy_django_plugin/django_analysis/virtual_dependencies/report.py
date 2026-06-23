@@ -249,7 +249,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 str(summary.module_import_path),
                 f"installed_apps={self.installed_apps_hash}",
                 f"significant={significant}",
-                "v2",
+                "v3",
             ]
         )
 
@@ -328,7 +328,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 added_imports.add(conc.import_path)
                 if conc.default_custom_queryset:
                     added_imports.add(conc.default_custom_queryset)
-                    queryset = str(conc.default_custom_queryset)
+                    queryset = conc.default_custom_queryset_string
                 else:
                     added_imports.add(ImportPath("django.db.models.QuerySet"))
                     queryset = f"django.db.models.QuerySet[{conc.import_path}]"

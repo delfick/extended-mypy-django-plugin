@@ -269,6 +269,12 @@ class Model(Protocol, Hashable):
         """
 
     @property
+    def default_custom_queryset_string(self) -> str | None:
+        """
+        The import path to the default custom queryset with any extra `[<generic_type>]`
+        """
+
+    @property
     def all_fields(self) -> FieldsMap:
         """
         The fields associated with this model
