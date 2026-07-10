@@ -70,49 +70,49 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "django.contrib.contenttypes.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v3"
 
+                type ConcreteQuerySet__ContentType = django.db.models.QuerySet[django.contrib.contenttypes.models.ContentType]
+                type Concrete__ContentType = django.contrib.contenttypes.models.ContentType
                 import django.contrib.contenttypes.models
                 import django.db.models
-                ConcreteQuerySet__ContentType = django.db.models.QuerySet[django.contrib.contenttypes.models.ContentType]
-                Concrete__ContentType = django.contrib.contenttypes.models.ContentType
                 """,
             "mod_566232296.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "child1.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=1428403320::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=1428403320::v3"
 
+                type ConcreteQuerySet__Child1 = parent.models.ParentQuerySet
+                type Concrete__Child1 = child1.models.Child1
                 import child1.models
                 import parent.models
-                ConcreteQuerySet__Child1 = parent.models.ParentQuerySet
-                Concrete__Child1 = child1.models.Child1
                 """,
             "mod_566756585.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "child2.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=1809429645::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=1809429645::v3"
 
+                type ConcreteQuerySet__Child2 = parent.models.ParentQuerySet
+                type Concrete__Child2 = child2.models.Child2
                 import child2.models
                 import parent.models
-                ConcreteQuerySet__Child2 = parent.models.ParentQuerySet
-                Concrete__Child2 = child2.models.Child2
                 """,
             "mod_614729021.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "parent.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1167748087::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=1167748087::v3"
 
+                type ConcreteQuerySet__Parent = parent.models.ParentQuerySet
+                type Concrete__Parent = child1.models.Child1 | child2.models.Child2
                 import child1.models
                 import child2.models
                 import parent.models
-                ConcreteQuerySet__Parent = parent.models.ParentQuerySet
-                Concrete__Parent = child1.models.Child1 | child2.models.Child2
                 """,
         }
 
@@ -172,11 +172,11 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child1.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2895819726::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2895819726::v3"
 
+            type ConcreteQuerySet__Child1 = child1.models.Child1QuerySet
+            type Concrete__Child1 = child1.models.Child1
             import child1.models
-            ConcreteQuerySet__Child1 = child1.models.Child1QuerySet
-            Concrete__Child1 = child1.models.Child1
             """
 
         expected["mod_566756585.py"] = """
@@ -184,11 +184,11 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child2.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3310007269::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3310007269::v3"
 
+            type ConcreteQuerySet__Child2 = child2.models.Child2QuerySet
+            type Concrete__Child2 = child2.models.Child2
             import child2.models
-            ConcreteQuerySet__Child2 = child2.models.Child2QuerySet
-            Concrete__Child2 = child2.models.Child2
             """
 
         expected["mod_614729021.py"] = """
@@ -196,13 +196,13 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "parent.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=3086174103::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=3086174103::v3"
 
+            type ConcreteQuerySet__Parent = child1.models.Child1QuerySet | child2.models.Child2QuerySet
+            type Concrete__Parent = child1.models.Child1 | child2.models.Child2
             import child1.models
             import child2.models
             import parent.models
-            ConcreteQuerySet__Parent = child1.models.Child1QuerySet | child2.models.Child2QuerySet
-            Concrete__Parent = child1.models.Child1 | child2.models.Child2
             """
 
         builder.populate_virtual_deps(deps_dest=deps_dest)
@@ -283,47 +283,47 @@ class TestRenamingQuerySet:
                     return None
 
                 mod = "django.contrib.contenttypes.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_3961720227::django.contrib.contenttypes.models::installed_apps=3376484868::significant=438215680::v3"
 
+                type ConcreteQuerySet__ContentType = django.db.models.QuerySet[django.contrib.contenttypes.models.ContentType]
+                type Concrete__ContentType = django.contrib.contenttypes.models.ContentType
                 import django.contrib.contenttypes.models
                 import django.db.models
-                ConcreteQuerySet__ContentType = django.db.models.QuerySet[django.contrib.contenttypes.models.ContentType]
-                Concrete__ContentType = django.contrib.contenttypes.models.ContentType
                 """,
             "mod_566232296.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "child1.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2135077446::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=2135077446::v3"
 
+                type ConcreteQuerySet__Child = child1.models.ChildQuerySet
+                type Concrete__Child = child1.models.Child
                 import child1.models
-                ConcreteQuerySet__Child = child1.models.ChildQuerySet
-                Concrete__Child = child1.models.Child
                 """,
             "mod_566756585.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "child2.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2410000981::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=2410000981::v3"
 
+                type ConcreteQuerySet__Child = child2.models.ChildQuerySet
+                type Concrete__Child = child2.models.Child
                 import child2.models
-                ConcreteQuerySet__Child = child2.models.ChildQuerySet
-                Concrete__Child = child2.models.Child
                 """,
             "mod_614729021.py": """
                 def interface__timestamp() -> None:
                     return None
 
                 mod = "parent.models"
-                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=859981596::v2"
+                summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=859981596::v3"
 
+                type ConcreteQuerySet__Parent = child1.models.ChildQuerySet | child2.models.ChildQuerySet
+                type Concrete__Parent = child1.models.Child | child2.models.Child
                 import child1.models
                 import child2.models
                 import parent.models
-                ConcreteQuerySet__Parent = child1.models.ChildQuerySet | child2.models.ChildQuerySet
-                Concrete__Parent = child1.models.Child | child2.models.Child
                 """,
         }
 
@@ -367,11 +367,11 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child1.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=3112678102::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566232296::child1.models::installed_apps=3376484868::significant=3112678102::v3"
 
+            type ConcreteQuerySet__Child = child1.models._Child1QuerySet
+            type Concrete__Child = child1.models.Child
             import child1.models
-            ConcreteQuerySet__Child = child1.models._Child1QuerySet
-            Concrete__Child = child1.models.Child
             """
 
         expected["mod_566756585.py"] = """
@@ -379,11 +379,11 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "child2.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3404706534::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_566756585::child2.models::installed_apps=3376484868::significant=3404706534::v3"
 
+            type ConcreteQuerySet__Child = child2.models._Child2QuerySet
+            type Concrete__Child = child2.models.Child
             import child2.models
-            ConcreteQuerySet__Child = child2.models._Child2QuerySet
-            Concrete__Child = child2.models.Child
             """
 
         expected["mod_614729021.py"] = """
@@ -391,13 +391,13 @@ class TestRenamingQuerySet:
                 return None
 
             mod = "parent.models"
-            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=893536031::v2"
+            summary = "__virtual_extended_mypy_django_plugin_report__.mod_614729021::parent.models::installed_apps=3376484868::significant=893536031::v3"
 
+            type ConcreteQuerySet__Parent = child1.models._Child1QuerySet | child2.models._Child2QuerySet
+            type Concrete__Parent = child1.models.Child | child2.models.Child
             import child1.models
             import child2.models
             import parent.models
-            ConcreteQuerySet__Parent = child1.models._Child1QuerySet | child2.models._Child2QuerySet
-            Concrete__Parent = child1.models.Child | child2.models.Child
             """
 
         pathlib.Path("/tmp/debug").write_text("")
