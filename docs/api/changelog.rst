@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.10.1:
 
-0.10.1 - TBD
+0.10.1 - 14 July 2026
 
     * Returned mypy and django-stubs to being optional dependencies
 
