@@ -374,7 +374,9 @@ wheels = [
 [[package]]
 name = "extended-mypy-django-plugin"
 source = { editable = "." }
-dependencies = [
+
+[package.optional-dependencies]
+django-stubs-mypy = [
     { name = "django-stubs" },
     { name = "mypy" },
 ]
@@ -389,9 +391,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "django-stubs", specifier = ">=6.0.5" },
-    { name = "mypy", specifier = ">=2.2.0" },
+    { name = "django-stubs", marker = "extra == 'django-stubs-mypy'", specifier = ">=6.0.5" },
+    { name = "mypy", marker = "extra == 'django-stubs-mypy'", specifier = ">=2.2.0" },
 ]
+provides-extras = ["django-stubs-mypy"]
 
 [package.metadata.requires-dev]
 dev = [

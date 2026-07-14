@@ -5,6 +5,10 @@ Install from pypi::
 
     python -m pip install extended-mypy-django-plugin
 
+And to enforce a lower bound of mypy and django-stubs that works with this plugin::
+
+    python -m pip install extended-mypy-django-plugin[django-stubs-mypy]
+
 Enabling this plugin in a project is adding either to ``mypy.ini``:
 
 .. code-block:: ini
