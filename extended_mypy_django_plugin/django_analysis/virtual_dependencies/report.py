@@ -249,7 +249,7 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
                 str(summary.module_import_path),
                 f"installed_apps={self.installed_apps_hash}",
                 f"significant={significant}",
-                "v2",
+                "v3",
             ]
         )
 
@@ -345,10 +345,10 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
 
             if concrete:
                 annotations.add(
-                    f"{concrete_name} = {' | '.join(conc.import_path for conc in concrete)}"
+                    f"type {concrete_name} = {' | '.join(conc.import_path for conc in concrete)}"
                 )
             if querysets:
-                annotations.add(f"{queryset_name} = {' | '.join(querysets)}")
+                annotations.add(f"type {queryset_name} = {' | '.join(querysets)}")
 
             report.register_model(
                 model_import_path=model,
@@ -367,8 +367,8 @@ class VirtualDependencyScribe(Generic[protocols.T_VirtualDependency, protocols.T
         # how to resolve the annotations, and we avoid problems around mypy not knowing about
         # relevant files when it analyses each file
         extra_lines = [
-            *(f"import {import_path}" for import_path in sorted_added_imported_modules),
             *(f"{line}" for line in sorted(annotations)),
+            *(f"import {import_path}" for import_path in sorted_added_imported_modules),
         ]
 
         if extra_lines:

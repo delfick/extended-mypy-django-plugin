@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+.. _release-0.10.0:
+
+0.10.0 - TBD
+
+    * Resolve incompatibility with mypy 2.2 by defining virtual dependency aliases with the
+      ``type`` keyword.
+    * This plugin is now mypy2.2+ and django-stubs 6.0.5+ only.
+
 .. _release-0.9.1:
 
 0.9.1 - 29 May 2026
