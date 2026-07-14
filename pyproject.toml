@@ -13,7 +13,11 @@ authors = [
 ]
 requires-python = ">=3.13"
 
-dependencies = [
+[project.optional-dependencies]
+django-stubs-mypy = [
+    # This is the lowest version of django-stubs and mypy supported
+    # However there are valid uses of this plugin that don't require django-stubs or mypy to be installed
+    # and so it is provided as an optional extra `extended-mypy-django-plugin[django-stubs-mypy]`
     "mypy >= 2.2.0",
     "django-stubs >= 6.0.5",
 ]
