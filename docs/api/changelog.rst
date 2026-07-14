@@ -5,7 +5,7 @@ Changelog
 
 .. _release-0.10.0:
 
-0.10.0 - TBD
+0.10.0 - 14 July 2026
 
     * Resolve incompatibility with mypy 2.2 by defining virtual dependency aliases with the
       ``type`` keyword.
